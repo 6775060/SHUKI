@@ -21,7 +21,7 @@
 }
 *{box-sizing:border-box}
 html,body{background:var(--bg)}
-body{font-family:var(--font);color:var(--ink);font-size:15px;line-height:1.5;direction:rtl;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);color:var(--ink);font-size:16px;line-height:1.5;direction:rtl;-webkit-font-smoothing:antialiased}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 a{color:inherit}
@@ -36,11 +36,11 @@ a{color:inherit}
 html,body{background:#F4F4F4;margin:0}
 .fs-plans{max-width:var(--plans-max);margin:0 auto;padding:var(--plans-top) var(--plans-pad) var(--plans-bottom)}
 .head-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--ink);padding-bottom:18px}
-.h1{font-size:32px;font-weight:800;margin:0;line-height:1.2;letter-spacing:-.2px}
-.sub{font-size:14px;margin:4px 0 0;color:var(--muted)}
-.hint{font-size:12px;color:var(--muted)}
+.h1{font-size:33px;font-weight:800;margin:0;line-height:1.2;letter-spacing:-.2px}
+.sub{font-size:15px;margin:4px 0 0;color:var(--muted)}
+.hint{font-size:13px;color:var(--muted)}
 .tbl-wrap{overflow-x:auto}
-.btn{border:0;border-radius:var(--r-ctl);height:38px;padding:0 20px;font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:10px;white-space:nowrap;text-decoration:none;color:inherit;transition:filter .15s,transform .1s}
+.btn{border:0;border-radius:var(--r-ctl);height:38px;padding:0 20px;font-weight:600;font-size:16px;display:inline-flex;align-items:center;justify-content:center;gap:10px;white-space:nowrap;text-decoration:none;color:inherit;transition:filter .15s,transform .1s}
 .btn:active{transform:scale(.98)}
 .pk{transition:transform .35s var(--ease),box-shadow .35s var(--ease)}
 .pk:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(60,40,120,.10)}
@@ -48,53 +48,53 @@ html,body{background:#F4F4F4;margin:0}
 .now .cur{font-size:.82em}
 /* plans page — mirrors fontshok.co.il/מחירון-רישיונות-ומנויים */
 .pk-tabs{display:flex;gap:0;border-bottom:1px solid #BDBDBD;margin-bottom:34px;overflow-x:auto}
-.pk-tabs span{padding:14px 28px;font-weight:700;font-size:20px;display:flex;gap:10px;align-items:center;white-space:nowrap}
+.pk-tabs span{padding:14px 28px;font-weight:700;font-size:21px;display:flex;gap:10px;align-items:center;white-space:nowrap}
 .pk-tabs span.on{background:var(--soft)}
 .pk-tabs img{width:26px;height:26px}
 .pkgs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:start;margin-top:46px}
 .pk{background:var(--card);border-radius:26px;padding:8px;position:relative}
 .pk.rec{background:var(--c-web);padding:38px 8px 8px;margin-top:-30px}
-.pk.rec .flag{position:absolute;top:8px;inset-inline:0;text-align:center;color:#fff;font-weight:700;font-size:14px}
+.pk.rec .flag{position:absolute;top:8px;inset-inline:0;text-align:center;color:#fff;font-weight:700;font-size:15px}
 .pk-in{background:var(--card);border-radius:20px;padding:22px 16px 18px}
 .pk-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px;min-height:56px}
 .pk-top>div{min-width:0}
-.pk h3{margin:0;font-size:24px;font-weight:800;line-height:1.1}
-.pk .tag{font-size:12.5px;color:var(--ink);margin-top:4px;white-space:nowrap}
+.pk h3{margin:0;font-size:25px;font-weight:800;line-height:1.1}
+.pk .tag{font-size:13.5px;color:var(--ink);margin-top:4px;white-space:nowrap}
 .pk-top img{width:58px;height:58px;flex:none}
 .price{background:var(--soft);border-radius:22px;padding:20px 18px 18px}
-.was{font-size:15px;color:var(--muted);text-decoration:line-through;text-decoration-thickness:1.5px}
+.was{font-size:16px;color:var(--muted);text-decoration:line-through;text-decoration-thickness:1.5px}
 .now{display:flex;flex-wrap:nowrap;align-items:baseline;gap:10px;margin:6px 0 18px}
 .now small{white-space:nowrap}
-.now b{font-size:34px;font-weight:800;line-height:1}
-.now small{font-size:12px;color:var(--muted)}
+.now b{font-size:35px;font-weight:800;line-height:1}
+.now small{font-size:13px;color:var(--muted)}
 /* savings: quiet text on the price's baseline, like "לא כולל מע״מ" on the live site */
-.save{font-size:13px;font-weight:400;color:var(--muted);white-space:nowrap;line-height:1}
+.save{font-size:14px;font-weight:400;color:var(--muted);white-space:nowrap;line-height:1}
 .price .was{line-height:1}
 /* black symbols without a circle, as on the live pricing page */
 .pk-top img.pk-sym{width:auto;height:32px;max-width:46px;object-fit:contain;flex:none}
-.price .what{font-size:14px;font-weight:700}
+.price .what{font-size:15px;font-weight:700}
 .price .what span{display:block;font-weight:400;color:var(--ink)}
 /* buttons + link sit inside the grey box, like the live site: thin outline, regular weight */
-.pk .cta{display:flex;align-items:center;width:100%;height:46px;margin-top:26px;border-radius:99px;border:1px solid var(--ink);background:transparent;font-size:17px;font-weight:400;justify-content:center}
+.pk .cta{display:flex;align-items:center;width:100%;height:46px;margin-top:26px;border-radius:99px;border:1px solid var(--ink);background:transparent;font-size:18px;font-weight:400;justify-content:center}
 .pk .cta:hover{background:var(--card)}
 .pk.rec .cta{border:0;background:linear-gradient(90deg,#2C67FF,#6FCFA1);color:#fff}
 .pk.rec .cta:hover{filter:brightness(1.05)}
-.pk .more{display:flex;justify-content:center;align-items:center;gap:6px;font-size:13px;color:var(--ink);margin-top:14px;text-decoration:none}
+.pk .more{display:flex;justify-content:center;align-items:center;gap:6px;font-size:14px;color:var(--ink);margin-top:14px;text-decoration:none}
 .pk .more:hover{color:var(--violet-text)}
 /* the live site's long thin arrow (Discovery ">++" ligature, missing from our variable font) */
 .fs-arrow{width:24px;height:10px;fill:none;stroke:currentColor;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .price .btn.cta{width:100%}
 .cmp{margin-top:72px}
-.cmp h2{font-size:26px;font-weight:800;margin:0;padding-bottom:18px;border-bottom:1px solid var(--ink)}
-.cmp table{width:100%;border-collapse:collapse;font-size:14px}
+.cmp h2{font-size:27px;font-weight:800;margin:0;padding-bottom:18px;border-bottom:1px solid var(--ink)}
+.cmp table{width:100%;border-collapse:collapse;font-size:15px}
 /* comparison table — 1:1 with the live site: light webstop column with a rounded foot, full-width rules between groups only */
-.cmp th{font-size:20px;font-weight:700;padding:34px 10px 26px;text-align:center;white-space:nowrap;width:20%}
+.cmp th{font-size:21px;font-weight:700;padding:34px 10px 26px;text-align:center;white-space:nowrap;width:20%}
 .cmp th:first-child{width:auto}
 .cmp th img{width:auto;height:20px;vertical-align:-4px;margin-inline-start:6px}
 .cmp th:first-child,.cmp td:first-child{text-align:start}
-.cmp td{padding:16px 10px;text-align:center;font-size:14px;color:var(--ink)}
+.cmp td{padding:16px 10px;text-align:center;font-size:15px;color:var(--ink)}
 .cmp td:first-child b{font-weight:700}
-.cmp tr.grp td{font-weight:700;font-size:16px;padding:40px 10px 14px}
+.cmp tr.grp td{font-weight:700;font-size:17px;padding:40px 10px 14px}
 .cmp tr.grp td:first-child{padding-inline-start:0}
 .cmp tbody tr.grp:not(:first-child) td{border-top:1px solid #555}
 .cmp tbody tr:not(.grp) td:first-child{padding-inline-start:0}
@@ -110,23 +110,23 @@ html,body{background:#F4F4F4;margin:0}
 .yes{background:#EBDDF9;color:var(--ink)}
 .no{background:#D9D1D1;color:#fff}
 .yes svg,.no svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-.cpill{display:inline-block;background:#F3E3F8;border-radius:99px;padding:4px 11px;font-size:13px;font-weight:500;white-space:nowrap}
+.cpill{display:inline-block;background:#F3E3F8;border-radius:99px;padding:4px 11px;font-size:14px;font-weight:500;white-space:nowrap}
 @media (max-width:1000px){.pkgs{grid-template-columns:1fr;max-width:440px;margin-inline:auto}.pk.rec{margin-top:0}}
 @media (max-width:760px){
-  .h1{font-size:24px}
+  .h1{font-size:25px}
   :root{--plans-top:28px}
   /* comparison on phones: feature name full width, the three marks in a row under it */
   .cmp table,.cmp thead,.cmp tbody{display:block}
   .cmp tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
   .cmp th:first-child{display:none}
-  .cmp th{width:auto;font-size:15px;padding:18px 4px 12px;white-space:normal}
+  .cmp th{width:auto;font-size:16px;padding:18px 4px 12px;white-space:normal}
   .cmp th img{height:15px}
   .cmp td{padding:8px 4px}
-  .cmp td:first-child{grid-column:1/-1;padding:16px 0 6px!important;font-size:14px}
+  .cmp td:first-child{grid-column:1/-1;padding:16px 0 6px!important;font-size:15px}
   .cmp tr.grp td:not(:first-child){display:none}
   .cmp tr.grp td:first-child{padding-top:26px!important}
   .cmp tr:has(+ tr.grp) td:not(:first-child){padding-bottom:22px}
-  .cmp .cpill{font-size:12px;padding:3px 8px;white-space:normal;line-height:1.3}
+  .cmp .cpill{font-size:13px;padding:3px 8px;white-space:normal;line-height:1.3}
   .cmp tr.cmp-end td:not(:first-child){display:none}
   .cmp tr.cmp-end td{height:30px}
   .cmp table{table-layout:auto}
@@ -168,7 +168,7 @@ const plansHTML=()=>`
   <div class="pk-in">
    <div class="pk-top"><div><h3>${p.name}</h3><div class="tag">${p.tag}</div></div><img class="pk-sym" src="${SYM[p.k]}" alt="${p.name}"></div>
    <div class="price">
-     <div style="display:flex;align-items:center;gap:8px;min-height:22px">${p.was?`<span class="was num">${ilsT(p.was)}</span><span class="save">חיסכון ${Math.round((1-p.now/p.was)*100)}%</span>`:p.from?'<span style="font-size:13px;color:var(--muted)">החל מ־</span>':''}</div>
+     <div style="display:flex;align-items:center;gap:8px;min-height:22px">${p.was?`<span class="was num">${ilsT(p.was)}</span><span class="save">חיסכון ${Math.round((1-p.now/p.was)*100)}%</span>`:p.from?'<span style="font-size:14px;color:var(--muted)">החל מ־</span>':''}</div>
      <div class="now"><b class="num">${ilsT(p.now)}</b><small style="white-space:nowrap">${p.unit} · כולל מע״מ</small></div>
      <div class="what">${p.what}<span>${p.det}</span></div>
      <a class="btn cta" href="${p.url}">${p.cta}</a>
