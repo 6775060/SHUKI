@@ -34,7 +34,7 @@ WooCommerce → **דומיינים של לקוחות** (capability `manage_wooco
 | PATCH | `/wp-json/fs/v1/account/domains/{id}` | `{host?, site_name?, fonts?}` |
 | DELETE | `/wp-json/fs/v1/account/domains/{id}` | `{removed, quota}` |
 | GET | `/wp-json/fs/v1/account/domains/{id}/certificate?format=pdf\|html&_wpnonce=…` | file |
-| POST | `/wp-json/fs/v1/account/addon` | `{kind:'sub'\|'lic', licence_id?}` → `{checkout_url}` (granted only after payment) |
+| POST | `/wp-json/fs/v1/account/addon` | `{kind:'sub'\|'lic', licence_id?}` → `{checkout_url}` (granted only after payment). After paying, WooCommerce returns to `fs_acc2_account_url?fs_addon=paid&kind=sub\|lic[&licence=ID]` so the page reopens the registration form. |
 
 Error codes (map to the prototype's Hebrew messages): `invalid_host` 400 · `no_plan` 403 · `quota_full` 403 · `locked` 403 · `licence_not_found` 404 · `not_found` 404 · `duplicate_host` 409 · `fonts_required` / `fonts_max_2` 422 · `rate_limited` 429 · `busy` 503.
 

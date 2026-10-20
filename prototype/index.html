@@ -228,6 +228,40 @@ a{color:inherit}
 .cert-foot{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
 .seal{width:84px;height:84px;display:block}
 
+/* floating cart for the ₪79 add-on: pay without leaving the page, then straight back to registering the domain.
+   Desktop: sheet from the left edge. Phones: bottom sheet. */
+.cart{position:fixed;inset:0;z-index:35;background:rgba(20,20,30,.4);opacity:0;transition:opacity .3s var(--ease)}
+.cart.show{opacity:1}
+.cart[hidden]{display:none!important}
+.cart-sheet{position:absolute;top:0;bottom:0;left:0;width:min(400px,100%);background:var(--card);box-shadow:0 0 40px rgba(0,0,0,.18);padding:22px 24px;display:flex;flex-direction:column;gap:18px;transform:translateX(-100%);transition:transform .4s var(--ease);overflow-y:auto}
+.cart.show .cart-sheet{transform:none}
+.cart-head{display:flex;justify-content:space-between;align-items:center;font-size:19px}
+.cart-body{display:flex;flex-direction:column;gap:18px;flex:1}
+.cart-item{display:flex;gap:12px;align-items:center;padding:14px;background:var(--bg);border-radius:12px}
+.cart-item div{flex:1;min-width:0}
+.cart-item div span{display:block;font-size:14px;color:var(--muted)}
+.cart-ic{width:40px;height:40px;border-radius:10px;background:#EEE9FF;color:var(--violet);display:grid;place-items:center;flex:none}
+.cart-sum{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:0}
+.cart-sum dd{margin:0}
+.cart-sum .tot{font-weight:700;font-size:18px}
+.cart-sum .vat{color:var(--muted);font-size:14px}
+.cart-pay{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:15px}
+.cart-pay span{display:inline-flex;gap:8px;align-items:center}
+.cart-pay .icon{width:20px;height:20px}
+.cart-go{width:100%;height:46px;font-size:17px;margin-top:auto}
+.cart-note{text-align:center;margin:0}
+.cart-wait,.cart-ok{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;font-size:16px}
+.cart-ok>span:not(.ok-ic){color:var(--muted);font-size:15px}
+.cart-ok .cart-go{margin-top:12px}
+.spin{width:36px;height:36px;border-radius:50%;border:3px solid #E9E3FF;border-top-color:var(--violet);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ok-ic{width:56px;height:56px;border-radius:50%;background:var(--ok-track);color:#1E7A00;display:grid;place-items:center}
+.ok-ic .icon{width:32px;height:32px}
+@media (max-width:760px){
+  .cart-sheet{top:auto;right:0;width:100%;max-height:90vh;border-radius:20px 20px 0 0;transform:translateY(100%);padding-bottom:calc(22px + env(safe-area-inset-bottom,0px))}
+  .cart-wait,.cart-ok{min-height:280px}
+}
+
 /* toast, legend, footer */
 .toast{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:50%;transform:translate(-50%,10px);background:var(--ink);color:#fff;border-radius:8px;padding:10px 18px;font-size:15px;opacity:0;pointer-events:none;transition:opacity .35s var(--ease),transform .4s var(--ease);z-index:40}
 .toast.show{opacity:1;transform:translate(-50%,0)}
@@ -479,6 +513,12 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 </div>
 
 <label class="legend"><input type="checkbox" id="showNew"> <span class="swatch"></span> הצג מה נוסף לעיצוב של רייזי</label>
+<div class="cart" id="cart" hidden role="dialog" aria-modal="true" aria-labelledby="cartTitle">
+  <div class="cart-sheet">
+    <div class="cart-head"><b id="cartTitle">העגלה שלך</b><button class="ibtn" id="cartClose" aria-label="סגירה"><i data-ic="close"></i></button></div>
+    <div id="cartBody" class="cart-body"></div>
+  </div>
+</div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -796,6 +836,11 @@ function cert(l,site){
 let state={view:'subs',plan:'web',sub:{subs:'dl',lic:'list',profile:'me'},open:{lic:-1,orders:0}};
 try{const s=JSON.parse(localStorage.getItem('fs-acc3')||'null');if(s&&V[s.view])state=Object.assign(state,s)}catch(e){}
 {const hv=location.hash.slice(1);if(V[hv])state.view=hv;if(hv==='cert')setTimeout(()=>openCert('sd:0'),50);if(hv==='quota'){state.view='lic';state.open.lic=2}if(hv==='subdom'){state.view='subs';state.sub.subs='reg'}}
+/* back from paying for an add-on on the live site (WooCommerce return URL): reopen the matching registration form */
+{const q=new URLSearchParams(location.search);if(q.get('fs_addon')==='paid'){const lic=q.get('kind')==='lic';
+ if(lic){state.view='lic';state.open.lic=+q.get('licence')||0}else{state.view='subs';state.sub.subs='reg'}
+ history.replaceState(null,'',location.pathname+location.hash);
+ setTimeout(()=>backTo(lic?'#su'+state.open.lic:'#sd2','התשלום התקבל. אפשר לרשום את '+(lic?'האתר':'הדומיין')+' הנוסף'),300)}}
 function save(){try{localStorage.setItem('fs-acc3',JSON.stringify(state))}catch(e){}}
 /* "https://www.studio-dayan.co.il/about" -> host "studio-dayan.co.il" -> name "Studio Dayan".
    On the live site the server can also fetch the page <title> for a nicer name. */
@@ -823,6 +868,26 @@ function toggleDrawer(key,i){
  if(open&&d){d.classList.add('closing');setTimeout(()=>{state.open[key]=-1;render()},260);return}
  state.open[key]=i;render({opening:true});
 }
+/* ₪79 add-on cart: pay -> processing -> paid -> "חזרה לרישום הדומיין".
+   The slot is granted only when payment succeeds; closing before paying changes nothing.
+   On the live site the pay step is the WooCommerce order-pay page (POST /fs/v1/account/addon), which returns here when paid. */
+const cart=$('#cart');let cartItem=null;
+function cartStep(it,step){
+ if(step==='pay')return `<div class="cart-item"><span class="cart-ic">${ICON.globe}</span><div><b>${it.name}</b><span>${it.desc}</span></div><b class="num">${ils(it.price)}</b></div>
+  <dl class="cart-sum"><dt class="tot">סה״כ לתשלום</dt><dd class="tot num">${ils(it.price)}</dd><dt class="vat">מתוכם מע״מ 18%</dt><dd class="vat num">${ils(+(it.price-it.price/1.18).toFixed(2))}</dd></dl>
+  <div class="cart-pay"><span>${ICON.card} ויזה •••• 4821</span><a href="#" data-t="מעבר לעדכון כרטיס בסמית" style="font-size:13px">שינוי</a></div>
+  <button class="btn btn-grad cart-go" id="cartPay">לתשלום ${ils(it.price)}</button>
+  <p class="hint cart-note">תשלום חד־פעמי מאובטח. החשבונית תופיע ב״הזמנות״.</p>`;
+ if(step==='wait')return `<div class="cart-wait" role="status"><span class="spin" aria-hidden="true"></span>מעבד את התשלום…</div>`;
+ return `<div class="cart-ok" role="status"><span class="ok-ic">${ICON.check}</span><b>התשלום התקבל</b><span>${it.okText}</span><button class="btn btn-grad cart-go" id="cartBack">${it.backText}</button></div>`;
+}
+function openCart(it){cartItem=Object.assign({paid:false},it);$('#cartBody').innerHTML=cartStep(cartItem,'pay');cart.hidden=false;void cart.offsetWidth;cart.classList.add('show');$('#cartPay').focus()}
+function closeCart(){if(cart.hidden||!cartItem||cartItem.busy)return;const it=cartItem;cart.classList.remove('show');setTimeout(()=>{cart.hidden=true},320);if(it.paid)it.back()}
+function payCart(){const it=cartItem;it.busy=true;$('#cartBody').innerHTML=cartStep(it,'wait');
+ setTimeout(()=>{it.busy=false;it.paid=true;it.grant();ORDERS.push({id:String(+ORDERS[ORDERS.length-1].id+1),d:today(),items:[[it.name,it.price]],st:'הושלם'});$('#cartBody').innerHTML=cartStep(it,'ok');$('#cartBack').focus()},1400)}
+cart.addEventListener('click',e=>{if(e.target===cart)closeCart()});
+/* back in the registration form, ready to type the new domain */
+function backTo(sel,msg){setTimeout(()=>{const f=$(sel);if(f){f.scrollIntoView({behavior:'smooth',block:'center'});f.focus({preventScroll:true})}toast(msg)},60)}
 const modal=$('#certModal');
 function showModal(){modal.hidden=false;void modal.offsetWidth;setTimeout(()=>modal.classList.add('show'),16);$('#certClose').focus()}
 function hideModal(){if(modal.hidden)return;modal.classList.remove('show');setTimeout(()=>{modal.hidden=true},350)}
@@ -835,7 +900,7 @@ function openCert(spec){
 }
 $('#certClose').onclick=hideModal;
 modal.addEventListener('click',e=>{if(e.target.id==='certModal')hideModal()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){hideModal();closeMenus()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){hideModal();closeMenus();closeCart()}});
 document.addEventListener('click',e=>{
  const t=e.target.closest('button,a');if(!t)return;
  if(t.dataset.view){goPage(t.dataset.view);return}
@@ -846,13 +911,19 @@ document.addEventListener('click',e=>{
  if(t.dataset.oopen!==undefined){toggleDrawer('orders',+t.dataset.oopen);return}
  if(t.dataset.cert){openCert(t.dataset.cert);return}
  if(t.dataset.del){const[i,j]=t.dataset.del.split(':').map(Number);const l=LIC[i];const s=l.sites.splice(j,1)[0];l.u=l.sites.length;render();toast(`${s[2]} הוסר והמקום ברישיון התפנה`);return}
- if(t.dataset.addon){const l=LIC[+t.dataset.addon];l.n+=1;render();toast('נוסף אתר לרישיון. אפשר לרשום עכשיו');return}
+ if(t.id==='cartPay'){payCart();return}
+ if(t.id==='cartBack'||t.id==='cartClose'){closeCart();return}
+ if(t.dataset.addon){const i=+t.dataset.addon,l=LIC[i];openCart({name:`אתר נוסף · ${l.f} ${l.w}`,desc:'מקום נוסף ברישיון הוובפונט, לצמיתות',price:79,
+   okText:`ברישיון של ${l.f} יש עכשיו ${l.n+1} אתרים.`,backText:'חזרה לרישום האתר',
+   grant:()=>{l.n+=1},back:()=>{state.view='lic';state.open.lic=i;render({opening:true});backTo('#su'+i,'אפשר לרשום את האתר הנוסף')}});return}
  if(t.dataset.hidenote){const n=$('.note');n.style.transition='opacity .3s var(--ease),transform .3s var(--ease)';n.style.opacity=0;n.style.transform='translateY(-4px)';setTimeout(()=>{state.noteHidden=1;render()},300);return}
  if(t.dataset.edit){state.editKey=t.dataset.edit;render();const r=$(`tr.editing`);r&&r.querySelector('.ed-host').focus();return}
  if(t.dataset.edcancel){state.editKey=null;render();return}
  if(t.dataset.edsave){saveEdit(t.closest('tr'));return}
  if(t.dataset.plan){state.plan=t.dataset.plan;render({page:true});return}
- if(t.dataset.planaddon){BONUS+=1;render();toast('נוסף רישום לחודש הזה. אפשר לרשום את האתר');return}
+ if(t.dataset.planaddon){openCart({name:`דומיין נוסף · מינוי ${PLAN[state.plan].label}`,desc:`רישום אחד נוסף לחודש ${CYCLE.label}`,price:79,
+   okText:`נוסף רישום אחד למכסת ${CYCLE.label}.`,backText:'חזרה לרישום הדומיין',
+   grant:()=>{BONUS+=1},back:()=>{state.view='subs';state.sub.subs='reg';render();backTo('#sd2','אפשר לרשום את הדומיין הנוסף')}});return}
  if(t.dataset.sddel){const s=SUBDOM[state.plan].splice(+t.dataset.sddel,1)[0];render();toast(`${s[2]} הוסר והמקום במכסה התפנה`);return}
  if(t.dataset.go2){state.sub.subs='reg';goPage(t.dataset.go2);return}
  if(t.id==='logout'){toast('התנתקת. נתראה!');return}

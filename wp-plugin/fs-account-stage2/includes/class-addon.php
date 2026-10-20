@@ -17,6 +17,31 @@ final class FS_Acc2_Addon {
 		foreach ( array( 'woocommerce_order_status_refunded', 'woocommerce_order_status_cancelled' ) as $h ) {
 			add_action( $h, array( __CLASS__, 'revoke' ) );
 		}
+		add_filter( 'woocommerce_get_return_url', array( __CLASS__, 'return_url' ), 20, 2 );
+	}
+
+	/** Personal-area page the add-on returns to (option fs_acc2_account_url, default /my-account-new/). */
+	public static function account_url(): string {
+		return (string) get_option( 'fs_acc2_account_url', home_url( '/my-account-new/' ) );
+	}
+
+	/**
+	 * After paying for an add-on, go straight back to registering the domain instead of the "order received" page.
+	 * The personal area reads ?fs_addon=paid&kind=sub|lic[&licence=ID] and opens the matching registration form.
+	 */
+	public static function return_url( $url, $order ) {
+		if ( ! $order instanceof WC_Order || ! $order->get_meta( '_fs_acc2_addon' ) ) {
+			return $url;
+		}
+		$line = self::lines( $order )[0] ?? null;
+		if ( ! $line ) {
+			return $url;
+		}
+		$args = array( 'fs_addon' => 'paid', 'kind' => $line['kind'] );
+		if ( 'lic' === $line['kind'] ) {
+			$args['licence'] = $line['licence_id'];
+		}
+		return add_query_arg( $args, self::account_url() );
 	}
 
 	/** Create a pending order for the add-on and return its payment URL. Nothing is granted here. */
@@ -38,6 +63,7 @@ final class FS_Acc2_Addon {
 		$order->set_billing_email( $user->user_email );
 		$order->set_billing_first_name( (string) $user->first_name );
 		$order->set_billing_last_name( (string) $user->last_name );
+		$order->update_meta_data( '_fs_acc2_addon', 1 ); // marks the order so payment returns to the personal area
 		$order->calculate_totals();
 		$order->save();
 		return $order->get_checkout_payment_url();
