@@ -112,10 +112,15 @@ a{color:inherit}
   .orow>td:nth-child(4){flex:none}
   /* profile (and any) tab bar: all tabs fit the width, no hidden tabs */
   .tabs[role=tablist] button{flex:1 1 0;min-width:0;padding:10px 4px 12px;text-align:center;white-space:normal;line-height:1.25;font-size:15px}
+  /* weight picker: its own full-width line under the format buttons */
+  .dl-tbl tbody tr>td.wsel-td{order:3;flex-basis:100%;margin:0!important}
+  .dl-tbl .wsel-pop,.dl-tbl .wsel{width:100%}
+  .dl-tbl .wsel-menu{inset-inline:0}
   /* ZIP buttons side by side */
   .tbl tbody tr.zip-row{flex-wrap:nowrap;gap:8px}
   .tbl tbody tr.zip-row>td:empty{display:none}
   .tbl tbody tr.zip-row>td{flex:1 1 0;min-width:0;margin:0!important}
+  .tbl tbody tr.zip-row>td:last-child:empty{display:none}
   .tbl tbody tr.zip-row .btn-line{width:100%;padding:0 8px;font-size:13px;gap:6px}
 }
 .demo{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--muted);background:var(--soft);border-radius:99px;padding:3px;margin-bottom:18px}
@@ -156,11 +161,11 @@ a{color:inherit}
 .btn-ghost{background:var(--card);border:1px solid var(--ink)}
 .btn-soft{background:var(--soft)}
 /* download buttons share one look: small, grey hairline frame, soft grey on hover (same as .btn.dl-sm) */
-.dl{all:unset;box-sizing:border-box;cursor:pointer;display:grid;place-items:center;width:187px;max-width:100%;height:32px;border:1px solid #D6D6D6;border-radius:8px;color:var(--ink);transition:background-color .25s var(--ease),border-color .25s var(--ease)}
+.dl{all:unset;box-sizing:border-box;cursor:pointer;display:grid;place-items:center;width:132px;max-width:100%;height:32px;border:1px solid #D6D6D6;border-radius:8px;color:var(--ink);transition:background-color .25s var(--ease),border-color .25s var(--ease)}
 .dl .icon{width:18px;height:18px}
 .dl:hover{background:var(--soft);border-color:#BDBDBD}
 .dl .dl-k{display:none}
-.btn.btn-line{width:187px;max-width:100%;height:32px;padding:0 14px;font-size:14px;background:transparent;border:1px solid #D6D6D6;border-radius:8px;color:var(--ink)}
+.btn.btn-line{width:132px;max-width:100%;height:32px;padding:0 14px;font-size:14px;background:transparent;border:1px solid #D6D6D6;border-radius:8px;color:var(--ink)}
 .btn.btn-line .icon{width:18px;height:18px}
 .btn.btn-line:hover{background:var(--soft);border-color:#BDBDBD}
 
@@ -411,6 +416,16 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .sites{display:flex;flex-direction:column;gap:4px}
 .sites-lbl{font-size:12px;color:var(--muted)}
 @media (max-width:760px){.fname{margin:0}}
+/* weight picker in "פונטים להורדה": one download per weight of the family */
+.wsel{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;justify-content:space-between;gap:8px;width:150px;height:32px;padding:0 12px;border:1px solid #D6D6D6;border-radius:8px;font-size:14px;transition:background-color .25s var(--ease),border-color .25s var(--ease)}
+.wsel:hover,.pop.open .wsel{background:var(--soft);border-color:#BDBDBD}
+.wsel:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+.wsel .icon{width:16px;height:16px;transition:transform .3s var(--ease)}
+.pop.open .wsel .icon{transform:rotate(180deg)}
+.wsel-menu{min-width:210px;max-height:min(300px,50vh);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.pop-menu.wsel-menu button{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.wsel-menu .icon{width:18px;height:18px;color:var(--violet-text)}
+@media (min-width:761px){.dl-tbl td:nth-child(n+2),.dl-tbl th:nth-child(n+2){width:1%;white-space:nowrap}}
 /* choice menu (certificate / download when a row holds more than one licence) */
 .lic-wrap{overflow:visible}
 .pop{position:relative;display:inline-flex}
@@ -714,13 +729,21 @@ function quotaFullPlan(){
  </div>`;
 }
 
+/* weight names for a family (sample data: spread over the usual scale) */
+const WEIGHTS=['Thin','ExtraLight','Light','Regular','Medium','Demibold','Bold','ExtraBold','Black'];
+const weightsOf=n=>n>=WEIGHTS.length?WEIGHTS.slice():[...new Set(Array.from({length:n},(_,i)=>WEIGHTS[Math.round(i*(WEIGHTS.length-1)/Math.max(1,n-1))]))];
+function weightPick(f,n){
+ return `<div class="pop wsel-pop"><button class="wsel" data-pop="1" aria-haspopup="true" aria-expanded="false" aria-label="בחירת משקל להורדה מ${f}">בחירת משקל ${ICON.chev}</button>
+  <div class="pop-menu wsel-menu" role="menu">${weightsOf(n).map(w=>`<button role="menuitem" data-t="מוריד את ${f} ${w}"><span dir="ltr">${w}</span>${ICON.dl}</button>`).join('')}</div></div>`;
+}
 function subsDownloads(){
- return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>שם הפונט</th><th>משקלים</th><th>פורמט לאתרים</th><th>פורמט לדסקטופ</th></tr></thead><tbody>
+ return `<div class="tbl-wrap lic-wrap"><table class="tbl dl-tbl"><thead><tr><th>שם הפונט</th><th>משקלים</th><th>פורמט לאתרים</th><th>פורמט לדסקטופ</th><th>הורדה לפי משקל</th></tr></thead><tbody>
  ${FAMILY.map(([f,n])=>`<tr><td>${f}${f==='דיסקברי'?' <span class="chip" style="margin-inline-start:6px">גרסה 2.0 חדשה</span>':''}</td><td class="num" style="color:var(--muted)">${n} משקלים</td>
  <td><button class="dl" aria-label="הורדת ${f} לאתרים" data-t="מוריד את ${f} לאתרים (WOFF2)">${ICON.dl}<span class="dl-k">אתרים</span></button></td>
- <td><button class="dl" aria-label="הורדת ${f} לדסקטופ" data-t="מוריד את ${f} לדסקטופ (OTF)">${ICON.dl}<span class="dl-k">דסקטופ</span></button></td></tr>`).join('')}
- <tr class="zip-row"><td></td><td></td><td><button class="btn btn-line" data-t="מכין קובץ ZIP עם כל הפונטים לאתרים">${ICON.dl} כל הפונטים לאתרים</button></td>
- <td><button class="btn btn-line" data-t="מכין קובץ ZIP עם כל הפונטים לדסקטופ">${ICON.dl} כל הפונטים לדסקטופ</button></td></tr>
+ <td><button class="dl" aria-label="הורדת ${f} לדסקטופ" data-t="מוריד את ${f} לדסקטופ (OTF)">${ICON.dl}<span class="dl-k">דסקטופ</span></button></td>
+ <td class="wsel-td">${weightPick(f,n)}</td></tr>`).join('')}
+ <tr class="zip-row"><td></td><td></td><td><button class="btn btn-line" data-t="מכין קובץ ZIP עם כל הפונטים לאתרים">${ICON.dl} הכל לאתרים</button></td>
+ <td><button class="btn btn-line" data-t="מכין קובץ ZIP עם כל הפונטים לדסקטופ">${ICON.dl} הכל לדסקטופ</button></td><td></td></tr>
  </tbody></table></div>`;
 }
 
