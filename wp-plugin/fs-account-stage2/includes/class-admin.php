@@ -15,6 +15,7 @@ final class FS_Acc2_Admin {
 			add_submenu_page( 'woocommerce', 'דומיינים של לקוחות', 'דומיינים של לקוחות', self::CAP, self::SLUG, array( __CLASS__, 'page' ) );
 		}, 60 );
 		add_action( 'admin_post_fs_acc2_admin', array( __CLASS__, 'handle' ) );
+		add_action( 'admin_post_fs_acc2_settings', array( __CLASS__, 'save_settings' ) );
 	}
 
 	private static function log( int $user_id, ?int $domain_id, string $action, $before, $after ): void {
@@ -79,6 +80,55 @@ final class FS_Acc2_Admin {
 		self::back( $uid, 'פעולה לא מוכרת' );
 	}
 
+	/** Settings form, so setup needs no WP-CLI (Stage 2 README, install steps 2–4 and migration step 1). */
+	public static function save_settings(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'אין הרשאה', 403 );
+		}
+		check_admin_referer( 'fs_acc2_settings' );
+		$map = array();
+		foreach ( preg_split( '/\R/', wp_unslash( (string) ( $_POST['role_map'] ?? '' ) ) ) as $line ) {
+			$kv = array_map( 'trim', explode( '=', $line, 2 ) );
+			if ( 2 === count( $kv ) && '' !== $kv[0] && in_array( $kv[1], array( 'web', 'extra' ), true ) ) {
+				$map[ sanitize_key( $kv[0] ) ] = $kv[1];
+			}
+		}
+		update_option( 'fs_acc2_role_map', $map, false );
+		update_option( 'fs_acc2_enabled', 'all' === ( $_POST['enabled'] ?? '' ) ? 'all' : 'admins', false );
+		update_option( 'fs_acc2_addon_product_id', absint( $_POST['addon_product_id'] ?? 0 ), false );
+		$keys = array_values( array_filter( array_map( 'sanitize_text_field', array_map( 'trim', explode( ',', wp_unslash( (string) ( $_POST['domain_meta_keys'] ?? '' ) ) ) ) ) ) );
+		update_option( 'fs_acc2_domain_meta_keys', $keys, false );
+		// the certificate sequence can only be moved while no certificate has been issued yet
+		global $wpdb;
+		$start = absint( $_POST['cert_start'] ?? 0 );
+		if ( $start && ! (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . FS_Acc2_Schema::table( 'domains' ) ) ) {
+			update_option( 'fs_acc2_cert_start', $start, false );
+			update_option( 'fs_acc2_cert_seq', (string) $start, false );
+		}
+		wp_safe_redirect( add_query_arg( array( 'page' => self::SLUG, 'tab' => 'settings', 'msg' => rawurlencode( 'ההגדרות נשמרו' ) ), admin_url( 'admin.php' ) ) );
+		exit;
+	}
+
+	private static function settings_page(): void {
+		global $wpdb;
+		$map    = (array) get_option( 'fs_acc2_role_map', array() );
+		$lines  = implode( "\n", array_map( fn( $r, $p ) => "$r=$p", array_keys( $map ), $map ) );
+		$roles  = implode( ', ', array_keys( wp_roles()->get_names() ) );
+		$issued = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . FS_Acc2_Schema::table( 'domains' ) );
+		$pid    = (int) get_option( 'fs_acc2_addon_product_id' );
+		$prod   = $pid && function_exists( 'wc_get_product' ) ? wc_get_product( $pid ) : null;
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="fs_acc2_settings">' . wp_nonce_field( 'fs_acc2_settings', '_wpnonce', true, false );
+		echo '<table class="form-table" role="presentation">';
+		echo '<tr><th>מי רואה את שלב 2</th><td><select name="enabled"><option value="admins">מנהלים בלבד</option><option value="all"' . selected( get_option( 'fs_acc2_enabled', 'admins' ), 'all', false ) . '>כל הלקוחות</option></select></td></tr>';
+		echo '<tr><th>תפקידי מינוי</th><td><textarea name="role_map" rows="4" dir="ltr" style="width:320px" placeholder="role_slug=web">' . esc_textarea( $lines ) . '</textarea><p class="description">שורה לכל תפקיד: <code>role=web</code> (וובסטופ) או <code>role=extra</code> (אקסטרה). תפקידים באתר: <code dir="ltr">' . esc_html( $roles ) . '</code></p></td></tr>';
+		echo '<tr><th>מוצר ״דומיין נוסף״ (₪79)</th><td><input type="number" name="addon_product_id" value="' . esc_attr( $pid ?: '' ) . '"> ' . ( $prod ? esc_html( $prod->get_name() . ' · ₪' . $prod->get_price() ) : ( $pid ? '<b style="color:#b00">מוצר לא נמצא</b>' : '' ) ) . '</td></tr>';
+		echo '<tr><th>שדות הדומיין בקופה</th><td><input name="domain_meta_keys" dir="ltr" style="width:320px" value="' . esc_attr( implode( ', ', (array) get_option( 'fs_acc2_domain_meta_keys', array() ) ) ) . '"><p class="description">מפתחות ה־meta שבהם נשמרים הדומיינים בהזמנה (מופרדים בפסיק). נדרש להעברת הנתונים.</p></td></tr>';
+		echo '<tr><th>מספר תעודה ראשון</th><td>' . ( $issued ? 'כבר הונפקו תעודות; המספור הבא: ' . (int) get_option( 'fs_acc2_cert_seq' ) : '<input type="number" name="cert_start" value="' . esc_attr( (string) get_option( 'fs_acc2_cert_start', 640000 ) ) . '"><p class="description">גבוה מהמספר האחרון שהונפק בתעודות הקיימות.</p>' ) . '</td></tr>';
+		echo '</table>';
+		submit_button( 'שמירת הגדרות' );
+		echo '</form>';
+	}
+
 	public static function page(): void {
 		if ( ! current_user_can( self::CAP ) ) {
 			return;
@@ -87,7 +137,19 @@ final class FS_Acc2_Admin {
 		$uid  = absint( $_GET['u'] ?? 0 );
 		$user = $uid ? get_userdata( $uid ) : ( $q ? ( get_user_by( 'email', $q ) ?: get_user_by( 'login', $q ) ) : null );
 		$msg  = sanitize_text_field( wp_unslash( $_GET['msg'] ?? '' ) );
+		$tab = sanitize_key( $_GET['tab'] ?? '' );
 		echo '<div class="wrap" dir="rtl"><h1>דומיינים של לקוחות</h1>';
+		$link = admin_url( 'admin.php?page=' . self::SLUG );
+		echo '<nav class="nav-tab-wrapper"><a class="nav-tab' . ( 'settings' !== $tab ? ' nav-tab-active' : '' ) . '" href="' . esc_url( $link ) . '">לקוחות</a>'
+			. ( current_user_can( 'manage_options' ) ? '<a class="nav-tab' . ( 'settings' === $tab ? ' nav-tab-active' : '' ) . '" href="' . esc_url( $link . '&tab=settings' ) . '">הגדרות</a>' : '' ) . '</nav>';
+		if ( 'settings' === $tab && current_user_can( 'manage_options' ) ) {
+			if ( ! empty( $_GET['msg'] ) ) {
+				echo '<div class="notice notice-success"><p>' . esc_html( rawurldecode( sanitize_text_field( wp_unslash( $_GET['msg'] ) ) ) ) . '</p></div>';
+			}
+			self::settings_page();
+			echo '</div>';
+			return;
+		}
 		if ( $msg ) {
 			echo '<div class="notice notice-success"><p>' . esc_html( rawurldecode( $msg ) ) . '</p></div>';
 		}

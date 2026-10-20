@@ -4,6 +4,8 @@ Server side of `docs/stage2-technical-spec.md`: monthly domain quotas, per-domai
 Status: **code complete for §2–§8 and Q7, unit-tested rules only. Not yet run inside WordPress / against MySQL.**
 
 ## Install (staging first)
+All settings below can also be set in wp-admin: WooCommerce → דומיינים של לקוחות → **הגדרות** (no WP-CLI needed).
+
 1. Copy this folder to `wp-content/plugins/fs-account-stage2/` and activate. Activation creates `wp_fs_domains`, `wp_fs_licences`, `wp_fs_quota_bonus`.
 2. Before activating, set the first certificate number above the highest one already issued:
    `wp option update fs_acc2_cert_start 640000`
