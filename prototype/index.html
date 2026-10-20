@@ -170,9 +170,25 @@ a{color:inherit}
 .plan img{width:52px;height:52px}
 .plan .name{font-weight:700;font-size:18px;display:flex;gap:8px;align-items:center}
 .plan .dates{margin-inline-start:auto;display:flex;gap:32px;font-size:14px;padding-inline-end:22px;white-space:nowrap}
-@media (min-width:1001px){.plan{flex-wrap:nowrap}}
 @media (max-width:1000px){.plan .dates{flex-wrap:wrap;white-space:normal;margin-inline-start:0}}
 .plan .dates b{display:block;font-size:14px}
+/* subscription box: next payment always visible; start date + payment method fold out under "פרטים" */
+.plan{padding-block:14px;row-gap:0}
+.plan img{width:46px;height:46px}
+.plan-desc{font-size:15px}
+.plan .dates{align-items:center}
+.plan-tg{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:14px;color:var(--violet);padding:6px 10px;border-radius:99px;transition:background-color .25s var(--ease)}
+.plan-tg:hover{background:#EEE9FF}
+.plan-tg:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+.plan-tg .icon{width:16px;height:16px;transition:transform .5s var(--ease)}
+.plan.open .plan-tg .icon{transform:rotate(180deg)}
+.plan-more{flex-basis:100%;display:grid;grid-template-rows:0fr;transition:grid-template-rows .5s var(--ease)}
+.plan-more>div{overflow:hidden;min-height:0}
+.plan.open .plan-more{grid-template-rows:1fr}
+.plan-more-in{display:flex;flex-wrap:wrap;gap:12px 40px;padding-top:14px;margin-top:14px;border-top:1px solid #E6E3F0;font-size:14px;opacity:0;transform:translateY(-4px);transition:opacity .3s ease,transform .4s var(--ease)}
+.plan.open .plan-more-in{opacity:1;transform:none;transition:opacity .45s ease .1s,transform .5s var(--ease) .05s}
+.plan-more-in b{display:block;font-weight:500;color:var(--muted);font-size:13px}
+.plan-more-in span{font-size:15px}
 .chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;border-radius:99px;padding:2px 10px;background:#E9E3FF;color:var(--violet);white-space:nowrap}
 .chip.ok{background:var(--ok-track);color:#1E7A00}
 .chip.wait{background:var(--soft);color:var(--muted)}
@@ -633,17 +649,20 @@ const ORDERS=[
 /* views */
 const V={};
 V.subs=(tab)=>`
- <div class="plan">
+ <div class="plan ${state.planOpen?'open':''}">
    ${logo(state.plan,'')}
-   <div>
+   <div class="plan-id">
      <div class="name">${PLAN[state.plan].label} <span class="chip ok">פעיל</span></div>
-     <div style="font-size:15px">${PLAN[state.plan].desc}</div>
+     <div class="plan-desc">${PLAN[state.plan].desc}</div>
    </div>
    <div class="dates">
-     <div><b>תחילת המינוי</b><span class="num">26 בינואר 2023</span></div>
      <div><b>תשלום הבא</b><span class="num">26 בנובמבר 2026</span></div>
-     <div><b>אמצעי תשלום</b><span class="num">ויזה •••• 4821</span> <a href="#" data-t="מעבר לעדכון כרטיס בסמית" style="font-size:13px">עדכון</a></div>
+     <button class="plan-tg" data-plantg="1" aria-expanded="${!!state.planOpen}" aria-controls="planMore">פרטים ${ICON.chev}</button>
    </div>
+   <div class="plan-more" id="planMore"><div><div class="plan-more-in">
+     <div><b>תחילת המינוי</b><span class="num">26 בינואר 2023</span></div>
+     <div><b>אמצעי תשלום</b><span class="num">ויזה •••• 4821</span> <a href="#" data-t="מעבר לעדכון כרטיס בסמית" style="font-size:13px">עדכון</a></div>
+   </div></div></div>
  </div>
  <div class="tabs" role="tablist">
    <button role="tab" aria-selected="${tab==='dl'}" data-subtab="dl">פונטים להורדה</button>
@@ -918,6 +937,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){hideModal();closeMe
 document.addEventListener('click',e=>{
  const t=e.target.closest('button,a');if(!t)return;
  if(t.dataset.view){goPage(t.dataset.view);return}
+ if(t.dataset.plantg){state.planOpen=!state.planOpen;t.closest('.plan').classList.toggle('open',state.planOpen);t.setAttribute('aria-expanded',state.planOpen);save();return}
  if(t.dataset.hist){state.histOpen=!state.histOpen;t.setAttribute('aria-expanded',state.histOpen);$('#histBody').classList.toggle('open',state.histOpen);return}
  if(t.dataset.go){e.preventDefault();if(t.dataset.go==='dom')state.histOpen=true;goPage(t.dataset.go);return}
  if(t.dataset.subtab){state.sub[state.view]=t.dataset.subtab;render({page:true});return}

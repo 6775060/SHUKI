@@ -24,6 +24,7 @@ Every item below was a decision by the site owner (the user).
 | 10 | Inline domain edit keeps the row height. Name and host each get their own cell (they were swapped); 30px fields | `editCells()`, `.ed`, `tr.editing` |
 | 11 | ₪79 add-on: floating cart (desktop side sheet, phone bottom sheet), pay → processing → paid → "חזרה לרישום הדומיין". Live wiring: POST `/wp-json/fs/v1/account/addon` → `checkout_url`. After payment the Stage 2 plugin returns to `/my-account-new/?fs_addon=paid&kind=sub\|lic[&licence=ID]`, and the page reopens the form | `#cart`, `.cart*`, `openCart` / `payCart` / `closeCart` / `backTo`, the `fs_addon` handler |
 | 12 | Mobile: both ZIP buttons on one line; the first row's font name the same size as the others; one rule under history month rows; the order status chip stays on the date line; plain **X** close icon everywhere; all tab bars fit the width (the profile's 4 tabs) | `.zip-row`, `.tbl tbody tr:first-child td:first-child`, `tr.mgroup`, `.orow>td.odet`, `ICON.close`, `.tabs[role=tablist] button` |
+| 13 | Subscription box ("המינוי שלי"): always shows the plan, status and next payment; the start date and payment method fold out under a "פרטים" button (smooth grid-rows animation); shorter box | `.plan`, `.plan-tg`, `.plan-more`, the `data-plantg` handler |
 
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);
