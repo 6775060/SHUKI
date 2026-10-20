@@ -142,8 +142,14 @@ a{color:inherit}
 .btn-grad:hover{filter:saturate(1.3)}
 .btn-ghost{background:var(--card);border:1px solid var(--ink)}
 .btn-soft{background:var(--soft)}
-.dl{all:unset;cursor:pointer;display:grid;place-items:center;width:187px;max-width:100%;height:37px;background:var(--soft);border-radius:var(--r-ctl);color:var(--violet-text)}
-.dl:hover{background:#ECE8F7}
+/* download buttons share one look: small, grey hairline frame, soft grey on hover (same as .btn.dl-sm) */
+.dl{all:unset;box-sizing:border-box;cursor:pointer;display:grid;place-items:center;width:34px;height:32px;border:1px solid #D6D6D6;border-radius:8px;color:var(--ink);transition:background-color .25s var(--ease),border-color .25s var(--ease)}
+.dl .icon{width:18px;height:18px}
+.dl:hover{background:var(--soft);border-color:#BDBDBD}
+.dl .dl-k{display:none}
+.btn.btn-line{height:32px;padding:0 14px;font-size:14px;background:transparent;border:1px solid #D6D6D6;border-radius:8px;color:var(--ink)}
+.btn.btn-line .icon{width:18px;height:18px}
+.btn.btn-line:hover{background:var(--soft);border-color:#BDBDBD}
 
 /* plan strip */
 .plan{display:flex;align-items:center;gap:20px;background:var(--softer);border-radius:10px;padding:18px 28px;position:relative;margin-bottom:36px;flex-wrap:wrap}
@@ -386,7 +392,9 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
   .tbl tbody td:last-child{margin-inline-start:auto}
   .tbl tbody tr:not(.drawer):hover td{background:none}
   .drawer .box{padding:16px}
-  .dl{width:auto;padding:0 14px}
+  /* table headers are hidden on phones, so the download buttons name their format */
+  .dl{width:auto;display:inline-flex;gap:6px;padding:0 10px;font-size:13px}
+  .dl .dl-k{display:inline}
   .h1{font-size:23px}
   .side{flex-direction:row;align-self:start;overflow-x:auto;padding:0;border-inline-end:0;border-bottom:1px solid var(--line);position:sticky;top:calc(64px + env(safe-area-inset-top,0px));background:var(--card);z-index:5;scrollbar-width:none}
   .side button{margin:0;padding-inline:16px;height:50px;font-size:16px;flex:none}
@@ -624,10 +632,10 @@ function quotaFullPlan(){
 function subsDownloads(){
  return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>שם הפונט</th><th>משקלים</th><th>פורמט לאתרים</th><th>פורמט לדסקטופ</th></tr></thead><tbody>
  ${FAMILY.map(([f,n])=>`<tr><td>${f}${f==='דיסקברי'?' <span class="chip" style="margin-inline-start:6px">גרסה 2.0 חדשה</span>':''}</td><td class="num" style="color:var(--muted)">${n} משקלים</td>
- <td><button class="dl" aria-label="הורדת ${f} לאתרים" data-t="מוריד את ${f} לאתרים (WOFF2)">${ICON.dl}</button></td>
- <td><button class="dl" aria-label="הורדת ${f} לדסקטופ" data-t="מוריד את ${f} לדסקטופ (OTF)">${ICON.dl}</button></td></tr>`).join('')}
- <tr><td></td><td></td><td><button class="btn btn-grad" style="width:187px" data-t="מכין קובץ ZIP עם כל הפונטים לאתרים">${ICON.dl} כל הפונטים לאתרים</button></td>
- <td><button class="btn btn-grad" style="width:187px" data-t="מכין קובץ ZIP עם כל הפונטים לדסקטופ">${ICON.dl} כל הפונטים לדסקטופ</button></td></tr>
+ <td><button class="dl" aria-label="הורדת ${f} לאתרים" data-t="מוריד את ${f} לאתרים (WOFF2)">${ICON.dl}<span class="dl-k">אתרים</span></button></td>
+ <td><button class="dl" aria-label="הורדת ${f} לדסקטופ" data-t="מוריד את ${f} לדסקטופ (OTF)">${ICON.dl}<span class="dl-k">דסקטופ</span></button></td></tr>`).join('')}
+ <tr><td></td><td></td><td><button class="btn btn-line" data-t="מכין קובץ ZIP עם כל הפונטים לאתרים">${ICON.dl} כל הפונטים לאתרים</button></td>
+ <td><button class="btn btn-line" data-t="מכין קובץ ZIP עם כל הפונטים לדסקטופ">${ICON.dl} כל הפונטים לדסקטופ</button></td></tr>
  </tbody></table></div>`;
 }
 
