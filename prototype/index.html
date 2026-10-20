@@ -319,6 +319,7 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .ed:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(91,63,255,.12)}
 .ed-fonts .fp-btn{height:36px;border:1px solid #DCD6F7}
 .lock-note{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:12px}
+.dom-note{margin-top:44px}
 .lock-note .linkbtn{font-size:13px}
 .h2-sec{font-size:18px;font-weight:700;margin:8px 0 12px;display:flex;align-items:baseline;gap:10px}
 /* domain history: collapsed by default, opens smoothly under its header */
@@ -345,6 +346,13 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .sites{display:flex;flex-direction:column;gap:4px}
 .sites-lbl{font-size:12px;color:var(--muted)}
 @media (max-width:760px){.fname{margin:0}}
+/* choice menu (certificate / download when a row holds more than one licence) */
+.lic-wrap{overflow:visible}
+.pop{position:relative;display:inline-flex}
+.pop-menu{position:absolute;top:calc(100% + 6px);inset-inline-end:0;background:var(--card);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:6px;min-width:190px;z-index:7;opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .2s var(--ease),transform .25s var(--ease),visibility 0s linear .25s}
+.pop.open .pop-menu{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+.pop-menu button{all:unset;box-sizing:border-box;display:block;width:100%;padding:9px 12px;border-radius:6px;font-size:15px;cursor:pointer;white-space:nowrap;text-align:start}
+.pop-menu button:hover,.pop-menu button:focus-visible{background:var(--soft)}
 /* nested list inside the licence drawer: same white hairline table as "המינוי שלי", not the outer table look */
 .tbl .mini.lined thead th,.tbl .mini.lined thead th:first-child,.tbl .mini.lined thead th:last-child{background:none;height:auto;border-radius:0;padding:10px 14px;font-size:13px;font-weight:500;color:var(--muted);border-bottom:1px solid var(--line)}
 .tbl .mini.lined tbody td,.tbl .mini.lined tbody tr:first-child td,.tbl .mini.lined tbody td:first-child{padding:13px 14px;font-weight:400;color:#2a2a2a;border-bottom:1px solid #F0F0F0;font-size:15px}
@@ -538,7 +546,8 @@ const FAMILY=[['פורטו',8],['טאלנט',6],['יזכור פרו',4],['אומ
 /* quota: webstop = 3 domains per month (resets on the 1st); extra = unlimited (n:0) */
 /* LICENSES = fonts bought one by one (not through a subscription). A web license covers up to 3 domains. */
 const LIC=[
- {f:'פורטו',w:'משפחה',t:'וובפונט + דסקטופ',sub:'buy',n:3,web:1,sites:[['08.10.2026','אדריכלות בע״מ','arch-ltd.co.il']]},
+ {f:'פורטו',w:'משפחה',t:'וובפונט',sub:'buy',n:3,web:1,sites:[['08.10.2026','אדריכלות בע״מ','arch-ltd.co.il']]},
+ {f:'פורטו',w:'משפחה',t:'דסקטופ',sub:'desk',web:0},
  {f:'דיסקברי',w:'מדיום',t:'דסקטופ',sub:'desk',web:0},
  {f:'תניא',w:'בולד',t:'וובפונט',sub:'buy',n:3,web:1,sites:[['01.06.2026','בנק פועלים','bank.co.il'],['02.06.2026','אתר ב׳','b-site.co.il'],['05.06.2026','אתר ג׳','c-site.co.il']]},
  {f:'אומץ',w:'בולד',t:'דסקטופ',sub:'desk',web:0},
@@ -645,17 +654,33 @@ V.lic=(tab,open)=>`
  <div class="head-row"><div><h1 class="h1">פונטים שרכשתי</h1><p class="sub">פונטים שקנית בנפרד, מחוץ למינוי. רישיון וובפונט מכסה עד 3 אתרים.</p></div></div>
  ${licTable(open)}`;
 
+/* one row per font + weight. Every purchased licence stays its own record (own certificate, own files);
+   the row only groups them: all licence names as tags, certificate/download offer a choice when there is more than one */
+function licGroups(){const g=new Map();LIC.forEach((l,i)=>{const k=l.f+'|'+l.w;if(!g.has(k))g.set(k,[]);g.get(k).push(i)});return [...g.values()]}
+const FMT={'וובפונט':'לאתרים (WOFF2)','דסקטופ':'לדסקטופ (OTF)','אפליקציה':'לאפליקציה'};
+function choice(icon,label,cls,items){
+ if(items.length===1)return items[0].replace('%B',`class="${cls}" aria-label="${label}" title="${label}"`).replace('%I',icon);
+ return `<div class="pop"><button class="${cls}" data-pop="1" aria-haspopup="true" aria-expanded="false" aria-label="${label}" title="${label}">${icon}</button><div class="pop-menu" role="menu">${items.map(x=>x.replace('%B','role="menuitem"').replace('%I','')).join('')}</div></div>`;
+}
 function licTable(open){
  const hasSites=LIC.some(l=>l.web),cols=hasSites?5:4;
- return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>שם הפונט</th><th>משקל</th><th>רישיון</th>${hasSites?'<th>ניצול אתרים</th>':''}<th></th></tr></thead><tbody>
- ${LIC.map((l,i)=>{const full=l.web&&l.u>=l.n;const isOpen=open===i;return `<tr class="${isOpen?'is-open':''}">
- <td><span class="fname">${l.web?`<button class="ibtn exp" data-open="${i}" aria-expanded="${isOpen}" aria-label="${isOpen?'סגירת':'פתיחת'} רישום האתרים של ${l.f}" title="${isOpen?'סגירה':'רישום אתרים'}">${ICON.globe}</button>`:'<span class="exp-ph"></span>'}${l.f}</span></td>
- <td>${l.w}</td><td>${l.t.split(' + ').map(x=>`<span class="ltag">${x}</span>`).join(' ')}</td>
- ${hasSites?`<td>${l.web?meter(l.u,l.n):''}</td>`:''}
+ return `<div class="tbl-wrap lic-wrap"><table class="tbl"><thead><tr><th>שם הפונט</th><th>משקל</th><th>רישיון</th>${hasSites?'<th>ניצול אתרים</th>':''}<th></th></tr></thead><tbody>
+ ${licGroups().map(ids=>{const L=ids.map(i=>LIC[i]),l=L[0],wi=ids.find(i=>LIC[i].web),w=wi===undefined?null:LIC[wi],isOpen=w&&open===wi,full=w&&w.u>=w.n;
+ const types=[...new Set(L.flatMap(x=>x.t.split(' + ')))];
+ const certs=ids.map(i=>`<button %B data-cert="lic:${i}">%I${ids.length>1?`תעודת ${LIC[i].t}`:''}</button>`);
+ const dls=ids.flatMap(i=>LIC[i].t.split(' + ').map(t=>`<button %B data-t="מוריד את ${l.f} ${l.w} ${FMT[t]||''}">%I${ids.length>1||LIC[i].t.includes('+')?`הורדה ${FMT[t]||t}`:''}</button>`));
+ return `<tr class="${isOpen?'is-open':''}">
+ <td><span class="fname">${w?`<button class="ibtn exp" data-open="${wi}" aria-expanded="${isOpen}" aria-label="${isOpen?'סגירת':'פתיחת'} רישום האתרים של ${l.f}" title="${isOpen?'סגירה':'רישום אתרים'}">${ICON.globe}</button>`:'<span class="exp-ph"></span>'}${l.f}</span></td>
+ <td>${l.w}</td><td>${types.map(x=>`<span class="ltag">${x}</span>`).join(' ')}</td>
+ ${hasSites?`<td>${w?meter(w.u,w.n):''}</td>`:''}
  <td><div class="acts">
-   <button class="ibtn" aria-label="תעודת רישיון" data-cert="lic:${i}">${ICON.cert}</button>
-   <button class="btn dl-sm" aria-label="הורדת ${l.f} ${l.w}" title="הורדה" data-t="מוריד את ${l.f} ${l.w}">${ICON.dl}</button></div></td></tr>
- ${open===i&&l.web?`<tr class="drawer"><td colspan="${cols}"><div class="lic-drawer"><div class="box dom-box">
+   ${choice(ICON.cert,'תעודת רישיון','ibtn',certs)}
+   ${choice(ICON.dl,`הורדת ${l.f} ${l.w}`,'btn dl-sm',dls)}</div></td></tr>
+ ${isOpen?licDrawer(wi,cols,full):''}`}).join('')}
+ </tbody></table></div>`;
+}
+function licDrawer(i,cols,full){const l=LIC[i];
+ return `<tr class="drawer"><td colspan="${cols}"><div class="lic-drawer"><div class="box dom-box">
    ${full?quotaFull(l):`
    <form class="form-row lic-form" data-add="${i}">
      <div class="fld"><label for="su${i}">כתובת האתר *</label><input id="su${i}" data-namefor="sn${i}" placeholder="fontshok.co.il" dir="ltr" inputmode="url" autocomplete="off" required></div>
@@ -668,8 +693,7 @@ function licTable(open){
      ?`<tr class="editing" data-key="dom:${i}:${j}"><td class="num">${s[0]}</td><td colspan="2"><div class="ed-pair">${editHost(s[1],s[2])}</div></td><td>${editBtns()}</td></tr>`
      :`<tr><td class="num">${s[0]}</td><td>${s[1]}</td><td><bdi dir="ltr">${s[2]}</bdi></td>
    <td>${rowActs(`dom:${i}:${j}`,s[0],`dom:${i}:${j}`,`data-del="${i}:${j}"`)}</td></tr>`).join('')}
-   </tbody></table></div></td></tr>`:''}`}).join('')}
- </tbody></table></div>`;
+   </tbody></table></div></td></tr>`;
 }
 function quotaFull(l){
  return `<div class="quota-line">
@@ -700,7 +724,7 @@ V.dom=()=>{
  <div class="tbl-wrap"><table class="tbl">${thead}<tbody>
  ${now.map(row).join('')||`<tr><td colspan="5" class="hint">עוד לא נרשמו דומיינים החודש</td></tr>`}
  </tbody></table></div>
- <p class="hint lock-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}. דומיין שהוסר או שונה לא נשמר בהיסטוריה.</p>
+ <p class="hint lock-note dom-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}. דומיין שהוסר או שונה לא נשמר בהיסטוריה.</p>
  <button class="hist-toggle" data-hist="1" aria-expanded="${!!state.histOpen}" aria-controls="histBody">${ICON.chev}<span class="h2-sec" style="margin:0">היסטוריית דומיינים <span class="hint" style="margin:0;font-weight:400">${past.length} דומיינים</span></span></button>
  <div class="hist-body ${state.histOpen?'open':''}" id="histBody"><div><div class="tbl-wrap hist-scroll"><table class="tbl">${thead}<tbody>${hist}</tbody></table></div></div></div>`;
 };
@@ -860,6 +884,11 @@ function saveEdit(tr){
 }
 document.addEventListener('keydown',e=>{const tr=e.target.closest&&e.target.closest('tr.editing');if(!tr)return;if(e.key==='Enter'){e.preventDefault();saveEdit(tr)}if(e.key==='Escape'){state.editKey=null;render()}});
 function closeMenus(){document.querySelectorAll('.fp-menu.open').forEach(m=>{m.classList.remove('open');m.parentElement.querySelector('.fp-btn').setAttribute('aria-expanded','false')})}
+function closePops(except){document.querySelectorAll('.pop.open').forEach(p=>{if(p!==except){p.classList.remove('open');p.querySelector('[data-pop]').setAttribute('aria-expanded','false')}})}
+document.addEventListener('click',e=>{const pb=e.target.closest('[data-pop]');
+ if(pb){const p=pb.parentElement;closePops(p);const o=p.classList.toggle('open');pb.setAttribute('aria-expanded',o);e.stopImmediatePropagation();return}
+ closePops()},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePops()});
 document.addEventListener('click',e=>{const fb=e.target.closest('.fp-btn');
  if(fb){const m=fb.parentElement.querySelector('.fp-menu');const open=m.classList.toggle('open');fb.setAttribute('aria-expanded',open);return}
  if(!e.target.closest('.fp-menu'))closeMenus()});
