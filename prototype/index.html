@@ -68,8 +68,6 @@ a{color:inherit}
 .fresh td{animation:rowIn 1.8s ease}
 .btn,.ibtn,.dl,.side button,.tabs button,.chip{transition:background-color .25s var(--ease),color .25s var(--ease),filter .25s var(--ease),transform .15s var(--ease),box-shadow .25s var(--ease)}
 .tabs button::after{transition:opacity .3s var(--ease)}
-.pk{transition:transform .35s var(--ease),box-shadow .35s var(--ease)}
-.pk:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(60,40,120,.10)}
 .h1{font-size:26px;font-weight:800;margin:0;line-height:1.2}
 .sub{font-size:14px;margin:4px 0 0;color:var(--muted)}
 .head-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:40px}
@@ -116,7 +114,6 @@ a{color:inherit}
 .usage .track{height:6px;border-radius:9px;background:var(--soft);overflow:hidden;display:block}
 .usage .track i{display:block;height:100%;border-radius:9px;margin-inline-start:auto}
 .ltag{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:1px 8px;white-space:nowrap}
-.pk-top>div{min-width:0}
 .src{display:inline-flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap}
 .src.buy{border:1px solid var(--line);border-radius:6px;padding:1px 8px}
 .tabs button{all:unset;cursor:pointer;padding:10px 22px 12px;font-weight:700;font-size:15px;position:relative;white-space:nowrap}
@@ -204,76 +201,6 @@ a{color:inherit}
 .pf input.sw::after{content:"";position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:right .2s}
 .pf input.sw:checked{background:var(--violet)}
 .pf input.sw:checked::after{right:21px}
-
-/* plans page — mirrors fontshok.co.il/מחירון-רישיונות-ומנויים */
-.pk-tabs{display:flex;gap:0;border-bottom:1px solid #BDBDBD;margin-bottom:34px;overflow-x:auto}
-.pk-tabs span{padding:14px 28px;font-weight:700;font-size:20px;display:flex;gap:10px;align-items:center;white-space:nowrap}
-.pk-tabs span.on{background:var(--soft)}
-.pk-tabs img{width:26px;height:26px}
-.pkgs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:start;margin-top:46px}
-/* plans page sits on the live site's grey, cards are plain white */
-.main.is-plans{background:#F4F4F4;border-start-end-radius:24px;border-end-end-radius:24px}
-.main.is-plans .head-row{border-bottom:1px solid var(--ink);padding-bottom:18px;margin-bottom:0}
-.main.is-plans .head-row .h1{font-size:32px}
-.pk{background:var(--card);border-radius:26px;padding:8px;position:relative}
-.pk.rec{background:var(--c-web);padding:38px 8px 8px;margin-top:-30px}
-.pk.rec .flag{position:absolute;top:8px;inset-inline:0;text-align:center;color:#fff;font-weight:700;font-size:14px}
-.pk-in{background:var(--card);border-radius:20px;padding:22px 16px 18px}
-.pk-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px;min-height:56px}
-.pk-top>div{min-width:0}
-.pk h3{margin:0;font-size:24px;font-weight:800;line-height:1.1}
-.pk .tag{font-size:12.5px;color:var(--ink);margin-top:4px;white-space:nowrap}
-.pk-top img{width:58px;height:58px;flex:none}
-.price{background:var(--soft);border-radius:22px;padding:20px 18px 18px}
-.was{font-size:15px;color:var(--muted);text-decoration:line-through;text-decoration-thickness:1.5px}
-.now{display:flex;flex-wrap:nowrap;align-items:baseline;gap:10px;margin:6px 0 18px}
-.now small{white-space:nowrap}
-.now b{font-size:34px;font-weight:800;line-height:1}
-.now small{font-size:12px;color:var(--muted)}
-/* savings: quiet text on the price's baseline, like "לא כולל מע״מ" on the live site */
-.save{font-size:13px;font-weight:400;color:var(--muted);white-space:nowrap;line-height:1}
-.price .was{line-height:1}
-/* black symbols without a circle, as on the live pricing page */
-.pk-top img.pk-sym{width:auto;height:32px;max-width:46px;object-fit:contain;flex:none}
-.price .what{font-size:14px;font-weight:700}
-.price .what span{display:block;font-weight:400;color:var(--ink)}
-/* buttons + link sit inside the grey box, like the live site: thin outline, regular weight */
-.pk .cta{display:flex;align-items:center;width:100%;height:46px;margin-top:26px;border-radius:99px;border:1px solid var(--ink);background:transparent;font-size:17px;font-weight:400;justify-content:center}
-.pk .cta:hover{background:var(--card)}
-.pk.rec .cta{border:0;background:linear-gradient(90deg,#2C67FF,#6FCFA1);color:#fff}
-.pk.rec .cta:hover{filter:brightness(1.05)}
-.pk .more{display:flex;justify-content:center;align-items:center;gap:6px;font-size:13px;color:var(--ink);margin-top:14px;text-decoration:none}
-.pk .more:hover{color:var(--violet-text)}
-/* the live site's long thin arrow (Discovery ">++" ligature, missing from our variable font) */
-.fs-arrow{width:24px;height:10px;fill:none;stroke:currentColor;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
-.price .btn.cta{width:100%}
-.cmp{margin-top:72px}
-.cmp h2{font-size:26px;font-weight:800;margin:0;padding-bottom:18px;border-bottom:1px solid var(--ink)}
-.cmp table{width:100%;border-collapse:collapse;font-size:14px}
-/* comparison table — 1:1 with the live site: light webstop column with a rounded foot, full-width rules between groups only */
-.cmp th{font-size:20px;font-weight:700;padding:34px 10px 26px;text-align:center;white-space:nowrap;width:20%}
-.cmp th:first-child{width:auto}
-.cmp th img{width:auto;height:20px;vertical-align:-4px;margin-inline-start:6px}
-.cmp th:first-child,.cmp td:first-child{text-align:start}
-.cmp td{padding:16px 10px;text-align:center;font-size:14px;color:var(--ink)}
-.cmp td:first-child b{font-weight:700}
-.cmp tr.grp td{font-weight:700;font-size:16px;padding:40px 10px 14px}
-.cmp tr.grp td:first-child{padding-inline-start:0}
-.cmp tbody tr.grp:not(:first-child) td{border-top:1px solid #555}
-.cmp tbody tr:not(.grp) td:first-child{padding-inline-start:0}
-.cmp tr.grp + tr td{padding-top:20px}
-.cmp tr:has(+ tr.grp) td{padding-bottom:30px}
-/* webstop column = one light pill behind the table; its half-circle foot hugs the last row (like the live site) */
-.cmp-in{position:relative;overflow:visible}
-.cmp table{position:relative;z-index:1;table-layout:fixed}
-.web-col{position:absolute;top:0;bottom:0;left:20%;width:20%;background:#FAFAFA;border-radius:0 0 999px 999px;z-index:0}
-/* full half-circle foot: radius = half the column width (999px is clamped), so the cell must be at least that tall */
-.cmp tr.cmp-end td{height:34px;padding:0}
-.yes,.no{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:50%;vertical-align:middle}
-.yes{background:#EBDDF9;color:var(--ink)}
-.no{background:#D9D1D1;color:#fff}
-.yes svg,.no svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-.cpill{display:inline-block;background:#F3E3F8;border-radius:99px;padding:4px 11px;font-size:13px;font-weight:500;white-space:nowrap}
 
 /* certificate modal */
 .modal{position:fixed;inset:0;background:rgba(20,20,30,.45);display:grid;place-items:center;padding:16px;z-index:30;opacity:0;transition:opacity .35s var(--ease)}
@@ -366,8 +293,6 @@ body.show-new .x-new::before{content:attr(data-new);position:absolute;top:-22px;
 .note-x{width:28px;height:28px;color:var(--faint)}
 .note-x .icon{width:18px;height:18px}
 /* registered-domains list: white, hairline rows, outside the grey form box */
-.price .cur{font-weight:200;margin-inline-end:2px}
-.now .cur{font-size:.82em}
 /* one fixed spot for the save button on every profile tab: bottom, aligned to the right edge of the grid */
 .pf{display:flex;flex-direction:column;min-height:360px}
 .form-actions{margin-top:auto;padding-top:32px;display:flex;justify-content:flex-start}
@@ -432,7 +357,7 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .quota-line .msg b{display:block;font-size:15px;font-weight:700}
 .quota-line .msg span{font-size:13px;color:var(--muted)}
 .linkbtn{all:unset;cursor:pointer;font-size:14px;font-weight:500;color:var(--violet);text-decoration:underline;text-underline-offset:3px}
-@media (max-width:1000px){.main{padding:40px 24px}.pkgs{grid-template-columns:1fr;max-width:440px;margin-inline:auto}.pk.rec{margin-top:0}.qopts{grid-template-columns:1fr}}
+@media (max-width:1000px){.main{padding:40px 24px}.qopts{grid-template-columns:1fr}}
 @media (max-width:760px){
   .site-head .in{padding:0 16px;height:64px;gap:12px}
   .mainnav{display:none}
@@ -440,24 +365,6 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
   .me span{display:none} .me{padding:3px}
   .page{padding-block:18px 90px}
   .shell{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr;min-height:0;overflow:clip}
-  .main.is-plans{border-radius:0 0 var(--r-card) var(--r-card)}
-  .main.is-plans .head-row .h1{font-size:24px}
-  /* comparison on phones: feature name full width, the three marks in a row under it */
-  .cmp table,.cmp thead,.cmp tbody{display:block}
-  .cmp tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-  .cmp th:first-child{display:none}
-  .cmp th{width:auto;font-size:15px;padding:18px 4px 12px;white-space:normal}
-  .cmp th img{height:15px}
-  .cmp td{padding:8px 4px}
-  .cmp td:first-child{grid-column:1/-1;padding:16px 0 6px!important;font-size:14px}
-  .cmp tr.grp td:not(:first-child){display:none}
-  .cmp tr.grp td:first-child{padding-top:26px!important}
-  .cmp tr:has(+ tr.grp) td:not(:first-child){padding-bottom:22px}
-  .cmp .cpill{font-size:12px;padding:3px 8px;white-space:normal;line-height:1.3}
-  .cmp tr.cmp-end td:not(:first-child){display:none}
-  .cmp tr.cmp-end td{height:30px}
-  .cmp table{table-layout:auto}
-  .web-col{left:33.333%;width:33.334%}
   /* small tables (domain lists inside boxes/drawers) stack too */
   .mini thead{display:none}
   .mini,.mini tbody,.mini tr,.mini td{display:block}
@@ -530,7 +437,6 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
       <button data-view="dom">דומיינים</button>
       <button data-view="orders">הזמנות</button>
       <button data-view="profile">פרופיל</button>
-      <button data-view="plans" class="x-new" data-new="חדש">חבילות</button>
       <span class="sep"></span>
       <button class="logout" id="logout"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M9 7c.01-2.18.11-3.35.88-4.12C10.76 2 12.17 2 15 2h1c2.83 0 4.24 0 5.12.88C22 3.76 22 5.17 22 8v8c0 2.83 0 4.24-.88 5.12C20.24 22 18.83 22 16 22h-1c-2.83 0-4.24 0-5.12-.88C9.11 20.35 9.01 19.18 9 17" opacity=".5"/><path stroke-linejoin="round" d="M15 12H2m3.5 3L2 12l3.5-3"/></g></svg>התנתק/י</button>
     </nav>
@@ -612,8 +518,6 @@ function fontPicker(sel){const on=sel.length>=2;return `<div class="fld fontpick
 const logo=(k,cls='sublogo')=>`<img class="${cls}" src="${SUBS[k].logo}" alt="${SUBS[k].name}">`;
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1900)}
 function meter(u,n){if(!n)return `<span class="chip">ללא הגבלה</span>`;const p=u/n;const c=p>=1?'bad':p>=.66?'warn':'';return `<span class="meter ${c}"><span class="num">${u}/${n}</span><span class="bar"><i style="width:${Math.max(p*100,8)}%"></i></span></span>`}
-/* price with a thin ₪ sign (plans cards) */
-const ilsT=n=>`<span class="cur">₪</span>${n.toLocaleString('he-IL',{maximumFractionDigits:2})}`;
 const ils=n=>'₪'+n.toLocaleString('he-IL',{minimumFractionDigits:n%1?2:0,maximumFractionDigits:2});
 
 /* sample data */
@@ -706,7 +610,7 @@ function quotaFullPlan(){
  return `<div class="quota-line">
   <div class="msg"><b>ניצלת את ${PLAN[state.plan].n+BONUS} הדומיינים של החודש</b><span>המכסה מתחדשת ב־1 בנובמבר. צריך עוד עכשיו?</span></div>
   <button class="btn btn-grad" data-planaddon="1">דומיין נוסף · ₪79</button>
-  <button class="linkbtn" data-go="plans">או שדרוג לאקסטרה</button>
+  <a class="linkbtn" href="https://fontshok.co.il/מחירון-רישיונות-ומנויים/">או שדרוג לאקסטרה</a>
  </div>`;
 }
 
@@ -755,7 +659,7 @@ function quotaFull(l){
  return `<div class="quota-line">
   <div class="msg"><b>כל ${l.n} האתרים של הרישיון רשומים</b><span>צריך עוד אתר? אפשר להוסיף אחד בתשלום חד־פעמי.</span></div>
   <button class="btn btn-grad" data-addon="${LIC.indexOf(l)}">הוספת אתר · ₪79</button>
-  <button class="linkbtn" data-go="plans">או מינוי וובסטופ</button>
+  <a class="linkbtn" href="https://fontshok.co.il/מחירון-רישיונות-ומנויים/">או מינוי וובסטופ</a>
  </div>`;
 }
 
@@ -830,50 +734,6 @@ V.profile=(tab)=>`
  <div class="form-actions"><button class="btn btn-grad">${tab==='pwd'?'עדכון סיסמה':'שמירת שינויים'}</button></div>
  </form>`;
 
-/* plans — based on the live pricing page; desktop replaces academic */
-/* prices = WooCommerce store on fontshok.co.il (incl. VAT). Desktop has no subscription product: per-font desktop license from ₪354 */
-const PK=[
- {k:'desk',name:'דסקטופ',tag:'כלים לעבודה מקצועית',was:249,now:179,unit:'לפונט',what:'רישיון דסקטופ לפונט נבחר',det:'אדובי, אופיס, פיגמה / תשלום חד־פעמי',cta:'בחירת פונט לדסקטופ ←'},
- {k:'web',name:'וובסטופ',tag:'להיות מקצוענים גם בדיגיטל',was:378,now:319,unit:'לחודש',what:'תכנית מורחבת לאתרים ולדסקטופ',det:'כל הפונטים והפורמטים, 3 דומיינים בחודש / תשלום חודשי',cta:'אני רוצה להצטרף ←',rec:1},
- {k:'extra',name:'אקסטרה',tag:'פתרון מלא לעבודה מקצועית',was:802,now:700,unit:'לחודש',what:'תכנית חופשית ללא הגבלה',det:'אתרים, אפליקציות ודסקטופ / תשלום חודשי',cta:'גישה בלתי מוגבלת ←',cur:1}
-];
-const CMP=[
- ['grp','עיצוב גרפי, סושיאל ווידאו'],
- ['עיצוב תוצרי דסקטופ','אדובי, אופיס, פיגמה',1,1,1],
- ['עיצוב תוצרי פלט','מצגות, פוסטים, עיצובים לדיגיטל',1,1,1],
- ['עיצוב תוצרי תשדיר','וידאו, כתוביות, שידור טלוויזיוני',0,1,1],
- ['grp','תנועה וחוויית משתמש'],
- ['עיצוב תוצרי תנועה','סרטונים, אנימציות, לוגו חי',0,1,1],
- ['עיצוב תוצרי UI/UX','פיגמה (Figma), אקס־די (Xd) לתכנון ממשק',1,1,1],
- ['grp','מערכות ומוצרים דיגיטליים'],
- ['עיצוב תוצרי אינטרנט','הגבלת דומיינים וכניסות חודשיות',0,'שלושה דומיינים בחודש','דומיינים ללא הגבלה'],
- ['עיצוב תוצרי אפליקציה','הגבלת אפליקציות, הורדות, משתמשים',0,0,'אפליקציות ללא הגבלה']
-];
-const SYM={extra:'logos/extra-black.svg',web:'logos/webtop-black.svg',desk:'logos/desktop-black.svg',acad:'logos/academic-black.svg'};
-/* comparison marks, as on the live site: lilac tick, grey cross, lilac text pill */
-const cell=v=>v===1?`<span class="yes" aria-label="כלול"><svg viewBox="0 0 24 24"><path d="M7.5 12.5l3 3 6-6.5"/></svg></span>`:v===0?`<span class="no" aria-label="לא כלול"><svg viewBox="0 0 24 24"><path d="M8.5 8.5l7 7m0-7l-7 7"/></svg></span>`:`<span class="cpill">${v}</span>`;
-V.plans=()=>`
- <div class="head-row"><div><h1 class="h1">תוכניות המינוי שלנו</h1><p class="sub">כל המחירים כוללים מע״מ. אפשר לעבור בין מסלולים בכל עת, ומה ששילמת מקוזז.</p></div></div>
- <div class="pkgs">
- ${PK.map(p=>`<article class="pk pk-${p.k} ${p.rec?'rec':''} ${p.cur?'cur':''}">
-  ${p.rec?'<div class="flag">תוכנית מומלצת</div>':''}
-  <div class="pk-in">
-   <div class="pk-top"><div><h3>${p.name}</h3><div class="tag">${p.tag}</div></div><img class="pk-sym" src="${SYM[p.k]}" alt="${p.name}"></div>
-   <div class="price">
-     <div style="display:flex;align-items:center;gap:8px;min-height:22px">${p.was?`<span class="was num">${ilsT(p.was)}</span><span class="save">חיסכון ${Math.round((1-p.now/p.was)*100)}%</span>`:p.from?'<span style="font-size:13px;color:var(--muted)">החל מ־</span>':''}</div>
-     <div class="now"><b class="num">${ilsT(p.now)}</b><small style="white-space:nowrap">${p.unit} · כולל מע״מ</small></div>
-     <div class="what">${p.what}<span>${p.det}</span></div>
-     <button class="btn cta" data-t="מעבר לרכישת ${p.name}">${p.cta}</button>
-     <a class="more" href="#cmp">פרטים אודות המנוי <svg class="fs-arrow" viewBox="0 0 26 10" aria-hidden="true"><path d="M25 5H1.5M5.5 1L1.5 5l4 4"/></svg></a>
-   </div>
-  </div></article>`).join('')}
- </div>
- <p class="hint" style="text-align:center;margin-top:14px">המחירים כוללים מע״מ, כפי שהם מופיעים בחנות באתר.</p>
- <section class="cmp" id="cmp"><h2>השוואת המינויים שלנו</h2><div class="tbl-wrap cmp-in"><i class="web-col" aria-hidden="true"></i><table>
-  <thead><tr><th></th>${PK.map(p=>`<th class="${p.rec?'col-web':''}">${p.name} <img class="cmp-sym" src="${SYM[p.k]}" alt=""></th>`).join('')}</tr></thead>
-  <tbody>${CMP.map(r=>r[0]==='grp'?`<tr class="grp"><td>${r[1]}</td><td></td><td class="col-web"></td><td></td></tr>`:`<tr><td><b>${r[0]}</b> - ${r[1]}</td>${[2,3,4].map(i=>`<td class="${i===3?'col-web':''}">${cell(r[i])}</td>`).join('')}</tr>`).join('')}<tr class="cmp-end"><td></td><td></td><td class="col-web"></td><td></td></tr></tbody>
- </table></div></section>`;
-
 /* certificate — same layout as the current PDF, plus the subscription logo */
 function cert(l,site){
  const s=SUBS[l.sub];
@@ -902,7 +762,7 @@ const today=()=>{const d=new Date();return `${String(d.getDate()).padStart(2,'0'
 /* render({page}) fades the whole page in only when the page changes; {opening} lets a just-opened drawer unfold; {fresh} highlights a just-added row */
 function render(o={}){
  document.querySelectorAll('.side button[data-view]').forEach(b=>b.setAttribute('aria-current',b.dataset.view===state.view?'page':'false'));
- const v=state.view,el=$('#view');el.classList.toggle('is-plans',v==='plans');
+ const v=state.view,el=$('#view');
  /* phones: keep the active tab visible in the scrolling tab bar */
  const cur=document.querySelector(`.side button[data-view="${v}"]`),bar=cur&&cur.parentElement;
  if(cur&&bar.scrollWidth>bar.clientWidth)bar.scrollTo({left:cur.offsetLeft-(bar.clientWidth-cur.offsetWidth)/2,behavior:o.page?'auto':'smooth'});
