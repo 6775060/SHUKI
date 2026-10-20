@@ -112,10 +112,14 @@ a{color:inherit}
   .orow>td:nth-child(4){flex:none}
   /* profile (and any) tab bar: all tabs fit the width, no hidden tabs */
   .tabs[role=tablist] button{flex:1 1 0;min-width:0;padding:10px 4px 12px;text-align:center;white-space:normal;line-height:1.25;font-size:15px}
-  /* weight picker: its own full-width line under the format buttons */
-  .dl-tbl tbody tr>td.wsel-td{order:3;flex-basis:100%;margin:0!important}
-  .dl-tbl .wsel-pop,.dl-tbl .wsel{width:100%}
-  .dl-tbl .wsel-menu{inset-inline:0}
+  /* weight picker: same size as the format buttons, on the same line; short label */
+  .dl-tbl tbody tr>td.wsel-td{margin-inline-start:auto!important}
+  .dl-tbl tbody tr:not(.zip-row)>td:nth-child(2){display:none}
+  .dl-tbl tbody tr:not(.zip-row){column-gap:8px}
+  .dl-tbl .wsel-menu{inset-inline-end:0;inset-inline-start:auto}
+  .dl-tbl .wsel{width:auto;height:32px;padding:0 10px;gap:6px;font-size:13px}
+  .dl-tbl .wsel .wsel-l{display:none}
+  .dl-tbl .wsel .wsel-s{display:inline}
   /* ZIP buttons side by side */
   .tbl tbody tr.zip-row{flex-wrap:nowrap;gap:8px}
   .tbl tbody tr.zip-row>td:empty{display:none}
@@ -418,6 +422,7 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 @media (max-width:760px){.fname{margin:0}}
 /* weight picker in "פונטים להורדה": one download per weight of the family */
 .wsel{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;justify-content:space-between;gap:8px;width:150px;height:32px;padding:0 12px;border:1px solid #D6D6D6;border-radius:8px;font-size:14px;transition:background-color .25s var(--ease),border-color .25s var(--ease)}
+.wsel .wsel-s{display:none}
 .wsel:hover,.pop.open .wsel{background:var(--soft);border-color:#BDBDBD}
 .wsel:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
 .wsel .icon{width:16px;height:16px;transition:transform .3s var(--ease)}
@@ -482,7 +487,7 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
   .tbl tbody tr:not(.drawer):hover td{background:none}
   .drawer .box{padding:16px}
   /* table headers are hidden on phones, so the download buttons name their format */
-  .dl{width:auto;display:inline-flex;gap:6px;padding:0 10px;font-size:13px}
+  .dl{width:auto;display:inline-flex;gap:6px;padding:0 10px;font-size:13px;height:32px}
   .dl .dl-k{display:inline}
   .h1{font-size:23px}
   .side{flex-direction:row;align-self:start;overflow-x:auto;padding:0;border-inline-end:0;border-bottom:1px solid var(--line);position:sticky;top:calc(64px + env(safe-area-inset-top,0px));background:var(--card);z-index:5;scrollbar-width:none}
@@ -733,7 +738,7 @@ function quotaFullPlan(){
 const WEIGHTS=['Thin','ExtraLight','Light','Regular','Medium','Demibold','Bold','ExtraBold','Black'];
 const weightsOf=n=>n>=WEIGHTS.length?WEIGHTS.slice():[...new Set(Array.from({length:n},(_,i)=>WEIGHTS[Math.round(i*(WEIGHTS.length-1)/Math.max(1,n-1))]))];
 function weightPick(f,n){
- return `<div class="pop wsel-pop"><button class="wsel" data-pop="1" aria-haspopup="true" aria-expanded="false" aria-label="בחירת משקל להורדה מ${f}">בחירת משקל ${ICON.chev}</button>
+ return `<div class="pop wsel-pop"><button class="wsel" data-pop="1" aria-haspopup="true" aria-expanded="false" aria-label="בחירת משקל להורדה מ${f}"><span class="wsel-l">בחירת משקל</span><span class="wsel-s">משקל</span> ${ICON.chev}</button>
   <div class="pop-menu wsel-menu" role="menu">${weightsOf(n).map(w=>`<button role="menuitem" data-t="מוריד את ${f} ${w}"><span dir="ltr">${w}</span>${ICON.dl}</button>`).join('')}</div></div>`;
 }
 function subsDownloads(){
