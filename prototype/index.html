@@ -262,6 +262,10 @@ body.show-new .x-new::before{content:attr(data-new);position:absolute;top:-22px;
 .note{display:flex;align-items:center;gap:10px;padding:4px 4px;margin-top:18px;font-size:15px;color:var(--muted)}
 .btn.icon-only{width:44px;height:38px;padding:0}
 .btn.icon-only .icon{width:20px;height:20px}
+/* download in "פונטים שרכשתי": small, grey hairline frame; on hover the same soft grey as the other icon buttons */
+.btn.dl-sm{width:34px;height:32px;padding:0;background:transparent;border:1px solid #D6D6D6;color:var(--ink);border-radius:8px}
+.btn.dl-sm .icon{width:18px;height:18px}
+.btn.dl-sm:hover{background:var(--soft);border-color:#BDBDBD;filter:none}
 .ic-wrap{display:inline-grid;place-items:center;line-height:0}
 /* greeting smiley: on hover it hops, winks, grins and blushes (plays once on load too) */
 .hello{cursor:default}
@@ -642,7 +646,7 @@ function licTable(open){
  ${hasSites?`<td>${l.web?meter(l.u,l.n):''}</td>`:''}
  <td><div class="acts">
    <button class="ibtn" aria-label="תעודת רישיון" data-cert="lic:${i}">${ICON.cert}</button>
-   <button class="btn btn-grad icon-only" aria-label="הורדת ${l.f} ${l.w}" title="הורדה" data-t="מוריד את ${l.f} ${l.w}">${ICON.dl}</button></div></td></tr>
+   <button class="btn dl-sm" aria-label="הורדת ${l.f} ${l.w}" title="הורדה" data-t="מוריד את ${l.f} ${l.w}">${ICON.dl}</button></div></td></tr>
  ${open===i&&l.web?`<tr class="drawer"><td colspan="${cols}"><div class="lic-drawer"><div class="box dom-box">
    ${full?quotaFull(l):`
    <form class="form-row lic-form" data-add="${i}">
