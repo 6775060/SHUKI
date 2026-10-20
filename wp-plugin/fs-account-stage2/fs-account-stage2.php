@@ -11,12 +11,13 @@
  *   fs_acc2_role_map          array role => 'web' | 'extra'   (must match the roles Stage 1 reads)
  *   fs_acc2_addon_product_id  ID of the hidden ₪79 "דומיין נוסף" product
  *   fs_acc2_cert_start        first certificate number (set above the highest one already issued, before activation)
+ *   fs_acc2_domain_meta_keys  order / order-item meta keys holding domains entered at checkout (for `wp fs-acc2 migrate`)
  */
 defined( 'ABSPATH' ) || exit;
 
 define( 'FS_ACC2_VERSION', '0.1.0' );
 
-foreach ( array( 'rules', 'schema', 'repo', 'rest', 'addon', 'certificates' ) as $f ) {
+foreach ( array( 'rules', 'schema', 'repo', 'rest', 'addon', 'certificates', 'migrate' ) as $f ) {
 	require_once __DIR__ . "/includes/class-$f.php";
 }
 

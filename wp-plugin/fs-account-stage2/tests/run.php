@@ -61,5 +61,14 @@ eq( $R::clean_fonts( array() )[1], 'fonts_required', 'none' );
 eq( $R::clean_fonts( 'x' )[1], 'fonts_required', 'not array' );
 eq( $R::clean_fonts( array( 'a', 'b', 'c' ) )[1], 'fonts_max_2', 'max 2' );
 
+// migration: default classification of order lines (names as they appear in "הזמנות")
+eq( $R::classify_item_name( 'וובסטופ · חידוש חודשי' )['plan'], 'web', 'webstop renewal' );
+eq( $R::classify_item_name( 'אקסטרה · חידוש חודשי' )['plan'], 'extra', 'extra renewal' );
+eq( $R::classify_item_name( 'תניא · וובפונט' ), array( 'kind' => 'licence', 'plan' => null, 'font' => 'תניא', 'type' => 'וובפונט' ), 'web licence' );
+eq( $R::classify_item_name( 'דיסקברי · דסקטופ' )['type'], 'דסקטופ', 'desktop licence' );
+eq( $R::classify_item_name( 'פורטו · וובפונט + דסקטופ' )['type'], 'וובפונט + דסקטופ', 'web + desktop' );
+eq( $R::classify_item_name( 'דומיין נוסף' )['kind'], 'addon', 'add-on' );
+eq( $R::classify_item_name( 'אומץ · פרינט' )['kind'], null, 'print licence is not a web/desktop licence' );
+
 echo ( $fail ? "$fail of $n FAILED\n" : "all $n passed\n" );
 exit( $fail ? 1 : 0 );

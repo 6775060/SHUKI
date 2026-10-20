@@ -85,7 +85,7 @@ final class FS_Acc2_Repo {
 
 	public static function insert_domain( array $d ): int {
 		global $wpdb;
-		$now = current_time( 'mysql', true );
+		$now = $d['created_at'] ?? current_time( 'mysql', true ); // migration passes the original order date (GMT)
 		$wpdb->insert(
 			FS_Acc2_Schema::table( 'domains' ),
 			array(

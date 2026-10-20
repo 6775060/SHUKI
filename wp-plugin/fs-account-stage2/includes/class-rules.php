@@ -86,6 +86,32 @@ final class FS_Acc2_Rules {
 	}
 
 	/**
+	 * Default guess for a WooCommerce order line, from its name as shown in "הזמנות"
+	 * ("וובסטופ · חידוש חודשי", "תניא · וובפונט", "דיסקברי · דסקטופ", "דומיין נוסף").
+	 * Only a starting point for the migration dry-run: override with the fs_acc2_classify_item filter.
+	 * @return array{kind:?string,plan:?string,font:string,type:string}
+	 */
+	public static function classify_item_name( string $name ): array {
+		$parts = array_map( 'trim', preg_split( '/\s*[·|–]\s*/u', $name, 2 ) );
+		$head  = $parts[0];
+		$tail  = $parts[1] ?? '';
+		foreach ( array( 'וובסטופ' => 'web', 'webstop' => 'web', 'אקסטרה' => 'extra', 'extra' => 'extra' ) as $needle => $plan ) {
+			if ( false !== mb_stripos( $head, $needle ) ) {
+				return array( 'kind' => 'subscription', 'plan' => $plan, 'font' => '', 'type' => '' );
+			}
+		}
+		if ( false !== mb_strpos( $name, 'דומיין נוסף' ) ) {
+			return array( 'kind' => 'addon', 'plan' => null, 'font' => '', 'type' => '' );
+		}
+		$web  = false !== mb_strpos( $tail, 'וובפונט' ) || false !== mb_stripos( $tail, 'web' );
+		$desk = false !== mb_strpos( $tail, 'דסקטופ' ) || false !== mb_stripos( $tail, 'desktop' );
+		if ( $web || $desk ) {
+			return array( 'kind' => 'licence', 'plan' => null, 'font' => $head, 'type' => $web && $desk ? 'וובפונט + דסקטופ' : ( $web ? 'וובפונט' : 'דסקטופ' ) );
+		}
+		return array( 'kind' => null, 'plan' => null, 'font' => '', 'type' => '' );
+	}
+
+	/**
 	 * Clean a font list for a subscription domain.
 	 * @return array{0:?array,1:?string} [fonts, error_code]
 	 */

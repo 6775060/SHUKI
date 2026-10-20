@@ -1,7 +1,7 @@
 # FontShok Account – Stage 2 (WordPress plugin)
 
 Server side of `docs/stage2-technical-spec.md`: monthly domain quotas, per-domain certificates, ₪79 additional domain.
-Status: **code complete for §2–§6, unit-tested rules only. Not yet run inside WordPress / against MySQL.**
+Status: **code complete for §2–§6 and §8, unit-tested rules only. Not yet run inside WordPress / against MySQL.**
 
 ## Install (staging first)
 1. Copy this folder to `wp-content/plugins/fs-account-stage2/` and activate. Activation creates `wp_fs_domains`, `wp_fs_licences`, `wp_fs_quota_bonus`.
@@ -13,7 +13,15 @@ Status: **code complete for §2–§6, unit-tested rules only. Not yet run insid
 5. Optional PDF: `composer require mpdf/mpdf` inside this folder (without it, certificates are served as printable HTML).
 6. Admins only until `wp option update fs_acc2_enabled all`.
 
-Not included yet: migration of existing checkout domains / purchased licences into the new tables (spec §8), admin screen (Q7).
+## Import existing data (spec §8)
+1. Find the meta key(s) the checkout stores domains under (the Stage 1 snippet reads them) and set:
+   `wp option update fs_acc2_domain_meta_keys '["<key>"]' --format=json`
+2. Dry run, then review the CSV (Excel-friendly, Hebrew OK). Check the `unclassified` rows:
+   `wp fs-acc2 migrate --dry-run --csv=/tmp/fs-migrate.csv`
+3. If order lines are misclassified, hook `fs_acc2_classify_item` (return `kind`: subscription | licence | addon | null, `plan`, `font`, `type`).
+4. Run for real: `wp fs-acc2 migrate`. Re-running skips rows already imported.
+
+Not included yet: admin screen for support staff (Q7).
 
 ## API (all require login + `X-WP-Nonce: wpApiSettings.nonce`)
 | Method | Route | Body / result |
@@ -28,4 +36,4 @@ Not included yet: migration of existing checkout domains / purchased licences in
 Error codes (map to the prototype's Hebrew messages): `invalid_host` 400 · `no_plan` 403 · `quota_full` 403 · `locked` 403 · `licence_not_found` 404 · `not_found` 404 · `duplicate_host` 409 · `fonts_required` / `fonts_max_2` 422 · `rate_limited` 429 · `busy` 503.
 
 ## Tests
-`php tests/run.php` — business rules (host normalisation, site names, Israel-time cycles incl. DST, locking, quota, fonts).
+`php tests/run.php` — business rules (host normalisation, site names, Israel-time cycles incl. DST, locking, quota, fonts, order-line classification). 37 tests.
