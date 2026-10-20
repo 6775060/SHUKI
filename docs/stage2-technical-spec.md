@@ -1,7 +1,7 @@
 # FontShok personal area — Stage 2 technical specification
 
 **Scope:** monthly domain quotas, licence certificates, and the ₪79 additional domain.
-**Status:** draft for approval. Nothing here is implemented on the live site yet.
+**Status:** approved (§9). Implemented in `wp-plugin/fs-account-stage2/`; not yet installed on any site.
 **Baseline:** Stage 1 is the read-only snippet `FS · אזור אישי v2 – תצוגה מקדימה` (shortcode `[fs_account_v2]`) on the private page `/my-account-new/` (ID 22682). In Stage 1, every action that writes data shows "תחובר בשלב הבא". Stage 2 makes those actions real.
 **UX reference:** prototype https://claude.ai/artifact/EGyx9pYKP34mdrcTJNQSYh, plus the Figma file `6y1KcVHr3u1cMtNufIt1T9`, page `46:3926`. The rules below are the ones the prototype already demonstrates. The open questions in §9 must be answered before build.
 
@@ -175,17 +175,17 @@ Every route requires a logged-in user, a valid `X-WP-Nonce` (`wp_rest`), and onl
 
 ---
 
-## 9. Open questions (need a decision before build)
+## 9. Decisions (approved 2026-10-20)
 
-| # | Question | Default if no answer |
+| # | Question | Decision |
 |---|---|---|
 | Q1 | Quota cycle: calendar month (as the prototype shows), or each customer's billing anniversary? | Calendar month, Asia/Jerusalem |
 | Q2 | Is ₪79 VAT-inclusive (like the plan prices on the site)? | Inclusive |
 | Q3 | Webstop add-on slot: does it expire at the end of the month if unused, or carry over? | Expires with the cycle |
-| Q4 | Subscription cancelled or lapsed: can the customer still download certificates (watermarked "לא בתוקף")? Are their domains kept? | Download with watermark; domains kept, read-only |
+| Q4 | Subscription cancelled or lapsed: can the customer still download certificates (watermarked "לא בתוקף")? Are their domains kept? | **Certificates stay available** (watermarked "לא בתוקף"); domains kept, read-only |
 | Q5 | Public certificate verification page? | No (phase 3) |
 | Q6 | Downgrade Extra → Webstop mid-cycle when more than 3 domains are already registered this month | Keep existing ones, block new ones until next cycle |
-| Q7 | Should support staff edit, unlock or remove locked domains from wp-admin? | Yes: admin-only screen, logged |
+| Q7 | Should support staff edit, unlock or remove locked domains from wp-admin? | **Yes**: admin-only screen, every change logged (built: WooCommerce → דומיינים של לקוחות) |
 
 ---
 

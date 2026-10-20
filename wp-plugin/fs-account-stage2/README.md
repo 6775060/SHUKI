@@ -1,7 +1,7 @@
 # FontShok Account – Stage 2 (WordPress plugin)
 
 Server side of `docs/stage2-technical-spec.md`: monthly domain quotas, per-domain certificates, ₪79 additional domain.
-Status: **code complete for §2–§6 and §8, unit-tested rules only. Not yet run inside WordPress / against MySQL.**
+Status: **code complete for §2–§8 and Q7, unit-tested rules only. Not yet run inside WordPress / against MySQL.**
 
 ## Install (staging first)
 1. Copy this folder to `wp-content/plugins/fs-account-stage2/` and activate. Activation creates `wp_fs_domains`, `wp_fs_licences`, `wp_fs_quota_bonus`.
@@ -21,7 +21,8 @@ Status: **code complete for §2–§6 and §8, unit-tested rules only. Not yet r
 3. If order lines are misclassified, hook `fs_acc2_classify_item` (return `kind`: subscription | licence | addon | null, `plan`, `font`, `type`).
 4. Run for real: `wp fs-acc2 migrate`. Re-running skips rows already imported.
 
-Not included yet: admin screen for support staff (Q7).
+## Support screen (Q7)
+WooCommerce → **דומיינים של לקוחות** (capability `manage_woocommerce`): search a customer by email, edit or remove any domain including locked ones, add one free slot for the current month (reason required). Every change is logged in `wp_fs_log` and shown under the customer.
 
 ## API (all require login + `X-WP-Nonce: wpApiSettings.nonce`)
 | Method | Route | Body / result |

@@ -3,7 +3,7 @@
 defined( 'ABSPATH' ) || exit;
 
 final class FS_Acc2_Schema {
-	const DB_VERSION = '1';
+	const DB_VERSION = '2'; // 2: fs_log table; quota_bonus.order_id nullable (manual grants from the support screen)
 
 	public static function table( string $name ): string {
 		global $wpdb;
@@ -63,10 +63,24 @@ final class FS_Acc2_Schema {
   user_id bigint(20) unsigned NOT NULL,
   cycle char(7) NOT NULL,
   qty tinyint(3) unsigned NOT NULL DEFAULT 1,
-  order_id bigint(20) unsigned NOT NULL,
+  order_id bigint(20) unsigned NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY order_once (order_id),
   KEY user_cycle (user_id,cycle)
+) $c;" );
+
+		$g = self::table( 'log' );
+		dbDelta( "CREATE TABLE $g (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  admin_id bigint(20) unsigned NOT NULL,
+  user_id bigint(20) unsigned NOT NULL,
+  domain_id bigint(20) unsigned NULL,
+  action varchar(20) NOT NULL,
+  before_val text NULL,
+  after_val text NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY user (user_id)
 ) $c;" );
 
 		// certificate number sequence; set fs_acc2_cert_start above the highest number already issued before activating
