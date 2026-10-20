@@ -113,13 +113,20 @@ a{color:inherit}
   /* profile (and any) tab bar: all tabs fit the width, no hidden tabs */
   .tabs[role=tablist] button{flex:1 1 0;min-width:0;padding:10px 4px 12px;text-align:center;white-space:normal;line-height:1.25;font-size:15px}
   /* weight picker: same size as the format buttons, on the same line; short label */
-  .dl-tbl tbody tr>td.wsel-td{margin-inline-start:auto!important}
+  /* three equal buttons with equal gaps, aligned in columns from row to row */
+  .dl-tbl tbody tr:not(.zip-row)>td:nth-child(n+3){flex:1 1 0;min-width:0;margin:0!important}
+  .dl-tbl tbody tr:not(.zip-row) .dl,.dl-tbl .wsel-pop{width:100%;justify-content:center}
+  .dl-tbl .wsel-pop .wsel{width:100%;justify-content:center;gap:8px}
   .dl-tbl tbody tr:not(.zip-row)>td:nth-child(2){display:none}
   .dl-tbl tbody tr:not(.zip-row){column-gap:8px}
   .dl-tbl .wsel-menu{inset-inline-end:0;inset-inline-start:auto}
   .dl-tbl .wsel{width:auto;height:32px;padding:0 10px;gap:6px;font-size:13px}
   .dl-tbl .wsel .wsel-l{display:none}
   .dl-tbl .wsel .wsel-s{display:inline}
+  .note{flex-wrap:wrap;align-items:flex-start;row-gap:6px}
+  .note .note-txt{flex:1 1 calc(100% - 34px)}
+  .note .linkbtn{margin-inline-start:30px}
+  .note .note-x{margin-inline-start:auto}
   /* ZIP buttons side by side */
   .tbl tbody tr.zip-row{flex-wrap:nowrap;gap:8px}
   .tbl tbody tr.zip-row>td:empty{display:none}
@@ -176,6 +183,8 @@ a{color:inherit}
 /* plan strip */
 .plan{display:flex;align-items:center;gap:20px;background:var(--softer);border-radius:10px;padding:18px 28px;position:relative;margin-bottom:36px;flex-wrap:wrap}
 .plan::after{content:"";position:absolute;inset-inline-end:0;top:0;bottom:0;width:14px;border-start-end-radius:10px;border-end-end-radius:10px;background:var(--c-extra)}
+/* the edge always takes the colours of the subscription shown */
+.plan-web::after{background:var(--c-web)}.plan-extra::after{background:var(--c-extra)}.plan-desk::after{background:var(--c-desk)}.plan-barter::after{background:var(--c-barter)}.plan-acad::after{background:linear-gradient(135deg,#E1F07D,#FFAD05)}
 .plan img{width:52px;height:52px}
 .plan .name{font-weight:700;font-size:18px;display:flex;gap:8px;align-items:center}
 .plan .dates{margin-inline-start:auto;display:flex;gap:32px;font-size:14px;padding-inline-end:22px;white-space:nowrap}
@@ -421,7 +430,8 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .sites-lbl{font-size:12px;color:var(--muted)}
 @media (max-width:760px){.fname{margin:0}}
 /* "new version" marker next to a font name: small quiet text, no pill (details live in the note under the table) */
-.ver{font-size:12px;font-weight:500;color:var(--violet);margin-inline-start:6px;vertical-align:super;line-height:1}
+.dl-tbl .wcount{color:var(--muted);font-weight:300}
+.ver{display:block;font-size:12px;font-weight:400;color:var(--violet);margin-top:2px;line-height:1.2}
 /* weight picker in "פונטים להורדה": one download per weight of the family */
 .wsel{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;justify-content:space-between;gap:8px;width:150px;height:32px;padding:0 12px;border:1px solid #D6D6D6;border-radius:8px;font-size:14px;transition:background-color .25s var(--ease),border-color .25s var(--ease)}
 .wsel .wsel-s{display:none}
@@ -433,7 +443,14 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .wsel-menu{max-height:min(300px,50vh);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .pop-menu.wsel-menu button{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 10px}
 .wsel-menu .icon{width:18px;height:18px;color:var(--violet-text)}
-@media (min-width:761px){.dl-tbl td:nth-child(n+2),.dl-tbl th:nth-child(n+2){width:1%;white-space:nowrap}}
+@media (min-width:761px){.dl-tbl td:nth-child(n+3),.dl-tbl th:nth-child(n+3){width:1%;white-space:nowrap}
+  .dl-tbl td:first-child,.dl-tbl th:first-child{width:1%;white-space:nowrap;padding-inline-end:24px}
+  .dl-tbl td:nth-child(n+3),.dl-tbl th:nth-child(n+3){padding-inline:12px}
+  .dl-tbl td:nth-child(2){white-space:nowrap}}
+@media (min-width:761px) and (max-width:1100px){.dl-tbl td:nth-child(2),.dl-tbl th:nth-child(2){display:none}.dl-tbl td:first-child,.dl-tbl th:first-child{width:auto}}
+/* narrow tablets: icon-only format buttons, short labels */
+@media (min-width:761px) and (max-width:920px){.dl-tbl .dl{width:64px!important}.dl-tbl .btn-line{width:auto!important;padding:0 10px}.dl-tbl .btn-line .zl{display:none}.dl-tbl .wsel{width:96px!important}.dl-tbl .wsel .wsel-l{display:none}.dl-tbl .wsel .wsel-s{display:inline}.dl-tbl td:first-child,.dl-tbl th:first-child{padding-inline-end:16px}.dl-tbl th:nth-child(n+3){white-space:normal;line-height:1.25}}
+@media (min-width:761px) and (max-width:1200px){.dl-tbl .dl,.dl-tbl .btn-line{width:104px}.dl-tbl .wsel{width:124px}.dl-tbl td,.dl-tbl th{padding-inline:10px}.dl-tbl td:first-child,.dl-tbl th:first-child{padding-inline-end:24px}}
 /* choice menu (certificate / download when a row holds more than one licence) */
 .lic-wrap{overflow:visible}
 .pop{position:relative;display:inline-flex}
@@ -672,7 +689,7 @@ const ORDERS=[
 /* views */
 const V={};
 V.subs=(tab)=>`
- <div class="plan ${state.planOpen?'open':''}">
+ <div class="plan plan-${state.plan} ${state.planOpen?'open':''}">
    ${logo(state.plan,'')}
    <div class="plan-id">
      <div class="name">${PLAN[state.plan].label} <span class="chip ok">פעיל</span></div>
@@ -746,12 +763,12 @@ function weightPick(f,n){
 }
 function subsDownloads(){
  return `<div class="tbl-wrap lic-wrap"><table class="tbl dl-tbl"><thead><tr><th>שם הפונט</th><th>משקלים</th><th>פורמט לאתרים</th><th>פורמט לדסקטופ</th><th>הורדה לפי משקל</th></tr></thead><tbody>
- ${FAMILY.map(([f,n])=>`<tr><td>${f}${f==='דיסקברי'?' <span class="ver" title="גרסה 2.0 זמינה להורדה">חדש</span>':''}</td><td class="num" style="color:var(--muted)">${n} משקלים</td>
+ ${FAMILY.map(([f,n])=>`<tr><td>${f}${f==='דיסקברי'?' <span class="ver" title="גרסה 2.0 זמינה להורדה">גרסה חדשה <span dir="ltr">V.2</span></span>':''}</td><td class="num wcount">${n} משקלים</td>
  <td><button class="dl" aria-label="הורדת ${f} לאתרים" data-t="מוריד את ${f} לאתרים (WOFF2)">${ICON.dl}<span class="dl-k">אתרים</span></button></td>
  <td><button class="dl" aria-label="הורדת ${f} לדסקטופ" data-t="מוריד את ${f} לדסקטופ (OTF)">${ICON.dl}<span class="dl-k">דסקטופ</span></button></td>
  <td class="wsel-td">${weightPick(f,n)}</td></tr>`).join('')}
- <tr class="zip-row"><td></td><td></td><td><button class="btn btn-line" data-t="מכין קובץ ZIP עם כל הפונטים לאתרים">${ICON.dl} הכל לאתרים</button></td>
- <td><button class="btn btn-line" data-t="מכין קובץ ZIP עם כל הפונטים לדסקטופ">${ICON.dl} הכל לדסקטופ</button></td><td></td></tr>
+ <tr class="zip-row"><td></td><td></td><td><button class="btn btn-line" data-t="מכין קובץ ZIP עם כל הפונטים לאתרים">${ICON.dl}<span>הכל<span class="zl"> לאתרים</span></span></button></td>
+ <td><button class="btn btn-line" data-t="מכין קובץ ZIP עם כל הפונטים לדסקטופ">${ICON.dl}<span>הכל<span class="zl"> לדסקטופ</span></span></button></td><td></td></tr>
  </tbody></table></div>`;
 }
 
