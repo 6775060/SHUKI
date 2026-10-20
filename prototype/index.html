@@ -488,7 +488,8 @@ const SUBS={
  desk:{name:'דסקטופ',en:'Desktop',logo:'logos/desktop.svg'},
  barter:{name:'בארטר',en:'Barter',logo:'logos/barter.svg'},
  acad:{name:'אקדמיק',en:'Academic',logo:'logos/academic.svg'},
- buy:{name:'רכישה בודדת',en:'Single license',logo:'logos/desktop.svg'}
+ buy:{name:'רכישה בודדת',en:'Single license',logo:'logos/desktop.svg'},
+ app:{name:'רכישה בודדת',en:'App license',logo:'logos/desktop.svg'}
 };
 /* domains registered under the SUBSCRIPTION (quota belongs to the plan, not to a font) */
 const PLAN={web:{n:3,label:'וובסטופ',desc:'מינוי אתרים + דסקטופ'},extra:{n:0,label:'אקסטרה',desc:'מינוי אתרים + דסקטופ + אפליקציה'}};
@@ -528,7 +529,8 @@ const LIC=[
  {f:'פורטו',w:'משפחה',t:'וובפונט + דסקטופ',sub:'buy',n:3,web:1,sites:[['08.10.2026','אדריכלות בע״מ','arch-ltd.co.il']]},
  {f:'דיסקברי',w:'מדיום',t:'דסקטופ',sub:'desk',web:0},
  {f:'תניא',w:'בולד',t:'וובפונט',sub:'buy',n:3,web:1,sites:[['01.06.2026','בנק פועלים','bank.co.il'],['02.06.2026','אתר ב׳','b-site.co.il'],['05.06.2026','אתר ג׳','c-site.co.il']]},
- {f:'אומץ',w:'בולד',t:'דסקטופ',sub:'desk',web:0}
+ {f:'אומץ',w:'בולד',t:'דסקטופ',sub:'desk',web:0},
+ {f:'שלדון',w:'רגולר',t:'אפליקציה',sub:'app',web:0}
 ];
 LIC.forEach(l=>{if(l.web)l.u=l.sites.length});
 const HISTORY=[{f:'דיסקברי',w:'לייט',sub:'web',site:['04.08.2026','קמפיין קיץ','summer-sale.co.il'],removed:'30.09.2026'}];
@@ -538,6 +540,7 @@ const CERT_TEXT={
  desk:l=>`רישיון דסקטופ לפונט הרשום: התקנה במחשבי בעל הרישיון ועיצוב תוצרי דסקטופ, פלט ו־UI. הרישיון אינו כולל הטמעה באתרים או באפליקציות.`,
  acad:l=>`רישיון אקדמיק לשימוש במסגרת הלימודים ותיק העבודות של בעל הרישיון, בהתאם לתנאי המינוי לסטודנטים.`,
  buy:l=>`רישיון וובפונט לפונט שנרכש, למכסה של עד ${l.n||3} דומיינים. השימוש מותר לעיצוב ממשק משתמש (UI) ולהטמעה באתר שכתובתו מצוינת לעיל. הרישיון לצמיתות.`,
+ app:l=>`רישיון אפליקציה לפונט הרשום: הטמעה באפליקציה של בעל הרישיון, בהתאם לתנאי הרישיון שנרכש.`,
  barter:l=>`רישיון בארטר הניתן במסגרת שיתוף פעולה לפי הסיכום האישי עם פונטשוק, בכפוף למתן קרדיט בדף היוצרים.`
 };
 const ORDERS=[
@@ -631,15 +634,16 @@ V.lic=(tab,open)=>`
  ${licTable(open)}`;
 
 function licTable(open){
- return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>שם הפונט</th><th>משקל</th><th>סוג רישיון</th><th>אתרים</th><th></th></tr></thead><tbody>
+ const hasSites=LIC.some(l=>l.web),cols=hasSites?5:4;
+ return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>שם הפונט</th><th>משקל</th><th>רישיון</th>${hasSites?'<th>ניצול אתרים</th>':''}<th></th></tr></thead><tbody>
  ${LIC.map((l,i)=>{const full=l.web&&l.u>=l.n;const isOpen=open===i;return `<tr class="${isOpen?'is-open':''}">
  <td><span class="fname">${l.web?`<button class="ibtn exp" data-open="${i}" aria-expanded="${isOpen}" aria-label="${isOpen?'סגירת':'פתיחת'} רישום האתרים של ${l.f}" title="${isOpen?'סגירה':'רישום אתרים'}">${ICON.globe}</button>`:'<span class="exp-ph"></span>'}${l.f}</span></td>
  <td>${l.w}</td><td>${l.t.split(' + ').map(x=>`<span class="ltag">${x}</span>`).join(' ')}</td>
- <td>${l.web?`<div class="sites"><span class="sites-lbl">אתרים בשימוש</span>${meter(l.u,l.n)}</div>`:'<span class="hint" style="margin:0">לא כולל אתרים</span>'}</td>
+ ${hasSites?`<td>${l.web?meter(l.u,l.n):''}</td>`:''}
  <td><div class="acts">
    <button class="ibtn" aria-label="תעודת רישיון" data-cert="lic:${i}">${ICON.cert}</button>
    <button class="btn btn-grad icon-only" aria-label="הורדת ${l.f} ${l.w}" title="הורדה" data-t="מוריד את ${l.f} ${l.w}">${ICON.dl}</button></div></td></tr>
- ${open===i&&l.web?`<tr class="drawer"><td colspan="5"><div class="lic-drawer"><div class="box dom-box">
+ ${open===i&&l.web?`<tr class="drawer"><td colspan="${cols}"><div class="lic-drawer"><div class="box dom-box">
    ${full?quotaFull(l):`
    <form class="form-row lic-form" data-add="${i}">
      <div class="fld"><label for="su${i}">כתובת האתר *</label><input id="su${i}" data-namefor="sn${i}" placeholder="fontshok.co.il" dir="ltr" inputmode="url" autocomplete="off" required></div>
