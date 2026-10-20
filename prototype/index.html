@@ -104,7 +104,20 @@ a{color:inherit}
 .orow .btn{height:34px;padding:0 12px;font-size:15px}
 .orow td:first-child{padding-inline-start:40px}
 .odet .more{margin-inline-start:6px;font-size:12px;font-weight:700;background:var(--soft);border-radius:99px;padding:1px 7px;color:var(--muted)}
-@media (max-width:760px){.oid{margin:0}.orow td{white-space:normal}}
+@media (max-width:760px){.oid{margin:0}.orow td{white-space:normal}
+  /* orders: date · item · status stay on one line; the item name gives way (ellipsis) */
+  .orow>td.odet{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;display:flex!important;align-items:center}
+  .orow>td.odet span:first-child{max-width:none;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .orow>td.odet .more{flex:none}
+  .orow>td:nth-child(4){flex:none}
+  /* profile (and any) tab bar: all tabs fit the width, no hidden tabs */
+  .tabs[role=tablist] button{flex:1 1 0;min-width:0;padding:10px 4px 12px;text-align:center;white-space:normal;line-height:1.25;font-size:15px}
+  /* ZIP buttons side by side */
+  .tbl tbody tr.zip-row{flex-wrap:nowrap;gap:8px}
+  .tbl tbody tr.zip-row>td:empty{display:none}
+  .tbl tbody tr.zip-row>td{flex:1 1 0;min-width:0;margin:0!important}
+  .tbl tbody tr.zip-row .btn-line{width:100%;padding:0 8px;font-size:13px;gap:6px}
+}
 .demo{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--muted);background:var(--soft);border-radius:99px;padding:3px;margin-bottom:18px}
 .demo span{padding:0 8px}
 .demo button{all:unset;cursor:pointer;padding:3px 12px;border-radius:99px;font-weight:700;color:var(--ink)}
@@ -426,13 +439,14 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
   .mini tbody td{padding:0!important;border:0!important}
   .mini tbody td:last-child{margin-inline-start:auto}
   .tbl tr.mgroup td{top:0;flex-basis:100%;padding:12px 0 4px!important}
+  .tbl tbody tr.mgroup{border-bottom:0!important}
   .side .logout{margin:0;padding-inline:16px;height:50px;flex:none}
   /* tables become stacked rows on phones */
   .tbl thead{display:none}
   .tbl,.tbl tbody,.tbl tr,.tbl td{display:block}
   .tbl tbody tr:not(.drawer){display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;padding:14px 0;border-bottom:1px solid var(--line)}
   .tbl tbody td,.tbl tbody tr:first-child td{padding:0!important;font-size:15px}
-  .tbl tbody td:first-child{flex-basis:100%;font-size:17px}
+  .tbl tbody td:first-child,.tbl tbody tr:first-child td:first-child{flex-basis:100%;font-size:17px}
   .tbl tbody td:last-child{margin-inline-start:auto}
   .tbl tbody tr:not(.drawer):hover td{background:none}
   .drawer .box{padding:16px}
@@ -537,7 +551,7 @@ const ICON={
   spark:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M8.03339 3.65784C8.37932 2.78072 9.62068 2.78072 9.96661 3.65785L11.0386 6.37599C11.1442 6.64378 11.3562 6.85576 11.624 6.96137L14.3422 8.03339C15.2193 8.37932 15.2193 9.62068 14.3422 9.96661L11.624 11.0386C11.3562 11.1442 11.1442 11.3562 11.0386 11.624L9.96661 14.3422C9.62067 15.2193 8.37932 15.2193 8.03339 14.3422L6.96137 11.624C6.85575 11.3562 6.64378 11.1442 6.37599 11.0386L3.65784 9.96661C2.78072 9.62067 2.78072 8.37932 3.65785 8.03339L6.37599 6.96137C6.64378 6.85575 6.85576 6.64378 6.96137 6.37599L8.03339 3.65784Z"/><path d="M16.4885 13.3481C16.6715 12.884 17.3285 12.884 17.5115 13.3481L18.3121 15.3781C18.368 15.5198 18.4802 15.632 18.6219 15.6879L20.6519 16.4885C21.116 16.6715 21.116 17.3285 20.6519 17.5115L18.6219 18.3121C18.4802 18.368 18.368 18.4802 18.3121 18.6219L17.5115 20.6519C17.3285 21.116 16.6715 21.116 16.4885 20.6519L15.6879 18.6219C15.632 18.4802 15.5198 18.368 15.3781 18.3121L13.3481 17.5115C12.884 17.3285 12.884 16.6715 13.3481 16.4885L15.3781 15.6879C15.5198 15.632 15.632 15.5198 15.6879 15.3781L16.4885 13.3481Z" opacity=".5"/></g></svg>',
   smile:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="12" cy="12" r="10" stroke-width="1.5" opacity=".5"/><path stroke-width="1.5" d="M9 16C9.85038 16.6303 10.8846 17 12 17C13.1154 17 14.1496 16.6303 15 16"/><path d="M15.5 10.5C15.5 11.0523 15.2761 11.5 15 11.5C14.7239 11.5 14.5 11.0523 14.5 10.5C14.5 9.94772 14.7239 9.5 15 9.5C15.2761 9.5 15.5 9.94772 15.5 10.5Z"/><ellipse cx="9" cy="10.5" rx=".5" ry="1"/></g></svg>',
   chev:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M19 9L12 15L5 9" opacity=".5"/><path d="M8.5 12L12 15L19 9"/></g></svg>',
-  close:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><circle cx="12" cy="12" r="10" opacity=".5"/><path d="M14.5 9.50002L9.5 14.5M9.49998 9.5L14.5 14.5"/></g></svg>',
+  close:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M17 7L7 17M7 7l10 10"/></g></svg>',
   globe:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M2 12H22M16 12C16 13.3132 15.8965 14.6136 15.6955 15.8268C15.4945 17.0401 15.1999 18.1425 14.8284 19.0711C14.457 19.9997 14.016 20.7362 13.5307 21.2388C13.0454 21.7413 12.5253 22 12 22C11.4747 22 10.9546 21.7413 10.4693 21.2388C9.98396 20.7362 9.54301 19.9997 9.17157 19.0711C8.80014 18.1425 8.5055 17.0401 8.30448 15.8268C8.10346 14.6136 8 13.3132 8 12C8 10.6868 8.10346 9.38642 8.30448 8.17316C8.5055 6.95991 8.80014 5.85752 9.17157 4.92893C9.54301 4.00035 9.98396 3.26375 10.4693 2.7612C10.9546 2.25866 11.4747 2 12 2C12.5253 2 13.0454 2.25866 13.5307 2.76121C14.016 3.26375 14.457 4.00035 14.8284 4.92893C15.1999 5.85752 15.4945 6.95991 15.6955 8.17317C15.8965 9.38642 16 10.6868 16 12Z" opacity=".5"/><path d="M22 12C22 13.3132 21.7413 14.6136 21.2388 15.8268C20.7362 17.0401 19.9997 18.1425 19.0711 19.0711C18.1425 19.9997 17.0401 20.7362 15.8268 21.2388C14.6136 21.7413 13.3132 22 12 22C10.6868 22 9.38642 21.7413 8.17317 21.2388C6.95991 20.7362 5.85752 19.9997 4.92893 19.0711C4.00035 18.1425 3.26375 17.0401 2.7612 15.8268C2.25866 14.6136 2 13.3132 2 12C2 10.6868 2.25866 9.38642 2.76121 8.17316C3.26375 6.95991 4.00035 5.85752 4.92893 4.92893C5.85752 4.00035 6.95991 3.26375 8.17317 2.7612C9.38642 2.25866 10.6868 2 12 2C13.3132 2 14.6136 2.25866 15.8268 2.76121C17.0401 3.26375 18.1425 4.00035 19.0711 4.92893C19.9997 5.85752 20.7362 6.95991 21.2388 8.17317C21.7413 9.38642 22 10.6868 22 12L22 12Z"/></g></svg>',
   user:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><circle cx="12" cy="6" r="4"/><ellipse cx="12" cy="17" opacity=".5" rx="7" ry="4"/></g></svg>',
   card:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M2 12C2 8.22876 2 6.34315 3.17157 5.17157C4.34315 4 6.22876 4 10 4H14C17.7712 4 19.6569 4 20.8284 5.17157C22 6.34315 22 8.22876 22 12C22 15.7712 22 17.6569 20.8284 18.8284C19.6569 20 17.7712 20 14 20H10C6.22876 20 4.34315 20 3.17157 18.8284C2 17.6569 2 15.7712 2 12Z"/><path d="M10 16H6" opacity=".5"/><path d="M14 16H12.5" opacity=".5"/><path d="M2 10L22 10" opacity=".5"/></g></svg>',
@@ -686,7 +700,7 @@ function subsDownloads(){
  ${FAMILY.map(([f,n])=>`<tr><td>${f}${f==='דיסקברי'?' <span class="chip" style="margin-inline-start:6px">גרסה 2.0 חדשה</span>':''}</td><td class="num" style="color:var(--muted)">${n} משקלים</td>
  <td><button class="dl" aria-label="הורדת ${f} לאתרים" data-t="מוריד את ${f} לאתרים (WOFF2)">${ICON.dl}<span class="dl-k">אתרים</span></button></td>
  <td><button class="dl" aria-label="הורדת ${f} לדסקטופ" data-t="מוריד את ${f} לדסקטופ (OTF)">${ICON.dl}<span class="dl-k">דסקטופ</span></button></td></tr>`).join('')}
- <tr><td></td><td></td><td><button class="btn btn-line" data-t="מכין קובץ ZIP עם כל הפונטים לאתרים">${ICON.dl} כל הפונטים לאתרים</button></td>
+ <tr class="zip-row"><td></td><td></td><td><button class="btn btn-line" data-t="מכין קובץ ZIP עם כל הפונטים לאתרים">${ICON.dl} כל הפונטים לאתרים</button></td>
  <td><button class="btn btn-line" data-t="מכין קובץ ZIP עם כל הפונטים לדסקטופ">${ICON.dl} כל הפונטים לדסקטופ</button></td></tr>
  </tbody></table></div>`;
 }
