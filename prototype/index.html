@@ -427,8 +427,9 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .wsel:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
 .wsel .icon{width:16px;height:16px;transition:transform .3s var(--ease)}
 .pop.open .wsel .icon{transform:rotate(180deg)}
-.wsel-menu{min-width:210px;max-height:min(300px,50vh);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
-.pop-menu.wsel-menu button{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.pop-menu.wsel-menu{min-width:100%;width:max-content;max-width:min(280px,90vw)}
+.wsel-menu{max-height:min(300px,50vh);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.pop-menu.wsel-menu button{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 10px}
 .wsel-menu .icon{width:18px;height:18px;color:var(--violet-text)}
 @media (min-width:761px){.dl-tbl td:nth-child(n+2),.dl-tbl th:nth-child(n+2){width:1%;white-space:nowrap}}
 /* choice menu (certificate / download when a row holds more than one licence) */
