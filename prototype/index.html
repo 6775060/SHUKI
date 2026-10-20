@@ -313,11 +313,13 @@ body.show-new .x-new::before{content:attr(data-new);position:absolute;top:-22px;
 .ibtn.ph{visibility:hidden}
 .ibtn.ok-btn{color:var(--violet)}
 tr.editing td{background:#F8F6FF!important;vertical-align:middle}
+.tbl>tbody>tr.editing>td{padding-block:8px}
+.ed-pair.stacked .ed{height:28px;flex:none}
 .ed-pair{display:flex;gap:8px}
 .ed-pair.stacked{flex-direction:column;gap:6px}
-.ed{height:36px;border:1px solid #DCD6F7;border-radius:6px;background:var(--card);padding:0 10px;font-size:15px;min-width:0;flex:1;transition:border-color .2s var(--ease),box-shadow .2s var(--ease)}
+.ed{height:30px;width:100%;font-weight:400;border:1px solid #DCD6F7;border-radius:6px;background:var(--card);padding:0 10px;font-size:15px;min-width:0;flex:1;transition:border-color .2s var(--ease),box-shadow .2s var(--ease)}
 .ed:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(91,63,255,.12)}
-.ed-fonts .fp-btn{height:36px;border:1px solid #DCD6F7}
+.ed-fonts .fp-btn{height:30px;border:1px solid #DCD6F7}
 .lock-note{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:12px}
 .dom-note{margin-top:44px}
 .lock-note .linkbtn{font-size:13px}
@@ -532,6 +534,7 @@ function rowActs(key,date,certSpec,delAttr){
  const tip=key.startsWith('dom:')?'עריכת הדומיין':`אפשר לערוך עד סוף חודש ${CYCLE.label}`;
  return `<div class="acts"><button class="ibtn" aria-label="עריכת הדומיין" title="${tip}" data-edit="${key}">${ICON.edit}</button>${cert}<button class="ibtn" aria-label="הסרת הדומיין" ${delAttr}>${ICON.trash}</button></div>`;
 }
+const editCells=(name,host)=>`<td><input class="ed ed-name" value="${name}" aria-label="שם האתר"></td><td><input class="ed ed-host" dir="ltr" value="${host}" aria-label="כתובת האתר"></td>`;
 const editHost=(name,host)=>`<input class="ed ed-host" dir="ltr" value="${host}" aria-label="כתובת האתר"><input class="ed ed-name" value="${name}" aria-label="שם האתר">`;
 const editBtns=()=>`<div class="acts"><button class="ibtn ok-btn" data-edsave="1" aria-label="שמירה">${ICON.ok}</button><button class="ibtn" data-edcancel="1" aria-label="ביטול">${ICON.close}</button></div>`;
 function fontPicker(sel){const on=sel.length>=2;return `<div class="fld fontpick ed-fonts"><button type="button" class="fp-btn" aria-haspopup="true" aria-expanded="false" aria-label="פונטים"><span class="fp-val">${sel.join(', ')||'בחירת פונטים'}</span>${ICON.chev}</button>
@@ -624,7 +627,7 @@ function subsDomains(){
  </div>
  <table class="mini lined"><thead><tr><th>תאריך</th><th>שם האתר</th><th>כתובת אתר</th><th>פונטים</th><th></th></tr></thead><tbody>
  ${list.map((s,j)=>!canEdit(s[0])?'':state.editKey===`sd:${j}`
-   ?`<tr class="editing" data-key="sd:${j}"><td class="num">${s[0]}</td><td colspan="2"><div class="ed-pair">${editHost(s[1],s[2])}</div></td><td>${fontPicker(s[3].split(', ').filter(Boolean))}</td><td>${editBtns()}</td></tr>`
+   ?`<tr class="editing" data-key="sd:${j}"><td class="num">${s[0]}</td>${editCells(s[1],s[2])}<td>${fontPicker(s[3].split(', ').filter(Boolean))}</td><td>${editBtns()}</td></tr>`
    :`<tr><td class="num">${s[0]}</td><td>${s[1]}</td><td><bdi dir="ltr">${s[2]}</bdi></td><td>${s[3]}</td>
  <td>${rowActs(`sd:${j}`,s[0],`sd:${j}`,`data-sddel="${j}"`)}</td></tr>`).join('')||`<tr><td colspan="5" class="hint" style="padding:18px 0">עוד לא נרשמו דומיינים החודש</td></tr>`}
  </tbody></table>
@@ -690,7 +693,7 @@ function licDrawer(i,cols,full){const l=LIC[i];
    </div>
    <table class="mini lined"><thead><tr><th>תאריך</th><th>שם האתר</th><th>כתובת אתר</th><th></th></tr></thead><tbody>
    ${l.sites.map((s,j)=>state.editKey===`dom:${i}:${j}`
-     ?`<tr class="editing" data-key="dom:${i}:${j}"><td class="num">${s[0]}</td><td colspan="2"><div class="ed-pair">${editHost(s[1],s[2])}</div></td><td>${editBtns()}</td></tr>`
+     ?`<tr class="editing" data-key="dom:${i}:${j}"><td class="num">${s[0]}</td>${editCells(s[1],s[2])}<td>${editBtns()}</td></tr>`
      :`<tr><td class="num">${s[0]}</td><td>${s[1]}</td><td><bdi dir="ltr">${s[2]}</bdi></td>
    <td>${rowActs(`dom:${i}:${j}`,s[0],`dom:${i}:${j}`,`data-del="${i}:${j}"`)}</td></tr>`).join('')}
    </tbody></table></div></td></tr>`;
