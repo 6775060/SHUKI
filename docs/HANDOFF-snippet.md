@@ -40,12 +40,12 @@ Every item below was a decision by the site owner (the user).
 | 26 | Phones, "המינוי שלי → רישום דומיינים": the form starts folded as one "+ רישום דומיין חדש" button. Tapping it unfolds the form (grid-rows animation, fields fade in), focuses the address field; after a successful registration it folds back. Desktop: the form is always open | `.sub-reg`, `.reg-open`, `.reg-fold`, `data-regopen`, `data-regclose`, `state.regOpen` |
 | 27 | Phones, subscription box: "פרטים" sits at the left end of the name row (pinned top-left; the name row reserves 100px so "פעיל" wraps instead of hiding; ≤340px it drops to its own line). Checked every 5px 320–1300 with web and extra: no overlap | the `.plan>.dates` / `.plan>.plan-id>.name` rules near the end of the CSS |
 | 28 | Domain history month rows ("ספטמבר 2026"): violet text only, on white (no band, no line under it), on every width | `.tbl>tbody>tr.mgroup>td` |
-| 29 | Phones, "דומיינים": the "רישום אתר במינוי" button sits at the top-left, on the title's line (smaller, 34px) | `.head-act` |
+| 29 | (superseded by 34) |
 | 30 | Phones, open registration form: a header "רישום דומיין חדש" with an X that folds the form back into the button (focus returns to it) | `.reg-head`, `.reg-close`, `data-regclose` |
 | 31 | Rename the section "פונטים שרכשתי" → **"פונטים שלי"** (sidebar/tab and page title) | nav `data-view="lic"`, `V.lic` title |
 | 32 | Phones, subscription box: the "פעיל" chip sits **above** the plan name (column, chip first); checked 320–1300 every 5px, web and extra: no overlap between name, chip, description, logo and "פרטים" | `.plan>.plan-id>.name{flex-direction:column}`, `.chip{order:-1}` |
 | 33 | Phones, registration form: once unfolded (after 460ms) the fold stops clipping, so the font list floats over the page; while folding it clips again | `.reg-done`, `data-regopen` / `data-regclose` handlers |
-| 34 | Phones, "דומיינים": the register button is a square "+" (label kept as aria-label/title); desktop keeps the text | `.head-act .btn`, `.ha-l` |
+| 34 | Phones, "דומיינים": the header register button is hidden; instead a soft round "+" (32px, lilac background, violet plus) sits at the left end of the "החודש · …" line, right above the list it adds to. Desktop keeps the full "רישום אתר במינוי" button by the title | `.sec-row`, `.sec-add`, `.head-act` |
 | 35 | Domains: the registration date is light grey (`--faint`); on phones it sits at the far left of its line | `.dom-tbl>tbody>tr>td.num` |
 | 36 | All icons 20% lighter than the text (`--ic: color-mix(ink 80%, white)`), full colour on hover: row actions, certificate, invoice, header search/cart, logout. **Download icons keep full strength.** Already-lighter icons (note X, form X) keep their shade | `:root{--ic}`, the `.ibtn:not(...)` rule |
 | 37 | "פונטים שלי" subtitle: "פונטים שקנית בנפרד, מחוץ למינוי." (the webfont-covers-3-sites sentence removed) | `V.lic` |

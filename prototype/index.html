@@ -511,6 +511,7 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .reg-open{display:none}
 .reg-head{display:none}
 .head-act .btn>.icon{display:none}
+.sec-add{display:none}
 .reg-fold>div{min-height:0}
 .dom-box .form-err{margin:10px 0 0}
 .dom-box .quota-line{padding:0}
@@ -598,10 +599,13 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
   /* "דומיינים": the register button sits at the top-left, on the title's line */
   .main .head-row{position:relative}
   .head-act{position:absolute;top:0;inset-inline-end:0}
-  .head-act .btn{width:38px;height:38px;padding:0;border-radius:10px}
-  .head-act .btn .ha-l{display:none}
-  .head-act .btn>.icon{display:block;width:22px;height:22px}
-  .head-row:has(.head-act) .h1{padding-inline-end:50px;min-height:34px;display:flex;align-items:center}
+  .head-act{display:none}
+  .sec-row{align-items:center}
+  .sec-row .sec-add{all:unset;cursor:pointer;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#EEE9FF;color:var(--violet);margin-inline-start:auto;flex:none;transition:background-color .25s var(--ease)}
+  .sec-row .sec-add:hover,.sec-row .sec-add:active{background:#E2DAFF}
+  .sec-row .sec-add:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+  .sec-row .sec-add .icon{width:18px;height:18px}
+  .head-row:has(.head-act) .h1{padding-inline-end:0;min-height:34px;display:flex;align-items:center}
 }
 @media (max-width:340px){.plan>.dates{position:static;flex-basis:100%;margin:6px 0 0}.plan>.plan-id>.name{padding-inline-end:0}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -921,7 +925,7 @@ V.dom=()=>{
  return `
  <div class="head-row"><div><h1 class="h1">דומיינים</h1><p class="sub">כל האתרים שלך במקום אחד. רישום אתר חדש נעשה במינוי או בפונט שרכשת.</p></div>
   <div class="head-act"><button class="btn btn-grad" data-go2="subs" aria-label="רישום אתר במינוי" title="רישום אתר במינוי">${ICON.plus}<span class="ha-l">רישום אתר במינוי</span></button></div></div>
- <h2 class="h2-sec">החודש · ${CYCLE.label} 2026</h2>
+ <h2 class="h2-sec sec-row">החודש · ${CYCLE.label} 2026<button class="sec-add" data-go2="subs" aria-label="רישום אתר במינוי" title="רישום אתר במינוי">${ICON.plus}</button></h2>
  <div class="tbl-wrap"><table class="tbl dom-tbl">${thead}<tbody>
  ${now.map(row).join('')||`<tr><td colspan="5" class="hint">עוד לא נרשמו דומיינים החודש</td></tr>`}
  </tbody></table></div>
