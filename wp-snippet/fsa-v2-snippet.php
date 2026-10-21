@@ -262,7 +262,7 @@ add_shortcode( 'fs_account_v2', function () {
 #fsa .h1{font-size:27px;font-weight:800;margin:0;line-height:1.2}
 #fsa .sub{font-size:15px;margin:4px 0 0;color:var(--muted)}
 #fsa .head-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:40px}
-#fsa .tabs{display:flex;border-bottom:1.5px solid #BDBDBD;margin-bottom:26px;overflow-x:auto;scrollbar-width:none}
+#fsa .tabs{display:flex;box-shadow:inset 0 -1.5px 0 #BDBDBD;margin-bottom:26px;overflow-x:auto;scrollbar-width:none}
 #fsa .tabs::-webkit-scrollbar{display:none}
 #fsa .fontpick{position:relative}
 #fsa .fp-btn{all:unset;box-sizing:border-box;cursor:pointer;width:100%;height:40px;background:var(--card);border-radius:var(--r-ctl);padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px}
@@ -350,7 +350,7 @@ add_shortcode( 'fs_account_v2', function () {
 #fsa .src{display:inline-flex;align-items:center;gap:6px;font-size:14px;white-space:nowrap}
 #fsa .src.buy{border:1px solid var(--line);border-radius:6px;padding:1px 8px}
 #fsa .tabs button{all:unset;cursor:pointer;padding:10px 22px 12px;font-weight:700;font-size:16px;position:relative;white-space:nowrap}
-#fsa .tabs button[aria-selected="true"]::after{content:"";position:absolute;inset-inline:0;bottom:-1.5px;height:2px;background:linear-gradient(90deg,var(--violet),#B06BFF)}
+#fsa .tabs button[aria-selected="true"]::after{content:"";display:block;position:absolute;inset-inline:0;bottom:0;height:2px;background:linear-gradient(90deg,var(--violet),#B06BFF)}
 #fsa .tbl{width:100%;border-collapse:separate;border-spacing:0}
 #fsa .tbl thead th{background:var(--soft);font-weight:700;font-size:16px;text-align:start;padding:12px 16px;height:44px;white-space:nowrap}
 #fsa .tbl thead th:first-child{border-start-start-radius:8px;border-end-start-radius:8px;padding-inline-start:40px}

@@ -73,7 +73,8 @@ a{color:inherit}
 .head-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:40px}
 
 /* tabs */
-.tabs{display:flex;border-bottom:1.5px solid #BDBDBD;margin-bottom:26px;overflow-x:auto;scrollbar-width:none}
+/* the grey rule is drawn inside the bar (a scrolling bar clips anything below its edge, which hid the active underline) */
+.tabs{display:flex;box-shadow:inset 0 -1.5px 0 #BDBDBD;margin-bottom:26px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
 .fontpick{position:relative}
 .fp-btn{all:unset;box-sizing:border-box;cursor:pointer;width:100%;height:40px;background:var(--card);border-radius:var(--r-ctl);padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px}
@@ -172,7 +173,7 @@ a{color:inherit}
 .src{display:inline-flex;align-items:center;gap:6px;font-size:14px;white-space:nowrap}
 .src.buy{border:1px solid var(--line);border-radius:6px;padding:1px 8px}
 .tabs button{all:unset;cursor:pointer;padding:10px 22px 12px;font-weight:700;font-size:16px;position:relative;white-space:nowrap}
-.tabs button[aria-selected="true"]::after{content:"";position:absolute;inset-inline:0;bottom:-1.5px;height:2px;background:linear-gradient(90deg,var(--violet),#B06BFF)}
+.tabs button[aria-selected="true"]::after{content:"";display:block;position:absolute;inset-inline:0;bottom:0;height:2px;background:linear-gradient(90deg,var(--violet),#B06BFF)}
 
 /* table */
 .tbl{width:100%;border-collapse:separate;border-spacing:0}
