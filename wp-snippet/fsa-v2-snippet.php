@@ -12,6 +12,14 @@ define( 'FSA_V2_TESTER', 'claude-test' );
 function fsa_v2_can_view() {
 	return current_user_can( 'manage_options' ) || ( is_user_logged_in() && wp_get_current_user()->user_login === FSA_V2_TESTER );
 }
+// the preview page is private, so WordPress shows the test account a 404; let that one account read this one page
+add_filter( 'map_meta_cap', function ( $caps, $cap, $uid, $args ) {
+	if ( 'read_post' !== $cap || empty( $args[0] ) ) return $caps;
+	$u = get_userdata( $uid );
+	if ( ! $u || $u->user_login !== FSA_V2_TESTER ) return $caps;
+	$page = get_page_by_path( FSA_V2_SLUG );
+	return ( $page && (int) $args[0] === (int) $page->ID ) ? array( 'read' ) : $caps;
+}, 10, 4 );
 
 // 1. access: admins only, not indexed
 add_action( 'template_redirect', function () {
