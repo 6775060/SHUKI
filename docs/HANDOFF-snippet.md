@@ -49,6 +49,7 @@ Every item below was a decision by the site owner (the user).
 | 35 | Domains: the registration date is light grey (`--faint`); on phones it sits at the far left of its line | `.dom-tbl>tbody>tr>td.num` |
 | 36 | All icons 20% lighter than the text (`--ic: color-mix(ink 80%, white)`), full colour on hover: row actions, certificate, invoice, header search/cart, logout. **Download icons keep full strength.** Already-lighter icons (note X, form X) keep their shade | `:root{--ic}`, the `.ibtn:not(...)` rule |
 | 37 | "פונטים שלי" subtitle: "פונטים שקנית בנפרד, מחוץ למינוי." (the webfont-covers-3-sites sentence removed) | `V.lic` |
+| 38 | Quota text: "ניתן לרשום 3 דומיינים בכל חודש. מתחדש ב־1 בנובמבר." The date is **not hard-coded**: take it from the Stage 2 API (`quota.resets`, the first day of the next cycle) and format it as "1 ב<month>"; the quota-full line uses the same date ("מתחדש ב־… צריך עוד עכשיו?") | `nextReset()`, `subsDomains()`, `quotaFullPlan()` |
 
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);

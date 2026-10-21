@@ -700,6 +700,8 @@ const MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יונ
 let BONUS=0;
 /* registration cycle: domains registered in the current cycle (1.10–31.10.2026) can still be edited; older ones are locked */
 const CYCLE={start:new Date(2026,9,1),end:new Date(2026,10,1),label:'אוקטובר'};
+/* next quota renewal, from the registration cycle (live site: quota.resets from the Stage 2 API) */
+const nextReset=()=>`${CYCLE.end.getDate()} ב${MONTHS[CYCLE.end.getMonth()]}`;
 const parseD=s=>{const [d,m,y]=s.split('.').map(Number);return new Date(y,m-1,d)};
 const canEdit=s=>{const d=parseD(s);return d>=CYCLE.start&&d<CYCLE.end};
 /* row actions.
@@ -792,7 +794,7 @@ function subsDomains(){
  return `${demo}
  <div class="dom-head">
    <div><b style="font-size:18px">דומיינים במינוי ${p.label}</b>
-   <div class="hint" style="margin:2px 0 0">${lim?`ניתן לרשום ${p.n} דומיינים בכל חודש${BONUS?` + ${BONUS} נוספים שנרכשו`:''}. המכסה מתחדשת ב־1 בנובמבר.`:'רישום דומיינים ללא הגבלה, כל עוד המינוי פעיל.'}</div></div>
+   <div class="hint" style="margin:2px 0 0">${lim?`ניתן לרשום ${p.n} דומיינים בכל חודש${BONUS?` + ${BONUS} נוספים שנרכשו`:''}. מתחדש ב־${nextReset()}.`:'רישום דומיינים ללא הגבלה, כל עוד המינוי פעיל.'}</div></div>
    ${lim?`<div class="usage"><span class="num"><b>${used}</b> מתוך ${lim} החודש</span><span class="track"><i style="width:${Math.min(100,used/lim*100)}%;background:${full?'var(--bad)':used/lim>=.66?'var(--warn)':'var(--ok)'}"></i></span></div>`:'<span class="chip">ללא הגבלה</span>'}
  </div>
  <div class="box dom-box sub-reg ${state.regOpen?'reg-on reg-done':''}">
@@ -817,7 +819,7 @@ function subsDomains(){
 }
 function quotaFullPlan(){
  return `<div class="quota-line">
-  <div class="msg"><b>ניצלת את ${PLAN[state.plan].n+BONUS} הדומיינים של החודש</b><span>המכסה מתחדשת ב־1 בנובמבר. צריך עוד עכשיו?</span></div>
+  <div class="msg"><b>ניצלת את ${PLAN[state.plan].n+BONUS} הדומיינים של החודש</b><span>מתחדש ב־${nextReset()}. צריך עוד עכשיו?</span></div>
   <button class="btn btn-grad" data-planaddon="1">דומיין נוסף · ₪79</button>
   <a class="linkbtn" href="https://fontshok.co.il/מחירון-רישיונות-ומנויים/">או שדרוג לאקסטרה</a>
  </div>`;
