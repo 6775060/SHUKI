@@ -123,13 +123,15 @@ a{color:inherit}
   .dl-tbl .wsel{width:auto;height:32px;padding:0 10px;gap:6px;font-size:13px}
   .dl-tbl .wsel .wsel-l{display:none}
   .dl-tbl .wsel .wsel-s{display:inline}
-  .note{flex-wrap:wrap;align-items:flex-start;row-gap:6px}
-  .note .note-txt{flex:1 1 calc(100% - 34px)}
-  .note .linkbtn{margin-inline-start:30px}
-  .note .note-x{margin-inline-start:auto}
   /* new-version label: same line as the font name, at the far (left) end */
   .dl-tbl tbody tr>td:first-child{display:flex!important;align-items:baseline;gap:8px}
   .dl-tbl .ver{margin:0 auto 0 0;margin-inline-start:auto;margin-inline-end:0}
+  /* subscription fold: next payment | start date side by side, payment method underneath */
+  .plan .plan-more-in{grid-template-columns:1fr 1fr;column-gap:16px}
+  .plan .plan-more-in>div:nth-child(3){grid-column:1/-1}
+  /* font-update note: one line on phones (no sparkle, a bit tighter) */
+  .note{gap:6px;font-size:14px;padding-inline:0}
+  .note .note-ic{display:none}
   /* ZIP buttons side by side */
   .tbl tbody tr.zip-row{flex-wrap:nowrap;gap:8px}
   .tbl tbody tr.zip-row>td:empty{display:none}
@@ -206,7 +208,7 @@ a{color:inherit}
 .plan-more{flex-basis:100%;display:grid;grid-template-rows:0fr;transition:grid-template-rows .5s var(--ease)}
 .plan-more>div{overflow:hidden;min-height:0}
 .plan.open .plan-more{grid-template-rows:1fr}
-.plan-more-in{display:flex;flex-wrap:wrap;gap:12px 40px;padding-top:14px;margin-top:14px;border-top:1px solid #E6E3F0;font-size:14px;opacity:0;transform:translateY(-4px);transition:opacity .3s ease,transform .4s var(--ease)}
+.plan-more-in{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,max-content));gap:14px 40px;padding-top:14px;margin-top:14px;border-top:1px solid #E6E3F0;font-size:14px;opacity:0;transform:translateY(-4px);transition:opacity .3s ease,transform .4s var(--ease)}
 .plan.open .plan-more-in{opacity:1;transform:none;transition:opacity .45s ease .1s,transform .5s var(--ease) .05s}
 .plan-more-in b{display:block;font-weight:500;color:var(--muted);font-size:13px}
 .plan-more-in span{font-size:15px}
@@ -385,6 +387,10 @@ body.show-new .x-new::before{content:attr(data-new);position:absolute;top:-22px;
 .note-txt b{color:var(--ink);font-weight:600}
 .note .linkbtn{font-size:14px}
 .note-x{width:28px;height:28px;color:var(--faint)}
+.nowrap{white-space:nowrap}
+.note-dl{width:32px;height:32px;color:var(--violet-text);flex:none}
+.note-dl .icon{width:20px;height:20px}
+.note-dl:hover{background:#EEE9FF}
 .note-x .icon{width:18px;height:18px}
 /* registered-domains list: white, hairline rows, outside the grey form box */
 /* one fixed spot for the save button on every profile tab: bottom, aligned to the right edge of the grid */
@@ -700,10 +706,10 @@ V.subs=(tab)=>`
      <div class="plan-desc">${PLAN[state.plan].desc}</div>
    </div>
    <div class="dates">
-     <div><b>תשלום הבא</b><span class="num">26 בנובמבר 2026</span></div>
      <button class="plan-tg" data-plantg="1" aria-expanded="${!!state.planOpen}" aria-controls="planMore">פרטים ${ICON.chev}</button>
    </div>
    <div class="plan-more" id="planMore"><div><div class="plan-more-in">
+     <div><b>תשלום הבא</b><span class="num">26 בנובמבר 2026</span></div>
      <div><b>תחילת המינוי</b><span class="num">26 בינואר 2023</span></div>
      <div><b>אמצעי תשלום</b><span class="num">ויזה •••• 4821</span> <a href="#" data-t="מעבר לעדכון כרטיס בסמית" style="font-size:13px">עדכון</a></div>
    </div></div></div>
@@ -717,8 +723,8 @@ V.subs=(tab)=>`
 /* font-update note: sits under the download table ("כל הפונטים לאתרים / לדסקטופ") */
 const fontNote=()=>state.noteHidden?'':`<div class="note x-new" data-new="חדש: עדכון פונט">
    <span class="note-ic">${ICON.spark}</span>
-   <span class="note-txt"><b>דיסקברי רב לשוני</b>, בגרסה חדשה <span dir="ltr">V.2</span></span>
-   <button class="linkbtn" data-t="מוריד את דיסקברי רב לשוני V.2">להורדה</button>
+   <span class="note-txt"><b>דיסקברי רב לשוני</b>, <span class="nowrap">בגרסה חדשה <span dir="ltr">V.2</span></span></span>
+   <button class="ibtn note-dl" aria-label="הורדת דיסקברי רב לשוני V.2" title="הורדה" data-t="מוריד את דיסקברי רב לשוני V.2">${ICON.dl}</button>
    <button class="ibtn note-x" data-hidenote="1" aria-label="הסתרת ההודעה">${ICON.close}</button>
  </div>`;
 
