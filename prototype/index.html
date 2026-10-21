@@ -458,6 +458,8 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .hist-body.open>div{padding-top:12px;opacity:1;transform:none;transition:opacity .5s ease .12s,transform .6s var(--ease) .08s,padding-top .6s var(--ease)}
 .hist-scroll{max-height:440px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .hist-scroll thead th{position:sticky;top:0;z-index:2}
+/* "nothing here yet" line inside a table stays quiet on every width */
+.tbl td.hint{font-weight:400;font-size:15px;color:var(--muted)}
 /* domain tables: no grey header band, just a dividing line under it; darker header text */
 .tbl.dom-tbl thead th{background:var(--card);color:#333;border-bottom:1px solid var(--line);border-radius:0}
 .tbl tr.mgroup td{position:sticky;top:44px;z-index:1;background:#fff;font-size:13px;font-weight:600!important;color:var(--violet);padding:14px 16px 6px;border-bottom:1px solid var(--line)}
@@ -899,15 +901,16 @@ const LIC_TYPES=['וובפונט','דסקטופ','אפליקציה'];
 const ownedTypes=()=>LIC_TYPES.filter(t=>LIC.some(l=>l.t.split(' + ').includes(t)));
 const licFilterBar=()=>{const ts=ownedTypes();if(!ts.includes(state.licFilter))state.licFilter='';if(ts.length<2)return '';return `<div class="seg-f" role="group" aria-label="סינון לפי רישיון">${['',...ts].map(t=>`<button data-licf="${t||'all'}" aria-pressed="${(state.licFilter||'')===t}">${t||'הכל'}</button>`).join('')}</div>`};
 function licTable(open){
- const hasSites=LIC.some(l=>l.web),cols=hasSites?5:4;
- return `<div class="tbl-wrap lic-wrap"><table class="tbl"><thead><tr><th>שם הפונט</th><th>משקל</th><th>רישיון</th>${hasSites?'<th>ניצול אתרים</th>':''}<th></th></tr></thead><tbody>
+ /* the weight column shows only when the store gives weight names */
+ const hasSites=LIC.some(l=>l.web),hasW=LIC.some(l=>l.w),cols=(hasSites?5:4)-(hasW?0:1);
+ return `<div class="tbl-wrap lic-wrap"><table class="tbl"><thead><tr><th>שם הפונט</th>${hasW?'<th>משקל</th>':''}<th>רישיון</th>${hasSites?'<th>ניצול אתרים</th>':''}<th></th></tr></thead><tbody>
  ${licGroups().filter(ids=>!state.licFilter||ids.some(i=>LIC[i].t.split(' + ').includes(state.licFilter))).map(ids=>{const L=ids.map(i=>LIC[i]),l=L[0],wi=ids.find(i=>LIC[i].web),w=wi===undefined?null:LIC[wi],isOpen=w&&open===wi,full=w&&w.u>=w.n;
  const types=[...new Set(L.flatMap(x=>x.t.split(' + ')))];
  const certs=ids.map(i=>`<button %B data-cert="lic:${i}">%I${ids.length>1?`תעודת ${LIC[i].t}`:''}</button>`);
  const dls=ids.flatMap(i=>LIC[i].t.split(' + ').map(t=>`<button %B data-t="מוריד את ${l.f} ${l.w} ${FMT[t]||''}">%I${ids.length>1||LIC[i].t.includes('+')?`הורדה ${FMT[t]||t}`:''}</button>`));
  return `<tr class="${isOpen?'is-open':''}">
  <td><span class="fname">${w?`<button class="ibtn exp" data-open="${wi}" aria-expanded="${isOpen}" aria-label="${isOpen?'סגירת':'פתיחת'} רישום האתרים של ${l.f}" title="${isOpen?'סגירה':'רישום אתרים'}">${ICON.globe}</button>`:'<span class="exp-ph"></span>'}${l.f}</span></td>
- <td>${l.w}</td><td>${types.map(x=>`<span class="ltag">${x}</span>`).join(' ')}</td>
+ ${hasW?`<td>${l.w}</td>`:''}<td>${types.map(x=>`<span class="ltag">${x}</span>`).join(' ')}</td>
  ${hasSites?`<td>${w?meter(w.u,w.n):''}</td>`:''}
  <td><div class="acts">
    ${choice(ICON.cert,'תעודת רישיון','ibtn',certs)}

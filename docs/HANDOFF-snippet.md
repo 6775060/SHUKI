@@ -60,6 +60,8 @@ Every item below was a decision by the site owner (the user).
 | 46 | Domain tables ("דומיינים" and "המינוי שלי → רישום דומיינים"), desktop header: no grey band, white with a 1px `--line` rule under it, text `#333` (darker than before). The column "דרך" is renamed **"מינוי"** | `.tbl.dom-tbl thead th`, `DOM_THEAD` |
 | 47 | Lighter button gradient: `--grad: linear-gradient(90deg,#BCB6FF 0%,#EACCFF 100%)` (was `#A29BFE → #E1B6FF`), so the dark text reads better on the violet end | `:root{--grad}` |
 
+**Status (21.10.2026):** items 1–47 are ported in `wp-snippet/fsa-v2-snippet.php` (built from the live snippet the owner exported, `wp-snippet/fsa-v2-snippet.before.php`, merged three-way with the prototype). Live-data rules kept from the old build: real download links, real orders/invoices, profile from the user, logout link; every action that needs Stage 2 (register, edit, remove, add-on, PDF) shows "הפעולה הזו תחובר בשלב הבא". Still waiting on store data: weight names (the weight column and per-weight picker hide when there are none) and licence-type names (item 5).
+
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);
 - whether Grow/Meshulam can charge a saved card without leaving the page, which would keep the whole add-on purchase inside the cart.
