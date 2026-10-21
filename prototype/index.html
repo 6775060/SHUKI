@@ -819,7 +819,7 @@ function subsDomains(){
    :`<tr><td class="num">${s[0]}</td><td>${s[1]}</td><td><bdi dir="ltr">${s[2]}</bdi></td><td>${s[3]}</td>
  <td>${rowActs(`sd:${j}`,s[0],`sd:${j}`,`data-sddel="${j}"`)}</td></tr>`).join('')||`<tr><td colspan="5" class="hint" style="padding:18px 0">עוד לא נרשמו דומיינים החודש</td></tr>`}
  </tbody></table>
- <p class="hint lock-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}. אחרי זה הדומיינים נסגרים ועוברים <button class="linkbtn" data-go="dom">להיסטוריית הדומיינים</button></p>`;
+ <p class="hint lock-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</p>`;
 }
 function quotaFullPlan(){
  return `<div class="quota-line">
@@ -929,7 +929,7 @@ V.dom=()=>{
  <div class="tbl-wrap"><table class="tbl dom-tbl">${thead}<tbody>
  ${now.map(row).join('')||`<tr><td colspan="5" class="hint">עוד לא נרשמו דומיינים החודש</td></tr>`}
  </tbody></table></div>
- <p class="hint lock-note dom-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}. דומיין שהוסר או שונה לא נשמר בהיסטוריה.</p>
+ <p class="hint lock-note dom-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</p>
  <button class="hist-toggle" data-hist="1" aria-expanded="${!!state.histOpen}" aria-controls="histBody">${ICON.chev}<span class="h2-sec" style="margin:0">היסטוריית דומיינים <span class="hint" style="margin:0;font-weight:400">${past.length} דומיינים</span></span></button>
  <div class="hist-body ${state.histOpen?'open':''}" id="histBody"><div><div class="tbl-wrap hist-scroll"><table class="tbl dom-tbl">${thead}<tbody>${hist}</tbody></table></div></div></div>`;
 };
