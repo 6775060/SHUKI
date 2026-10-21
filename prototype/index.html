@@ -841,7 +841,7 @@ function quotaFull(l){
 /* דומיינים: read-only overview of every site, whatever it came through. Registering happens in "המינוי שלי" or "פונטים שרכשתי". */
 V.dom=()=>{
  const p=PLAN[state.plan];
- const fromSub=SUBDOM[state.plan].map((s,j)=>({s,src:`<span class="src sub">${logo(state.plan)}מינוי ${p.label}</span>`,font:s[3],cert:`sd:${j}`,del:`data-sddel="${j}"`}));
+ const fromSub=SUBDOM[state.plan].map((s,j)=>({s,src:`<span class="src sub">${logo(state.plan)}${p.label}</span>`,font:s[3],cert:`sd:${j}`,del:`data-sddel="${j}"`}));
  const fromLic=LIC.map((l,i)=>l.web?l.sites.map((s,j)=>({s,src:`<span class="src buy">רכישה</span>`,font:`${l.f} ${l.w}`,cert:`dom:${i}:${j}`,del:`data-del="${i}:${j}"`})):[]).flat();
  const all=[...fromSub,...fromLic].sort((a,b)=>parseD(b.s[0])-parseD(a.s[0]));
  const now=all.filter(r=>canEdit(r.s[0])),past=all.filter(r=>!canEdit(r.s[0]));
