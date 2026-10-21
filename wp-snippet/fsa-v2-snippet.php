@@ -7,12 +7,17 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
+// a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
+define( 'FSA_V2_TESTER', 'claude-test' );
+function fsa_v2_can_view() {
+	return current_user_can( 'manage_options' ) || ( is_user_logged_in() && wp_get_current_user()->user_login === FSA_V2_TESTER );
+}
 
 // 1. access: admins only, not indexed
 add_action( 'template_redirect', function () {
 	if ( ! is_page( FSA_V2_SLUG ) ) return;
 	if ( ! is_user_logged_in() ) { auth_redirect(); }
-	if ( ! current_user_can( 'manage_options' ) ) {
+	if ( ! fsa_v2_can_view() ) {
 		wp_safe_redirect( function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/' ) );
 		exit;
 	}
@@ -191,7 +196,7 @@ function fsa_v2_debug() {
 }
 
 add_shortcode( 'fs_account_v2', function () {
-	if ( ! current_user_can( 'manage_options' ) ) return '';
+	if ( ! fsa_v2_can_view() ) return '';
 	if ( isset( $_GET['fsa_debug'] ) ) return fsa_v2_debug();
 	$data = wp_json_encode( fsa_v2_data(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP );
 	$css  = <<<'FSACSS'
