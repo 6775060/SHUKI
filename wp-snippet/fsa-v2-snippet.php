@@ -135,8 +135,62 @@ function fsa_v2_data() {
 }
 
 // 3. the shortcode
+// 2b. one-off check (admins, ?fsa_debug=1): shows where the store keeps weight names and licence types. Read-only.
+function fsa_v2_shape( $v, $depth = 0 ) {
+	if ( is_array( $v ) ) {
+		if ( $depth > 2 ) return 'array(' . count( $v ) . ')';
+		$out = array();
+		foreach ( array_slice( $v, 0, 12, true ) as $k => $x ) $out[ $k ] = fsa_v2_shape( $x, $depth + 1 );
+		return $out;
+	}
+	if ( is_object( $v ) ) return 'object ' . get_class( $v );
+	$v = (string) $v;
+	if ( preg_match( '#^https?://#', $v ) ) return '(link: ' . basename( (string) wp_parse_url( $v, PHP_URL_PATH ) ) . ')'; // file name only, never the link
+	return mb_strlen( $v ) > 80 ? mb_substr( $v, 0, 80 ) . '…' : $v;
+}
+function fsa_v2_debug() {
+	$r = array();
+	if ( function_exists( 'get_field' ) ) {
+		$rows = (array) get_field( 'fonts-repeater', 'option' );
+		$r['subscription_fonts_count'] = count( $rows );
+		$r['subscription_font_rows'] = fsa_v2_shape( array_slice( $rows, 0, 2 ) );
+	}
+	$names = array();
+	foreach ( array_slice( (array) ( function_exists( 'get_field' ) ? get_field( 'fonts-repeater', 'option' ) : array() ), 0, 2 ) as $row ) {
+		if ( ! empty( $row['font-name'] ) ) $names[] = wp_strip_all_tags( $row['font-name'] );
+	}
+	foreach ( $names as $n ) {
+		foreach ( get_posts( array( 'post_type' => 'product', 's' => $n, 'posts_per_page' => 2 ) ) as $post ) {
+			$pr = function_exists( 'wc_get_product' ) ? wc_get_product( $post->ID ) : null;
+			if ( ! $pr ) continue;
+			$attrs = array();
+			foreach ( $pr->get_attributes() as $key => $att ) {
+				$attrs[ $key ] = is_object( $att ) && $att->is_taxonomy() ? wp_list_pluck( (array) wc_get_product_terms( $post->ID, $att->get_name() ), 'name' ) : ( is_object( $att ) ? $att->get_options() : $att );
+			}
+			$vars = array();
+			if ( $pr->is_type( 'variable' ) ) {
+				foreach ( array_slice( $pr->get_children(), 0, 4 ) as $vid ) {
+					$v = wc_get_product( $vid );
+					if ( $v ) $vars[] = array( 'attributes' => $v->get_attributes(), 'downloads' => array_values( wp_list_pluck( array_map( function ( $d ) { return array( 'name' => $d->get_name() ); }, $v->get_downloads() ), 'name' ) ) );
+				}
+			}
+			$r['products'][] = array(
+				'search' => $n, 'id' => $post->ID, 'title' => $post->post_title, 'type' => $pr->get_type(),
+				'attributes' => $attrs, 'variations_count' => $pr->is_type( 'variable' ) ? count( $pr->get_children() ) : 0, 'variations_sample' => $vars,
+				'downloads' => array_values( array_map( function ( $d ) { return $d->get_name(); }, $pr->get_downloads() ) ),
+				'acf_fields' => function_exists( 'get_fields' ) ? fsa_v2_shape( (array) get_fields( $post->ID ) ) : 'no acf',
+			);
+		}
+	}
+	if ( function_exists( 'wc_get_customer_available_downloads' ) ) {
+		$r['my_downloads_sample'] = array_map( function ( $d ) { return array( 'product' => $d['product_name'], 'file' => $d['download_name'] ); }, array_slice( wc_get_customer_available_downloads( get_current_user_id() ), 0, 6 ) );
+	}
+	return '<div dir="ltr" style="max-width:1100px;margin:30px auto;padding:20px;background:#fff;border:2px solid #5B3FFF;border-radius:12px"><p style="font:600 16px sans-serif;margin:0 0 10px">FS check: copy everything in the box below and send it</p><textarea readonly style="width:100%;height:420px;font:12px monospace" onclick="this.select()">' . esc_textarea( wp_json_encode( $r, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT ) ) . '</textarea></div>';
+}
+
 add_shortcode( 'fs_account_v2', function () {
 	if ( ! current_user_can( 'manage_options' ) ) return '';
+	if ( isset( $_GET['fsa_debug'] ) ) return fsa_v2_debug();
 	$data = wp_json_encode( fsa_v2_data(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP );
 	$css  = <<<'FSACSS'
 #fsa{direction:rtl;text-align:right;width:100vw;margin-inline:calc(50% - 50vw);position:relative;padding-block:1px}
