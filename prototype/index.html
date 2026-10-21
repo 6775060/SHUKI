@@ -163,6 +163,7 @@ a{color:inherit}
 .tbl tbody tr:first-child td{padding-top:30px}
 .tbl tbody tr:not(.drawer):hover td{background:#FBFAFE}
 .tbl .sm{display:block;font-size:13px;color:var(--muted);font-weight:400}
+.tbl bdi.sm{text-align:right;unicode-bidi:isolate}
 .tbl-wrap{overflow-x:auto}
 .acts{display:flex;gap:14px;justify-content:flex-end;align-items:center}
 .ibtn{all:unset;cursor:pointer;display:inline-grid;place-items:center;width:32px;height:32px;border-radius:8px}
@@ -655,7 +656,7 @@ function rowActs(key,date,certSpec,delAttr){
  return `<div class="acts"><button class="ibtn" aria-label="עריכת הדומיין" title="${tip}" data-edit="${key}">${ICON.edit}</button>${cert}<button class="ibtn" aria-label="הסרת הדומיין" ${delAttr}>${ICON.trash}</button></div>`;
 }
 const editCells=(name,host)=>`<td><input class="ed ed-name" value="${name}" aria-label="שם האתר"></td><td><input class="ed ed-host" dir="ltr" value="${host}" aria-label="כתובת האתר"></td>`;
-const editHost=(name,host)=>`<input class="ed ed-host" dir="ltr" value="${host}" aria-label="כתובת האתר"><input class="ed ed-name" value="${name}" aria-label="שם האתר">`;
+const editHost=(name,host)=>`<input class="ed ed-name" value="${name}" aria-label="שם האתר"><input class="ed ed-host" dir="ltr" value="${host}" aria-label="כתובת האתר">`;
 const editBtns=()=>`<div class="acts"><button class="ibtn ok-btn" data-edsave="1" aria-label="שמירה">${ICON.ok}</button><button class="ibtn" data-edcancel="1" aria-label="ביטול">${ICON.close}</button></div>`;
 function fontPicker(sel){const on=sel.length>=2;return `<div class="fld fontpick ed-fonts"><button type="button" class="fp-btn" aria-haspopup="true" aria-expanded="false" aria-label="פונטים"><span class="fp-val">${sel.join(', ')||'בחירת פונטים'}</span>${ICON.chev}</button>
  <div class="fp-menu">${FAMILY.map(f=>{const c=sel.includes(f[0]);return `<label class="${!c&&on?'off':''}"><input type="checkbox" value="${f[0]}" ${c?'checked':''} ${!c&&on?'disabled':''}> ${f[0]}</label>`}).join('')}<p class="fp-hint ${on?'max':''}">אפשר לבחור עד 2 פונטים לכל אתר</p></div></div>`}
@@ -846,7 +847,7 @@ V.dom=()=>{
  const now=all.filter(r=>canEdit(r.s[0])),past=all.filter(r=>!canEdit(r.s[0]));
  const row=r=>state.editKey===r.cert
    ?`<tr class="editing" data-key="${r.cert}"><td><div class="ed-pair stacked">${editHost(r.s[1],r.s[2])}</div></td><td>${r.cert.startsWith('sd:')?fontPicker(r.font.split(', ').filter(Boolean)):r.font}</td><td>${r.src}</td><td class="num">${r.s[0]}</td><td>${editBtns()}</td></tr>`
-   :`<tr><td><bdi dir="ltr">${r.s[2]}</bdi><span class="sm">${r.s[1]}</span></td><td>${r.font}</td><td>${r.src}</td><td class="num">${r.s[0]}</td>
+   :`<tr><td><span class="site-n">${r.s[1]}</span><bdi dir="ltr" class="sm">${r.s[2]}</bdi></td><td>${r.font}</td><td>${r.src}</td><td class="num">${r.s[0]}</td>
  <td>${rowActs(r.cert,r.s[0],r.cert,r.del)}</td></tr>`;
  /* history grouped by month, newest first */
  let last='';const hist=past.map(r=>{const d=parseD(r.s[0]),k=`${MONTHS[d.getMonth()]} ${d.getFullYear()}`;const h=k!==last?`<tr class="mgroup"><td colspan="5">${k}</td></tr>`:'';last=k;return h+row(r)}).join('');

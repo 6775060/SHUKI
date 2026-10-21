@@ -33,6 +33,7 @@ Every item below was a decision by the site owner (the user).
 | 19 | Phones: the white panel's top corners are square (the tab bar runs straight); the bottom corners stay rounded | `.shell{border-start-start-radius:0;border-start-end-radius:0}` in the 760px block |
 | 20 | Phones: the "גרסה חדשה V.2" label sits on the font name's line, at the far left end (desktop: under the name) | `.dl-tbl tbody tr>td:first-child{display:flex}`, `.dl-tbl .ver{margin-inline-start:auto}` in the 760px block |
 | 21 | Wording of the font-update note: "**דיסקברי רב לשוני**, בגרסה חדשה V.2" (replaces "דיסקברי 2.0 זמינה להורדה · 3 משקלים חדשים וניקוד מלא"); its download toast and the V.2 label's tooltip use the same wording | `fontNote()`, `.ver` title |
+| 22 | "דומיינים" (this month + history): the site name on top (bold), the domain address under it (small, muted, right-aligned). The edit row stacks the fields in the same order: name, then address | `V.dom` row, `editHost()`, `.tbl bdi.sm{text-align:right}` |
 
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);
