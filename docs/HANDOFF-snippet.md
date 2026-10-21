@@ -31,6 +31,7 @@ Every item below was a decision by the site owner (the user).
 | 17 | Phones: the note under the downloads table has its text on its own lines, with the "להורדה" link and the X together on the last line | `.note` rules in the 760px block |
 | 18 | Subscription box: the coloured edge always uses the shown subscription's colours (`plan-${plan}` class): web = green-blue, extra = violet, desktop = pink, barter = grey, academic = yellow | `.plan-web::after` etc. |
 | 19 | Phones: the white panel's top corners are square (the tab bar runs straight); the bottom corners stay rounded | `.shell{border-start-start-radius:0;border-start-end-radius:0}` in the 760px block |
+| 20 | Phones: the "גרסה חדשה V.2" label sits on the font name's line, at the far left end (desktop: under the name) | `.dl-tbl tbody tr>td:first-child{display:flex}`, `.dl-tbl .ver{margin-inline-start:auto}` in the 760px block |
 
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);
