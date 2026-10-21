@@ -593,17 +593,11 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
   .plan{padding-inline-start:16px;column-gap:12px}
   .plan>img{width:40px;height:40px}
   .plan-tg{padding:4px 8px}
-  .plan>.dates{position:absolute;top:12px;inset-inline-end:26px;margin:0}
-  .plan>.plan-id>.name{padding-inline-end:100px;flex-direction:column;align-items:flex-start;row-gap:4px}
-  .plan>.plan-id>.name>.chip{order:-1}
-  /* small status badge, tucked at the top next to the logo */
-  .plan{align-items:flex-start}
-  .plan>.plan-id{padding-top:24px}
-  .plan>img{margin-top:24px}
-  /* centred over the logo (logo: 40px wide, 16px from the edge) */
-  .plan>.plan-id>.name>.chip{position:absolute;top:10px;inset-inline-start:36px;transform:translateX(50%);font-size:11px;padding:0 7px;height:18px;line-height:18px;gap:4px}
+  .plan>.dates{position:absolute;top:12px;inset-inline-end:14px;margin:0}
+  /* name row: plan name, then a small yellow "פעיל" badge right after it; "פרטים" pinned at the far end of the same line */
+  .plan>.plan-id>.name{padding-inline-end:78px;flex-direction:row;flex-wrap:wrap;align-items:center;column-gap:6px;row-gap:4px}
+  .plan>.plan-id>.name>.chip{font-size:11px;padding:0 7px;height:18px;line-height:18px;gap:4px;background:#FFF3C4;color:#8A6400}
   .plan>.plan-id>.name>.chip::before{width:5px;height:5px}
-  .plan>.plan-id>.name>.chip{background:#FFF3C4;color:#8A6400}
   /* ZIP buttons sit under their own columns (אתרים, דסקטופ); the empty weight cell keeps the third slot */
   .dl-tbl tbody tr.zip-row>td:first-child{display:none}
   .dl-tbl.tbl tbody tr.zip-row>td:last-child:empty{display:block;flex:1 1 0}
@@ -623,7 +617,7 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
   .sec-row .sec-add .icon{width:18px;height:18px}
   .head-row:has(.head-act) .h1{padding-inline-end:0;min-height:34px;display:flex;align-items:center}
 }
-@media (max-width:340px){.plan>.dates{position:static;flex-basis:100%;margin:6px 0 0}.plan>.plan-id>.name{padding-inline-end:0}}
+@media (max-width:379px){.plan>.dates{position:static;flex-basis:100%;margin:6px 0 0}.plan>.plan-id>.name{padding-inline-end:0}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -829,12 +823,9 @@ function subsDomains(){
      <button class="btn btn-grad" style="height:40px">רישום דומיין</button>
    </form><p class="form-err" id="sdErr" hidden></p></div></div>`}
  </div>
- <table class="mini lined"><thead><tr><th>תאריך</th><th>שם האתר</th><th>כתובת אתר</th><th>פונטים</th><th></th></tr></thead><tbody>
- ${list.map((s,j)=>!canEdit(s[0])?'':state.editKey===`sd:${j}`
-   ?`<tr class="editing" data-key="sd:${j}"><td class="num">${s[0]}</td>${editCells(s[1],s[2])}<td>${fontPicker(s[3].split(', ').filter(Boolean))}</td><td>${editBtns()}</td></tr>`
-   :`<tr><td class="num">${s[0]}</td><td>${s[1]}</td><td><bdi dir="ltr">${s[2]}</bdi></td><td>${s[3]}</td>
- <td>${rowActs(`sd:${j}`,s[0],`sd:${j}`,`data-sddel="${j}"`)}</td></tr>`).join('')||`<tr><td colspan="5" class="hint" style="padding:18px 0">עוד לא נרשמו דומיינים החודש</td></tr>`}
- </tbody></table>
+ <div class="tbl-wrap"><table class="tbl dom-tbl">${DOM_THEAD}<tbody>
+ ${list.map(subRow).filter(r=>canEdit(r.s[0])).sort((a,b)=>parseD(b.s[0])-parseD(a.s[0])).map(domRow).join('')||`<tr><td colspan="5" class="hint" style="padding:18px 0">עוד לא נרשמו דומיינים החודש</td></tr>`}
+ </tbody></table></div>
  <p class="hint lock-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</p>`;
 }
 function quotaFullPlan(){
@@ -924,20 +915,25 @@ function quotaFull(l){
  </div>`;
 }
 
+/* one domain row, shared by "דומיינים" and "המינוי שלי → רישום דומיינים" so both look the same */
+const DOM_THEAD=`<thead><tr><th>דומיין</th><th>פונטים</th><th>דרך</th><th>תאריך רישום</th><th></th></tr></thead>`;
+const subRow=(s,j)=>({s,src:`<span class="src sub">${logo(state.plan)}${PLAN[state.plan].label}</span>`,font:s[3],cert:`sd:${j}`,del:`data-sddel="${j}"`});
+function domRow(r){return state.editKey===r.cert
+   ?`<tr class="editing" data-key="${r.cert}"><td><div class="ed-pair stacked">${editHost(r.s[1],r.s[2])}</div></td><td>${r.cert.startsWith('sd:')?fontPicker(r.font.split(', ').filter(Boolean)):r.font}</td><td>${r.src}</td><td class="num">${r.s[0]}</td><td>${editBtns()}</td></tr>`
+   :`<tr><td><span class="site-n">${r.s[1]}</span><bdi dir="ltr" class="sm">${r.s[2]}</bdi></td><td>${r.font}</td><td>${r.src}</td><td class="num">${r.s[0]}</td>
+ <td>${rowActs(r.cert,r.s[0],r.cert,r.del)}</td></tr>`}
+
 /* דומיינים: read-only overview of every site, whatever it came through. Registering happens in "המינוי שלי" or "פונטים שלי". */
 V.dom=()=>{
  const p=PLAN[state.plan];
- const fromSub=SUBDOM[state.plan].map((s,j)=>({s,src:`<span class="src sub">${logo(state.plan)}${p.label}</span>`,font:s[3],cert:`sd:${j}`,del:`data-sddel="${j}"`}));
+ const fromSub=SUBDOM[state.plan].map(subRow);
  const fromLic=LIC.map((l,i)=>l.web?l.sites.map((s,j)=>({s,src:`<span class="src buy">רכישה</span>`,font:`${l.f} ${l.w}`,cert:`dom:${i}:${j}`,del:`data-del="${i}:${j}"`})):[]).flat();
  const all=[...fromSub,...fromLic].sort((a,b)=>parseD(b.s[0])-parseD(a.s[0]));
  const now=all.filter(r=>canEdit(r.s[0])),past=all.filter(r=>!canEdit(r.s[0]));
- const row=r=>state.editKey===r.cert
-   ?`<tr class="editing" data-key="${r.cert}"><td><div class="ed-pair stacked">${editHost(r.s[1],r.s[2])}</div></td><td>${r.cert.startsWith('sd:')?fontPicker(r.font.split(', ').filter(Boolean)):r.font}</td><td>${r.src}</td><td class="num">${r.s[0]}</td><td>${editBtns()}</td></tr>`
-   :`<tr><td><span class="site-n">${r.s[1]}</span><bdi dir="ltr" class="sm">${r.s[2]}</bdi></td><td>${r.font}</td><td>${r.src}</td><td class="num">${r.s[0]}</td>
- <td>${rowActs(r.cert,r.s[0],r.cert,r.del)}</td></tr>`;
+ const row=domRow;
  /* history grouped by month, newest first */
  let last='';const hist=past.map(r=>{const d=parseD(r.s[0]),k=`${MONTHS[d.getMonth()]} ${d.getFullYear()}`;const h=k!==last?`<tr class="mgroup"><td colspan="5">${k}</td></tr>`:'';last=k;return h+row(r)}).join('');
- const thead=`<thead><tr><th>דומיין</th><th>פונטים</th><th>דרך</th><th>תאריך רישום</th><th></th></tr></thead>`;
+ const thead=DOM_THEAD;
  return `
  <div class="head-row"><div><h1 class="h1">דומיינים</h1><p class="sub">כל האתרים שלך במקום אחד. רישום אתר חדש נעשה במינוי או בפונט שרכשת.</p></div>
   <div class="head-act"><button class="btn btn-grad" data-go2="subs" aria-label="רישום אתר במינוי" title="רישום אתר במינוי">${ICON.plus}<span class="ha-l">רישום אתר במינוי</span></button></div></div>
