@@ -458,6 +458,8 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .hist-body.open>div{padding-top:12px;opacity:1;transform:none;transition:opacity .5s ease .12s,transform .6s var(--ease) .08s,padding-top .6s var(--ease)}
 .hist-scroll{max-height:440px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .hist-scroll thead th{position:sticky;top:0;z-index:2}
+/* domain tables: no grey header band, just a dividing line under it; darker header text */
+.tbl.dom-tbl thead th{background:var(--card);color:#333;border-bottom:1px solid var(--line);border-radius:0}
 .tbl tr.mgroup td{position:sticky;top:44px;z-index:1;background:#fff;font-size:13px;font-weight:600!important;color:var(--violet);padding:14px 16px 6px;border-bottom:1px solid var(--line)}
 .tbl>tbody>tr.mgroup>td,.tbl>tbody>tr.mgroup>td:first-child{color:var(--violet);background:var(--card);font-weight:600;border-bottom:0!important}
 .lock-note .icon{width:14px;height:14px;color:var(--faint)}
@@ -939,7 +941,7 @@ function quotaFull(l){
 }
 
 /* one domain row, shared by "דומיינים" and "המינוי שלי → רישום דומיינים" so both look the same */
-const DOM_THEAD=`<thead><tr><th>דומיין</th><th>פונטים</th><th>דרך</th><th>תאריך רישום</th><th></th></tr></thead>`;
+const DOM_THEAD=`<thead><tr><th>דומיין</th><th>פונטים</th><th>מינוי</th><th>תאריך רישום</th><th></th></tr></thead>`;
 const subRow=(s,j)=>({s,src:`<span class="src sub">${logo(state.plan)}${PLAN[state.plan].label}</span>`,font:s[3],cert:`sd:${j}`,del:`data-sddel="${j}"`});
 function domRow(r){return state.editKey===r.cert
    ?`<tr class="editing" data-key="${r.cert}"><td><div class="ed-pair stacked">${editHost(r.s[1],r.s[2])}</div></td><td>${r.cert.startsWith('sd:')?fontPicker(r.font.split(', ').filter(Boolean)):r.font}</td><td>${r.src}</td><td class="num">${r.s[0]}</td><td>${editBtns()}</td></tr>`
