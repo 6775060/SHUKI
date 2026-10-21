@@ -35,6 +35,7 @@ Every item below was a decision by the site owner (the user).
 | 21 | Wording of the font-update note: "**דיסקברי רב לשוני**, בגרסה חדשה V.2" (replaces "דיסקברי 2.0 זמינה להורדה · 3 משקלים חדשים וניקוד מלא"); its download toast and the V.2 label's tooltip use the same wording | `fontNote()`, `.ver` title |
 | 22 | "דומיינים" (this month + history): the site name on top (bold), the domain address under it (small, muted, right-aligned). The edit row stacks the fields in the same order: name, then address | `V.dom` row, `editHost()`, `.tbl bdi.sm{text-align:right}` |
 | 23 | "דומיינים": next to the subscription logo, only the plan name ("וובסטופ"), without the word "מינוי" | `V.dom` `.src.sub` |
+| 24 | Accordions start **closed** on every visit: the invoice in "הזמנות" (open only via the eye button) and the licence drawer. Also: the first invoice line's amount sits level with its label (`.tbl .mini tbody tr:first-child td{padding-top:11px}`) | initial `state.open`, the restore after `localStorage` |
 
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);

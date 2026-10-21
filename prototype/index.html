@@ -164,6 +164,7 @@ a{color:inherit}
 .tbl tbody tr:not(.drawer):hover td{background:#FBFAFE}
 .tbl .sm{display:block;font-size:13px;color:var(--muted);font-weight:400}
 .tbl bdi.sm{text-align:right;unicode-bidi:isolate}
+.tbl .mini tbody tr:first-child td{padding-top:11px}
 .tbl-wrap{overflow-x:auto}
 .acts{display:flex;gap:14px;justify-content:flex-end;align-items:center}
 .ibtn{all:unset;cursor:pointer;display:inline-grid;place-items:center;width:32px;height:32px;border-radius:8px}
@@ -925,8 +926,9 @@ function cert(l,site){
 }
 
 /* state & router */
-let state={view:'subs',plan:'web',sub:{subs:'dl',lic:'list',profile:'me'},open:{lic:-1,orders:0}};
+let state={view:'subs',plan:'web',sub:{subs:'dl',lic:'list',profile:'me'},open:{lic:-1,orders:-1}};
 try{const s=JSON.parse(localStorage.getItem('fs-acc3')||'null');if(s&&V[s.view])state=Object.assign(state,s)}catch(e){}
+state.open={lic:-1,orders:-1};
 {const hv=location.hash.slice(1);if(V[hv])state.view=hv;if(hv==='cert')setTimeout(()=>openCert('sd:0'),50);if(hv==='quota'){state.view='lic';state.open.lic=2}if(hv==='subdom'){state.view='subs';state.sub.subs='reg'}}
 /* back from paying for an add-on on the live site (WooCommerce return URL): reopen the matching registration form */
 {const q=new URLSearchParams(location.search);if(q.get('fs_addon')==='paid'){const lic=q.get('kind')==='lic';
