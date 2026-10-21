@@ -9,9 +9,54 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
-function fsa_v2_can_view() {
-	return current_user_can( 'manage_options' ) || ( is_user_logged_in() && wp_get_current_user()->user_login === FSA_V2_TESTER );
+
+// ── rollout of the new area at /my-account/ ──────────────────────────────
+// 'admins' = admins + the test account only · 'list' = also the users below · 'all' = every logged-in customer
+define( 'FSA_V2_LIVE_FOR', 'admins' );
+// for 'list': usernames or emails, separated by commas
+define( 'FSA_V2_LIVE_USERS', '' );
+// ─────────────────────────────────────────────────────────────────────────
+
+function fsa_v2_is_tester() {
+	return is_user_logged_in() && wp_get_current_user()->user_login === FSA_V2_TESTER;
 }
+function fsa_v2_live_for_user() {
+	if ( ! is_user_logged_in() ) return false;
+	if ( current_user_can( 'manage_options' ) || fsa_v2_is_tester() ) return true;
+	if ( 'all' === FSA_V2_LIVE_FOR ) return true;
+	if ( 'list' === FSA_V2_LIVE_FOR ) {
+		$u = wp_get_current_user();
+		$list = array_filter( array_map( 'trim', explode( ',', strtolower( FSA_V2_LIVE_USERS ) ) ) );
+		return in_array( strtolower( $u->user_login ), $list, true ) || in_array( strtolower( $u->user_email ), $list, true );
+	}
+	return false;
+}
+function fsa_v2_can_view() {
+	return current_user_can( 'manage_options' ) || fsa_v2_is_tester() || fsa_v2_live_for_user();
+}
+// "back to the previous area": ?fsa_old=1 keeps the old area for 30 days, ?fsa_old=0 returns to the new one
+function fsa_v2_wants_old() {
+	static $on = null; // decided once per request; the cookie is set before anything is printed
+	if ( null !== $on ) return $on;
+	if ( isset( $_GET['fsa_old'] ) ) {
+		$on = '1' === $_GET['fsa_old'];
+		if ( ! headers_sent() ) setcookie( 'fsa_old', $on ? '1' : '', $on ? time() + 30 * DAY_IN_SECONDS : time() - 3600, COOKIEPATH ? COOKIEPATH : '/', COOKIE_DOMAIN, is_ssl(), true );
+		return $on;
+	}
+	return $on = ! empty( $_COOKIE['fsa_old'] );
+}
+// the account dashboard (/my-account/ itself, not orders, password etc.) shows the new area to whoever it is live for
+function fsa_v2_takes_account_page() {
+	return function_exists( 'is_account_page' ) && is_account_page() && ! is_wc_endpoint_url() && fsa_v2_live_for_user() && ! fsa_v2_wants_old();
+}
+add_action( 'template_redirect', function () {
+	if ( ! fsa_v2_takes_account_page() ) return;
+	$GLOBALS['fsa_v2_mode'] = 'live';
+	get_header();
+	echo '<main id="content" class="site-main">' . do_shortcode( '[fs_account_v2]' ) . '</main>';
+	get_footer();
+	exit;
+}, 20 );
 // the preview page is private, so WordPress shows the test account a 404; let that one account read this one page
 add_filter( 'map_meta_cap', function ( $caps, $cap, $uid, $args ) {
 	if ( 'read_post' !== $cap || empty( $args[0] ) ) return $caps;
@@ -35,7 +80,7 @@ add_filter( 'wp_robots', function ( $r ) {
 	return $r;
 } );
 add_filter( 'body_class', function ( $c ) {
-	if ( is_page( FSA_V2_SLUG ) ) $c[] = 'fsa-v2';
+	if ( is_page( FSA_V2_SLUG ) || fsa_v2_takes_account_page() ) $c[] = 'fsa-v2';
 	return $c;
 } );
 
@@ -315,6 +360,7 @@ function fsa_v2_data() {
 	return array(
 		'domains' => fsa_v2_domains( $uid ), 'domainFonts' => fsa_v2_domain_fonts(),
 		'domAjax' => admin_url( 'admin-ajax.php' ), 'domNonce' => wp_create_nonce( 'fsa_v2_dom' ),
+		'mode' => isset( $GLOBALS['fsa_v2_mode'] ) ? $GLOBALS['fsa_v2_mode'] : 'preview', 'oldUrl' => add_query_arg( 'fsa_old', '1', function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ) ),
 		'plan' => $plan, 'planStart' => $start, 'nextPay' => '', 'card' => '',
 		'fonts' => $fonts, 'lic' => $lic, 'orders' => $orders,
 		'user' => array(
@@ -985,7 +1031,7 @@ FSACSS;
 	$html = <<<'FSAHTML'
 <div id="fsa"><main class="page">
   <p class="hello x-new" data-new="ברכה עדינה"><span id="greet">ערב טוב</span>, <b id="fsaName"></b> <span class="smiley" aria-hidden="true"><svg viewBox="0 0 24 24"><g class="sm-face"><circle class="sm-ring" cx="12" cy="12" r="10"/><ellipse class="sm-cheek" cx="7.2" cy="14" rx="1.6" ry="1"/><ellipse class="sm-cheek" cx="16.8" cy="14" rx="1.6" ry="1"/><ellipse class="sm-eye sm-eye-l" cx="9" cy="10.2" rx=".75" ry="1.2"/><ellipse class="sm-eye sm-eye-r" cx="15" cy="10.2" rx=".75" ry="1.2"/><path class="sm-mouth" d="M9 15.4c.85.63 1.88 1 3 1s2.15-.37 3-1"/><path class="sm-grin" d="M8 14h8c0 2.4-1.8 4-4 4s-4-1.6-4-4Z"/></g></svg><i class="sm-spark s1"></i><i class="sm-spark s2"></i><i class="sm-spark s3"></i></span></p>
-<p class="live-note">תצוגה מקדימה של האזור האישי החדש · גלוי רק למנהלים · דומיינים ותעודות יחוברו בשלב הבא</p>
+<p class="live-note" id="fsaNote">תצוגה מקדימה של האזור האישי החדש · גלוי רק למנהלים · דומיינים ותעודות יחוברו בשלב הבא</p>
   <div class="shell">
     <nav class="side" aria-label="אזור אישי">
       <button data-view="subs">המינוי שלי</button>
@@ -1531,6 +1577,7 @@ document.addEventListener('input',e=>{if(e.target.dataset.namefor){const n=docum
 document.addEventListener('input',e=>{if(e.target.id==='sd2')$('#sdErr').hidden=true});
 document.addEventListener('input',e=>{if(e.target.id==='oq'){const q=e.target.value.trim().replace('#','');document.querySelectorAll('#otb tr[data-oid]').forEach(r=>r.hidden=q&&!r.dataset.oid.includes(q))}});
 $('#fsaName').textContent=FS.user.first||'';
+if(FS.mode==='live'){const n=$('#fsaNote');if(n)n.innerHTML=`<a href="${ea(FS.oldUrl)}">למעבר לאזור האישי הקודם</a>`}
 const h=new Date().getHours();$('#greet').textContent=h<5?'לילה טוב':h<12?'בוקר טוב':h<17?'צהריים טובים':h<21?'ערב טוב':'לילה טוב';
 document.querySelectorAll('i[data-ic]').forEach(e=>{const w=document.createElement('span');w.className='ic-wrap '+(e.className||'');if(e.title)w.title=e.title;w.innerHTML=ICON[e.dataset.ic];e.replaceWith(w)});
 render({page:true});

@@ -9,7 +9,7 @@ function current_user_can( $c ) { return $GLOBALS['admin']; } function is_user_l
 function auth_redirect() {} function wp_strip_all_tags( $s ) { return strip_tags( $s ); } function sanitize_text_field( $s ) { return $s; } function wp_unslash( $s ) { return $s; }
 function wp_create_nonce( $a ) { return 'N'; } function wp_verify_nonce( $n, $a ) { return 'N' === $n; }
 function wp_die( $m ) { $GLOBALS['died'] = $m; throw new Exception( 'die' ); }
-function home_url( $p = '' ) { return 'https://fontshok.co.il' . $p; } function add_query_arg( $a, $u ) { return $u . '?' . http_build_query( $a ); }
+function home_url( $p = '' ) { return 'https://fontshok.co.il' . $p; } function add_query_arg( ...$x ) { if ( is_array( $x[0] ) ) { $a = $x[0]; $u = $x[1]; } else { $a = array( $x[0] => $x[1] ); $u = $x[2]; } return $u . '?' . http_build_query( $a ); }
 function get_transient( $k ) { return $GLOBALS['transients'][ $k ] ?? false; } function set_transient( $k, $v, $t ) { $GLOBALS['transients'][ $k ] = $v; }
 function get_post_modified_time() { return 1; }
 function get_field( $k, $o ) { return array( array( 'font-name' => 'נוסטלה', 'font-file' => array( 'url' => 'https://x/d.zip' ), 'font-file-web' => array( 'url' => 'https://x/w.zip' ) ) ); }
