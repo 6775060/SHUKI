@@ -139,6 +139,11 @@ a{color:inherit}
   .tbl tbody tr.zip-row>td:last-child:empty{display:none}
   .tbl tbody tr.zip-row .btn-line{width:100%;padding:0 8px;font-size:13px;gap:6px}
 }
+.seg-f{display:inline-flex;align-items:center;gap:2px;background:var(--soft);border-radius:99px;padding:3px}
+.seg-f button{all:unset;cursor:pointer;padding:6px 14px;border-radius:99px;font-size:14px;color:var(--muted);transition:background-color .25s var(--ease),color .25s var(--ease)}
+.seg-f button:hover{color:var(--ink)}
+.seg-f button[aria-pressed="true"]{background:var(--card);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.seg-f button:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
 .demo{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--muted);background:var(--soft);border-radius:99px;padding:3px;margin-bottom:18px}
 .demo span{padding:0 8px}
 .demo button{all:unset;cursor:pointer;padding:3px 12px;border-radius:99px;font-weight:700;color:var(--ink)}
@@ -787,7 +792,7 @@ function subsDownloads(){
 /* פונטים שרכשתי: one list, one row per purchased license. Download + certificate on every row;
    web licenses also show their own domain counter and open a drawer to register. No tabs. */
 V.lic=(tab,open)=>`
- <div class="head-row"><div><h1 class="h1">פונטים שרכשתי</h1><p class="sub">פונטים שקנית בנפרד, מחוץ למינוי. רישיון וובפונט מכסה עד 3 אתרים.</p></div></div>
+ <div class="head-row"><div><h1 class="h1">פונטים שרכשתי</h1><p class="sub">פונטים שקנית בנפרד, מחוץ למינוי. רישיון וובפונט מכסה עד 3 אתרים.</p></div>${licFilterBar()}</div>
  ${licTable(open)}`;
 
 /* one row per font + weight. Every purchased licence stays its own record (own certificate, own files);
@@ -798,10 +803,13 @@ function choice(icon,label,cls,items){
  if(items.length===1)return items[0].replace('%B',`class="${cls}" aria-label="${label}" title="${label}"`).replace('%I',icon);
  return `<div class="pop"><button class="${cls}" data-pop="1" aria-haspopup="true" aria-expanded="false" aria-label="${label}" title="${label}">${icon}</button><div class="pop-menu" role="menu">${items.map(x=>x.replace('%B','role="menuitem"').replace('%I','')).join('')}</div></div>`;
 }
+/* filter by licence type (row shows when any of its licences has that type) */
+const LIC_TYPES=['וובפונט','דסקטופ','אפליקציה'];
+const licFilterBar=()=>`<div class="seg-f" role="group" aria-label="סינון לפי רישיון">${['',...LIC_TYPES].map(t=>`<button data-licf="${t||'all'}" aria-pressed="${(state.licFilter||'')===t}">${t||'הכל'}</button>`).join('')}</div>`;
 function licTable(open){
  const hasSites=LIC.some(l=>l.web),cols=hasSites?5:4;
  return `<div class="tbl-wrap lic-wrap"><table class="tbl"><thead><tr><th>שם הפונט</th><th>משקל</th><th>רישיון</th>${hasSites?'<th>ניצול אתרים</th>':''}<th></th></tr></thead><tbody>
- ${licGroups().map(ids=>{const L=ids.map(i=>LIC[i]),l=L[0],wi=ids.find(i=>LIC[i].web),w=wi===undefined?null:LIC[wi],isOpen=w&&open===wi,full=w&&w.u>=w.n;
+ ${licGroups().filter(ids=>!state.licFilter||ids.some(i=>LIC[i].t.split(' + ').includes(state.licFilter))).map(ids=>{const L=ids.map(i=>LIC[i]),l=L[0],wi=ids.find(i=>LIC[i].web),w=wi===undefined?null:LIC[wi],isOpen=w&&open===wi,full=w&&w.u>=w.n;
  const types=[...new Set(L.flatMap(x=>x.t.split(' + ')))];
  const certs=ids.map(i=>`<button %B data-cert="lic:${i}">%I${ids.length>1?`תעודת ${LIC[i].t}`:''}</button>`);
  const dls=ids.flatMap(i=>LIC[i].t.split(' + ').map(t=>`<button %B data-t="מוריד את ${l.f} ${l.w} ${FMT[t]||''}">%I${ids.length>1||LIC[i].t.includes('+')?`הורדה ${FMT[t]||t}`:''}</button>`));
@@ -813,6 +821,7 @@ function licTable(open){
    ${choice(ICON.cert,'תעודת רישיון','ibtn',certs)}
    ${choice(ICON.dl,`הורדת ${l.f} ${l.w}`,'btn dl-sm',dls)}</div></td></tr>
  ${isOpen?licDrawer(wi,cols,full):''}`}).join('')}
+ ${state.licFilter&&!licGroups().some(ids=>ids.some(i=>LIC[i].t.split(' + ').includes(state.licFilter)))?`<tr><td colspan="${cols}" class="hint" style="padding:22px 16px">אין פונטים עם רישיון ${state.licFilter}</td></tr>`:''}
  </tbody></table></div>`;
 }
 function licDrawer(i,cols,full){const l=LIC[i];
@@ -999,6 +1008,7 @@ document.addEventListener('click',e=>{
  const t=e.target.closest('button,a');if(!t)return;
  if(t.dataset.view){goPage(t.dataset.view);return}
  if(t.dataset.plantg){state.planOpen=!state.planOpen;t.closest('.plan').classList.toggle('open',state.planOpen);t.setAttribute('aria-expanded',state.planOpen);save();return}
+ if(t.dataset.licf){state.licFilter=t.dataset.licf==='all'?'':t.dataset.licf;state.open.lic=-1;render();return}
  if(t.dataset.hist){state.histOpen=!state.histOpen;t.setAttribute('aria-expanded',state.histOpen);$('#histBody').classList.toggle('open',state.histOpen);return}
  if(t.dataset.go){e.preventDefault();if(t.dataset.go==='dom')state.histOpen=true;goPage(t.dataset.go);return}
  if(t.dataset.subtab){state.sub[state.view]=t.dataset.subtab;render({page:true});return}

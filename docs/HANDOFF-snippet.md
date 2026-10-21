@@ -36,6 +36,7 @@ Every item below was a decision by the site owner (the user).
 | 22 | "דומיינים" (this month + history): the site name on top (bold), the domain address under it (small, muted, right-aligned). The edit row stacks the fields in the same order: name, then address | `V.dom` row, `editHost()`, `.tbl bdi.sm{text-align:right}` |
 | 23 | "דומיינים": next to the subscription logo, only the plan name ("וובסטופ"), without the word "מינוי" | `V.dom` `.src.sub` |
 | 24 | Accordions start **closed** on every visit: the invoice in "הזמנות" (open only via the eye button) and the licence drawer. Also: the first invoice line's amount sits level with its label (`.tbl .mini tbody tr:first-child td{padding-top:11px}`) | initial `state.open`, the restore after `localStorage` |
+| 25 | "פונטים שרכשתי": a segmented filter at the left of the header, **הכל / וובפונט / דסקטופ / אפליקציה**. A row shows when any of its licences has the chosen type; an empty result shows "אין פונטים עם רישיון …". Phones: the filter sits under the title | `licFilterBar()`, `.seg-f`, `data-licf` handler, the filter in `licTable()` |
 
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);
