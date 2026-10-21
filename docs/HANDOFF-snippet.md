@@ -1,7 +1,7 @@
 # Handoff: changes to port into the live snippet
 
 For the session that maintains the WordPress snippet `FS · אזור אישי v2 – תצוגה מקדימה` (source: `wp/` on the owner's PC, built with `wp\build.ps1`).
-The source of truth is `prototype/index.html` on branch `claude/fontshok-personal-area-redesign-l4hf60` (artifact https://claude.ai/artifact/EGyx9pYKP34mdrcTJNQSYh, v70).
+The source of truth is `prototype/index.html` on branch `claude/fontshok-personal-area-redesign-l4hf60` (artifact https://claude.ai/artifact/EGyx9pYKP34mdrcTJNQSYh, v71).
 
 How to port:
 - Copy rules exactly, with the snippet's `.fsa-v2` scope prefix.
@@ -56,6 +56,7 @@ Every item below was a decision by the site owner (the user).
 | 42 | Plan descriptions: "מינוי לאתרים ולדסקטופ" (web) and "מינוי לאתרים לדסקטופ ולאפליקציה" (extra) | `PLAN` |
 | 43 | "המינוי שלי → רישום דומיינים": the list under the form uses the same rows as "דומיינים" (shared `domRow()` / `DOM_THEAD`): name over address, fonts, source with the plan logo, date, actions; newest first. The old `mini lined` table is gone | `domRow()`, `subRow()`, `DOM_THEAD`, `subsDomains()` |
 | 44 | "רישום דומיינים" form: **two fields only**, the address and the fonts; the site name is filled from the address (`siteName(host)`), its field is removed. Look: soft lilac box `#FAF6FE` (border `#F1E8FB`, 20px radius); white pill fields 48px (border `#ECE6F2`); globe icon `#9C59CF` inside the address field; hint "הזן דומיין חדש (למשל: example.co.il)", shortened automatically on narrow fields; lilac pill button `#B075FF` "+ הוסף דומיין". Phones: the fields stack and the opener "+ רישום דומיין חדש" uses the same lilac. 761–1100px: address on its own row, fonts and button below. The new row's highlight now also finds the address inside the name cell | `.sub-reg`, `.reg-row`, `.reg-host`, `.reg-add`, `fitPh()`, the `data-subadd` handler, `render()` `o.fresh` |
+| 45 | Every gradient button (`.btn-grad`: "שמירת שינויים", "עדכון סיסמה", cart, add-on, header register, "רישום דומיין חדש", "הוסף דומיין") is a **pill** (`border-radius:99px`) and keeps the gradient. The registration form's "הוסף דומיין" uses the gradient (it replaces item 44's flat `#B075FF`), 42px tall; its fields are 44px; the phone opener is 44px | `.btn.btn-grad`, `.reg-row .reg-add`, `.sub-reg .reg-open` |
 
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);
