@@ -54,6 +54,15 @@ for(const w of [390,1280]){
  await p.fill('#sd2','x.co.il');await p.click('#fsa .reg-add');const rt=await toastNow();if(!rt.includes('בשלב הבא'))bad(`${w} register gives "${rt}"`);
  // hover/focus keep our button look
  for(const s of ['#fsa .reg-add','#fsa .plan-tg','#fsa .tabs button']){const el=p.locator(s).first();const before=await el.evaluate(e=>getComputedStyle(e).backgroundImage+getComputedStyle(e).backgroundColor);await el.hover();await p.waitForTimeout(350);const after=await el.evaluate(e=>{const c=getComputedStyle(e);return c.backgroundImage+c.backgroundColor+'|'+c.color});if(/rgb\(0, 0, 204\)|255, 255, 0/.test(after))bad(`${w} ${s} takes the theme hover colour`);if(s==='#fsa .reg-add'&&!after.includes('gradient'))bad(`${w} ${s} loses its gradient on hover`)}
+ // weight picker: real weights, each with its own links, menu stays inside the screen
+ await go('subs');await p.evaluate(()=>document.querySelector('#fsa [data-subtab="dl"]').click());await p.waitForTimeout(400);
+ const wb=p.locator('#fsa .wsel').last();if(!(await wb.count()))bad(`${w} no weight picker`);else{await wb.scrollIntoViewIfNeeded();await wb.click();await p.waitForTimeout(400);
+  const rows=await p.locator('#fsa .pop.open .wrow').count();if(rows<2)bad(`${w} weight menu rows: ${rows}`);
+  const links=await p.locator('#fsa .pop.open .wrow a.wdl').evaluateAll(a=>a.map(x=>x.getAttribute('href')));if(!links.length||links.some(h=>!/fsa_wdl=/.test(h)))bad(`${w} weight links ${links.slice(0,3)}`);
+  const box=await p.locator('#fsa .pop.open .wsel-menu').boundingBox();if(!box||box.x<0||box.x+box.width>w+1)bad(`${w} weight menu leaves the screen ${JSON.stringify(box)}`);
+  const clip=await p.evaluate(()=>{const m=document.querySelector('#fsa .pop.open .wsel-menu').getBoundingClientRect(),sh=document.querySelector('#fsa .shell').getBoundingClientRect();return m.bottom<=sh.bottom+1&&m.top>=sh.top-1});if(!clip)bad(`${w} weight menu is cut by the panel`);
+  await p.screenshot({path:`${S}/weights-${w}.png`});await p.keyboard.press('Escape');await p.mouse.click(5,5);await p.waitForTimeout(200)}
+ const hdr=await p.evaluate(()=>[...document.querySelectorAll('#fsa .dl-tbl thead th')].map(t=>t.textContent.trim()));if(w>760&&!hdr.includes('הורדה לפי משקל'))bad(`${w} downloads header ${hdr}`);
  // plan details
  await p.click('#fsa [data-plantg]');await p.waitForTimeout(500);if(!(await p.evaluate(()=>document.querySelector('#fsa .plan').classList.contains('open'))))bad(`${w} plan details don't open`);
  // logout & orders links

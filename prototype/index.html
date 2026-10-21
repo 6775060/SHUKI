@@ -502,6 +502,7 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .pop{position:relative;display:inline-flex}
 .pop-menu{position:absolute;top:calc(100% + 6px);inset-inline-end:0;background:var(--card);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:6px;min-width:190px;z-index:7;opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .2s var(--ease),transform .25s var(--ease),visibility 0s linear .25s}
 .pop.open .pop-menu{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+.pop.up .pop-menu{top:auto;bottom:calc(100% + 6px)}
 .pop-menu button{all:unset;box-sizing:border-box;display:block;width:100%;padding:9px 12px;border-radius:6px;font-size:15px;cursor:pointer;white-space:nowrap;text-align:start}
 .pop-menu button:hover,.pop-menu button:focus-visible{background:var(--soft)}
 /* nested list inside the licence drawer: same white hairline table as "המינוי שלי", not the outer table look */
@@ -1172,9 +1173,11 @@ function saveEdit(tr){
 }
 document.addEventListener('keydown',e=>{const tr=e.target.closest&&e.target.closest('tr.editing');if(!tr)return;if(e.key==='Enter'){e.preventDefault();saveEdit(tr)}if(e.key==='Escape'){state.editKey=null;render()}});
 function closeMenus(){document.querySelectorAll('.fp-menu.open').forEach(m=>{m.classList.remove('open');m.parentElement.querySelector('.fp-btn').setAttribute('aria-expanded','false')})}
+/* a menu that would run past the bottom of the white panel opens upwards instead */
+function popFit(p){const m=p.querySelector('.pop-menu'),box=p.closest('.shell')||document.body;if(!m)return;const r=m.getBoundingClientRect(),lim=Math.min(box.getBoundingClientRect().bottom,innerHeight);if(r.bottom>lim-8&&p.getBoundingClientRect().top-r.height>box.getBoundingClientRect().top)p.classList.add('up')}
 function closePops(except){document.querySelectorAll('.pop.open').forEach(p=>{if(p!==except){p.classList.remove('open');p.querySelector('[data-pop]').setAttribute('aria-expanded','false')}})}
 document.addEventListener('click',e=>{const pb=e.target.closest('[data-pop]');
- if(pb){const p=pb.parentElement;closePops(p);const o=p.classList.toggle('open');pb.setAttribute('aria-expanded',o);e.stopImmediatePropagation();return}
+ if(pb){const p=pb.parentElement;closePops(p);p.classList.remove('up');const o=p.classList.toggle('open');pb.setAttribute('aria-expanded',o);if(o)popFit(p);e.stopImmediatePropagation();return}
  closePops()},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePops()});
 document.addEventListener('click',e=>{const fb=e.target.closest('.fp-btn');

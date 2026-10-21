@@ -39,6 +39,83 @@ add_filter( 'body_class', function ( $c ) {
 	return $c;
 } );
 
+// 2a. subscription plan from the user's roles (same rules as snippet #7): [plan, desktop_only]
+function fsa_v2_plan_info( $u ) {
+	$roles = (array) $u->roles;
+	$plan = null;
+	if ( in_array( 'member-extra', $roles, true ) )         $plan = 'extra';
+	elseif ( in_array( 'member-webstop', $roles, true ) )   $plan = 'web';
+	elseif ( in_array( 'member-academic', $roles, true ) )  $plan = 'acad';
+	elseif ( in_array( 'member-desktop', $roles, true ) )   $plan = 'desk';
+	$desktop_only = in_array( 'member-desktop', $roles, true ) && ! in_array( 'member-webstop', $roles, true ) && ! in_array( 'member-extra', $roles, true );
+	return array( $plan, $desktop_only );
+}
+
+// 2b. weights of a subscription font, from its store product (variations: pa_weight × pa_license, one file each).
+// Cached per product; the links carry the user's nonce and go through fsa_v2_weight_download().
+function fsa_v2_weights( $name, $allow_web ) {
+	if ( ! function_exists( 'wc_get_product' ) ) return array();
+	$ids = get_posts( array( 'post_type' => 'product', 'post_status' => 'publish', 'title' => $name, 'posts_per_page' => 1, 'fields' => 'ids' ) );
+	if ( ! $ids ) return array();
+	$pid  = (int) $ids[0];
+	$key  = 'fsa_v2_w_' . $pid . '_' . get_post_modified_time( 'U', true, $pid );
+	$rows = get_transient( $key );
+	if ( false === $rows ) {
+		$rows = array();
+		$p = wc_get_product( $pid );
+		if ( $p && $p->is_type( 'variable' ) ) {
+			foreach ( $p->get_children() as $vid ) {
+				$v = wc_get_product( $vid );
+				if ( ! $v ) continue;
+				$att = $v->get_attributes();
+				$w = isset( $att['pa_weight'] ) ? (string) $att['pa_weight'] : '';
+				$l = isset( $att['pa_license'] ) ? (string) $att['pa_license'] : '';
+				$dls = $v->get_downloads();
+				if ( '' === $w || 'family' === $w || ! $dls ) continue;
+				$term = get_term_by( 'slug', $w, 'pa_weight' );
+				if ( ! isset( $rows[ $w ] ) ) $rows[ $w ] = array( 'n' => $term ? $term->name : $w );
+				$rows[ $w ][ false !== stripos( $l, 'desk' ) ? 'desk' : 'web' ] = array( (int) $vid, (string) array_key_first( $dls ) );
+			}
+			uksort( $rows, function ( $a, $b ) { return (int) $a - (int) $b; } );
+		}
+		set_transient( $key, $rows, 12 * HOUR_IN_SECONDS );
+	}
+	$nonce = wp_create_nonce( 'fsa_wdl' );
+	$url = function ( $x ) use ( $nonce ) { return add_query_arg( array( 'fsa_wdl' => $x[0], 'k' => rawurlencode( $x[1] ), '_wpnonce' => $nonce ), home_url( '/' . FSA_V2_SLUG . '/' ) ); };
+	$out = array();
+	foreach ( $rows as $r ) {
+		$out[] = array( 'n' => $r['n'], 'web' => ( $allow_web && isset( $r['web'] ) ) ? $url( $r['web'] ) : '', 'desk' => isset( $r['desk'] ) ? $url( $r['desk'] ) : '' );
+	}
+	return $out;
+}
+
+// 2c. per-weight download: only for viewers of the preview, only fonts in the subscription list, only formats the plan includes
+add_action( 'template_redirect', 'fsa_v2_weight_download', 5 );
+function fsa_v2_weight_download() {
+	if ( empty( $_GET['fsa_wdl'] ) ) return;
+	if ( ! is_user_logged_in() ) auth_redirect();
+	if ( ! fsa_v2_can_view() || ! wp_verify_nonce( isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '', 'fsa_wdl' ) ) {
+		wp_die( 'הקישור פג תוקף. רעננו את העמוד ונסו שוב.', '', array( 'response' => 403 ) );
+	}
+	list( $plan, $desktop_only ) = fsa_v2_plan_info( wp_get_current_user() );
+	$v = wc_get_product( (int) $_GET['fsa_wdl'] );
+	$k = isset( $_GET['k'] ) ? rawurldecode( sanitize_text_field( wp_unslash( $_GET['k'] ) ) ) : '';
+	if ( ! $plan || ! $v || ! $v->is_type( 'variation' ) || ! function_exists( 'get_field' ) ) wp_die( 'אין גישה לקובץ הזה.', '', array( 'response' => 403 ) );
+	$names = array();
+	foreach ( (array) get_field( 'fonts-repeater', 'option' ) as $row ) {
+		if ( ! empty( $row['font-name'] ) ) $names[] = wp_strip_all_tags( $row['font-name'] );
+	}
+	$parent = get_post( $v->get_parent_id() );
+	$lic = (string) $v->get_attribute( 'pa_license' ) . ' ' . (string) ( $v->get_attributes()['pa_license'] ?? '' );
+	$is_desk = false !== stripos( $lic, 'desk' ) || false !== strpos( $lic, 'דסקטופ' );
+	$dls = $v->get_downloads();
+	if ( ! $parent || ! in_array( $parent->post_title, $names, true ) || ( ! $is_desk && $desktop_only ) || ! isset( $dls[ $k ] ) ) {
+		wp_die( 'אין גישה לקובץ הזה.', '', array( 'response' => 403 ) );
+	}
+	WC_Download_Handler::download( $dls[ $k ]->get_file(), $v->get_id() );
+	exit;
+}
+
 // 2. data (everything the area shows, read from what already exists on the site)
 function fsa_v2_he_date( $ts ) {
 	$m = array( 'ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר' );
@@ -73,6 +150,7 @@ function fsa_v2_data() {
 				'name' => wp_strip_all_tags( $row['font-name'] ),
 				'web'  => ( ! $desktop_only && ! empty( $row['font-file-web']['url'] ) ) ? $row['font-file-web']['url'] : '',
 				'desk' => ! empty( $row['font-file']['url'] ) ? $row['font-file']['url'] : '',
+				'weights' => fsa_v2_weights( wp_strip_all_tags( $row['font-name'] ), ! $desktop_only ),
 			);
 		}
 	}
@@ -86,12 +164,23 @@ function fsa_v2_data() {
 			if ( isset( $by[ $pid ] ) ) continue;
 			$types = array(); $sites = array();
 			$order = wc_get_order( $dl['order_id'] );
+			// the store sells variations (font × weight × licence): read name, weight and licence from the variation itself
+			$prod = wc_get_product( $pid );
+			$fname = wp_strip_all_tags( $dl['product_name'] ); $weight = '';
+			if ( $prod && $prod->is_type( 'variation' ) ) {
+				$parent = get_post( $prod->get_parent_id() );
+				if ( $parent ) $fname = wp_strip_all_tags( $parent->post_title );
+				$weight = (string) $prod->get_attribute( 'pa_weight' );
+				if ( $prod->get_attribute( 'pa_license' ) ) $types[] = (string) $prod->get_attribute( 'pa_license' );
+			}
 			if ( $order ) {
-				foreach ( $order->get_items() as $item ) {
-					if ( (int) $item->get_product_id() !== $pid ) continue;
-					$var = $item->get_variation_id() ? wc_get_product( $item->get_variation_id() ) : null;
-					$t = $var ? $var->get_attribute( 'pa_license' ) : '';
-					if ( $t ) $types[] = $t;
+				if ( ! $types ) {
+					foreach ( $order->get_items() as $item ) {
+						if ( (int) $item->get_product_id() !== $pid && (int) $item->get_variation_id() !== $pid ) continue;
+						$var = $item->get_variation_id() ? wc_get_product( $item->get_variation_id() ) : null;
+						$t = $var ? $var->get_attribute( 'pa_license' ) : '';
+						if ( $t ) $types[] = $t;
+					}
 				}
 				$domain = $order->get_meta( '_fs_domain' );
 				if ( $domain ) {
@@ -102,7 +191,7 @@ function fsa_v2_data() {
 			$t = $types ? implode( ' + ', array_unique( $types ) ) : 'רישיון';
 			$web = ( stripos( $t, 'webstop' ) !== false || strpos( $t, 'וובפונט' ) !== false || $sites ) ? 1 : 0;
 			$by[ $pid ] = array(
-				'f' => wp_strip_all_tags( $dl['product_name'] ), 'w' => '', 't' => $t,
+				'f' => $fname, 'w' => $weight, 't' => $t,
 				'sub' => 'buy', 'n' => 3, 'web' => $web, 'sites' => $sites, 'dl' => $dl['download_url'],
 				'file' => wp_strip_all_tags( (string) $dl['download_name'] ),
 				'oid' => $order ? $order->get_order_number() : '', 'd' => ( $order && $order->get_date_created() ) ? $order->get_date_created()->date( 'd.m.y' ) : '',
@@ -792,6 +881,15 @@ html body.fsa-v2{overflow-x:clip}
 :is(#fsa,#fsa-layer) .pop-menu a{display:block;width:100%;padding:9px 12px;border-radius:6px;font-size:15px;cursor:pointer;white-space:nowrap;text-align:start}
 :is(#fsa,#fsa-layer) .pop-menu a:hover,:is(#fsa,#fsa-layer) .pop-menu a:focus-visible{background:var(--soft)}
 #fsa-layer{width:auto;height:0;margin:0;padding:0;background:none;position:static}
+:is(#fsa,#fsa-layer) .pop.up .pop-menu{top:auto;bottom:calc(100% + 6px)}
+:is(#fsa,#fsa-layer) .wsel-menu .wrow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:6px 6px 6px 4px;border-radius:6px}
+:is(#fsa,#fsa-layer) .wsel-menu .wrow+.wrow{border-top:1px solid #F0F0F0}
+:is(#fsa,#fsa-layer) .wsel-menu .wn{font-size:15px;white-space:nowrap}
+:is(#fsa,#fsa-layer) .wsel-menu .wl{display:flex;gap:6px}
+:is(#fsa,#fsa-layer) .wsel-menu a.wdl{display:inline-flex;align-items:center;gap:4px;width:auto;height:28px;padding:0 8px;border:1px solid #D6D6D6;border-radius:6px;font-size:13px;white-space:nowrap}
+:is(#fsa,#fsa-layer) .wsel-menu a.wdl:hover,:is(#fsa,#fsa-layer) .wsel-menu a.wdl:focus-visible{background:var(--soft);border-color:#BDBDBD}
+:is(#fsa,#fsa-layer) .wsel-menu a.wdl .icon{width:15px;height:15px}
+:is(#fsa,#fsa-layer) .pop-menu.wsel-menu{max-width:min(340px,92vw)}
 FSACSS;
 	$html = <<<'FSAHTML'
 <div id="fsa"><main class="page">
@@ -930,7 +1028,7 @@ const ORDERS=[
 /* ---- live data from WordPress (stage 1: read-only) ---- */
 const FS=window.FS_DATA||{user:{},links:{}};
 const ea=s=>String(s==null?'':s).replace(/[&"<>]/g,c=>({'&':'&amp;','"':'&quot;','<':'&lt;','>':'&gt;'}[c]));
-FAMILY.length=0;(FS.fonts||[]).forEach(f=>FAMILY.push([f.name,0,f.web,f.desk]));
+FAMILY.length=0;(FS.fonts||[]).forEach(f=>FAMILY.push([f.name,(f.weights||[]).length,f.web,f.desk,f.weights||[]]));
 LIC.length=0;(FS.lic||[]).forEach(l=>{l.sites=l.sites||[];l.u=l.sites.length;LIC.push(l)});
 ORDERS.length=0;(FS.orders||[]).forEach(o=>ORDERS.push(o));
 Object.keys(SUBDOM).forEach(k=>SUBDOM[k]=[]);HISTORY.length=0;
@@ -1004,19 +1102,21 @@ function quotaFullPlan(){
 /* weight names for a family (sample data: spread over the usual scale) */
 const WEIGHTS=['Thin','ExtraLight','Light','Regular','Medium','Demibold','Bold','ExtraBold','Black'];
 const weightsOf=n=>n>=WEIGHTS.length?WEIGHTS.slice():[...new Set(Array.from({length:n},(_,i)=>WEIGHTS[Math.round(i*(WEIGHTS.length-1)/Math.max(1,n-1))]))];
-function weightPick(f,n){
- return `<div class="pop wsel-pop"><button class="wsel" data-pop="1" aria-haspopup="true" aria-expanded="false" aria-label="בחירת משקל להורדה מ${f}"><span class="wsel-l">בחירת משקל</span><span class="wsel-s">משקל</span> ${ICON.chev}</button>
-  <div class="pop-menu wsel-menu" role="menu">${weightsOf(n).map(w=>`<button role="menuitem" data-t="מוריד את ${f} ${w}"><span dir="ltr">${w}</span>${ICON.dl}</button>`).join('')}</div></div>`;
+function weightPick(f,n,ws){
+ /* one row per weight from the store, with its own site / desktop download */
+ const a=(u,k,l)=>u?`<a role="menuitem" class="wdl" href="${ea(u)}" aria-label="הורדת ${ea(f)} ${ea(k)} ${l}">${ICON.dl}<span>${l}</span></a>`:'';
+ return `<div class="pop wsel-pop"><button class="wsel" data-pop="1" aria-haspopup="true" aria-expanded="false" aria-label="בחירת משקל להורדה מ${ea(f)}"><span class="wsel-l">בחירת משקל</span><span class="wsel-s">משקל</span> ${ICON.chev}</button>
+  <div class="pop-menu wsel-menu" role="menu">${(ws||[]).map(w=>`<div class="wrow" role="none"><span class="wn">${ea(w.n)}</span><span class="wl">${a(w.web,w.n,'אתרים')}${a(w.desk,w.n,'דסקטופ')}</span></div>`).join('')}</div></div>`;
 }
 function subsDownloads(){
 const dlA=(u,f,k,lbl)=>u?`<a class="dl" href="${ea(u)}" aria-label="הורדת ${ea(f)} ${k}" download>${ICON.dl}<span class="dl-k">${lbl}</span></a>`:'<span class="hint" style="margin:0">—</span>';
  if(!FAMILY.length)return `<p class="empty">אין כרגע פונטים להורדה במינוי.</p>`;
  const hasW=FAMILY.some(x=>x[1]>0);
  return `<div class="tbl-wrap lic-wrap"><table class="tbl dl-tbl${hasW?'':' no-w'}"><thead><tr><th>שם הפונט</th><th>${hasW?'משקלים':''}</th><th>פורמט לאתרים</th><th>פורמט לדסקטופ</th>${hasW?'<th>הורדה לפי משקל</th>':''}</tr></thead><tbody>
- ${FAMILY.map(([f,n,w,d])=>`<tr><td>${ea(f)}</td><td class="num wcount">${n?n+' משקלים':''}</td>
+ ${FAMILY.map(([f,n,w,d,ws])=>`<tr><td>${ea(f)}</td><td class="num wcount">${n?n+' משקלים':''}</td>
  <td>${dlA(w,f,'לאתרים','אתרים')}</td>
  <td>${dlA(d,f,'לדסקטופ','דסקטופ')}</td>
- ${hasW?`<td class="wsel-td">${n?weightPick(f,n):''}</td>`:''}</tr>`).join('')}
+ ${hasW?`<td class="wsel-td">${n?weightPick(f,n,ws):''}</td>`:''}</tr>`).join('')}
  </tbody></table></div>`;
 }
 
@@ -1315,9 +1415,11 @@ function saveEdit(tr){
 }
 document.addEventListener('keydown',e=>{const tr=e.target.closest&&e.target.closest('tr.editing');if(!tr)return;if(e.key==='Enter'){e.preventDefault();saveEdit(tr)}if(e.key==='Escape'){state.editKey=null;render()}});
 function closeMenus(){document.querySelectorAll('.fp-menu.open').forEach(m=>{m.classList.remove('open');m.parentElement.querySelector('.fp-btn').setAttribute('aria-expanded','false')})}
+/* a menu that would run past the bottom of the white panel opens upwards instead */
+function popFit(p){const m=p.querySelector('.pop-menu'),box=p.closest('.shell')||document.body;if(!m)return;const r=m.getBoundingClientRect(),lim=Math.min(box.getBoundingClientRect().bottom,innerHeight);if(r.bottom>lim-8&&p.getBoundingClientRect().top-r.height>box.getBoundingClientRect().top)p.classList.add('up')}
 function closePops(except){document.querySelectorAll('.pop.open').forEach(p=>{if(p!==except){p.classList.remove('open');p.querySelector('[data-pop]').setAttribute('aria-expanded','false')}})}
 document.addEventListener('click',e=>{const pb=e.target.closest('[data-pop]');
- if(pb){const p=pb.parentElement;closePops(p);const o=p.classList.toggle('open');pb.setAttribute('aria-expanded',o);e.stopImmediatePropagation();return}
+ if(pb){const p=pb.parentElement;closePops(p);p.classList.remove('up');const o=p.classList.toggle('open');pb.setAttribute('aria-expanded',o);if(o)popFit(p);e.stopImmediatePropagation();return}
  closePops()},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePops()});
 document.addEventListener('click',e=>{const fb=e.target.closest('.fp-btn');
