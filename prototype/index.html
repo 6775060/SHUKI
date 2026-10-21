@@ -144,7 +144,10 @@ a{color:inherit}
   .reg-fold>div{overflow:hidden}
   .reg-fold>div>*{opacity:0;transform:translateY(-6px);transition:opacity .3s ease,transform .4s var(--ease)}
   .sub-reg.reg-on .reg-fold{grid-template-rows:1fr}
+  .sub-reg.reg-done .reg-fold>div{overflow:visible}
   .sub-reg.reg-on .reg-fold>div>*{opacity:1;transform:none;transition:opacity .4s ease .12s,transform .45s var(--ease) .08s}
+  /* domains: date at the far (left) end of its line */
+  .dom-tbl>tbody>tr>td.num{margin-inline-start:auto!important}
   /* ZIP buttons side by side */
   .tbl tbody tr.zip-row{flex-wrap:nowrap;gap:8px}
   .tbl tbody tr.zip-row>td:empty{display:none}
@@ -187,6 +190,12 @@ a{color:inherit}
 .acts{display:flex;gap:14px;justify-content:flex-end;align-items:center}
 .ibtn{all:unset;cursor:pointer;display:inline-grid;place-items:center;width:32px;height:32px;border-radius:8px}
 .ibtn:hover{background:var(--soft)}
+/* icons 20% lighter than the text everywhere (full colour on hover); download icons keep full strength */
+:root{--ic:color-mix(in srgb,var(--ink) 80%,#fff)}
+.ibtn:not(.locked):not(.note-dl):not(.eye):not(.exp):not(.ok-btn):not(.note-x):not(.reg-close),.head-tools .ic-wrap,.side .logout .icon{color:var(--ic)}
+.ibtn:not(.locked):not(.note-dl):not(.eye):not(.exp):not(.ok-btn):not(.note-x):not(.reg-close):hover{color:var(--ink)}
+/* domains: registration date in light grey */
+.dom-tbl>tbody>tr>td.num{color:var(--faint)}
 .sublogo{width:22px;height:22px;vertical-align:-6px;margin-inline-start:6px}
 
 /* buttons */
@@ -501,6 +510,7 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .sub-reg{background:var(--bg);border-radius:10px;padding:22px 24px;transition:background-color .45s var(--ease),padding .45s var(--ease)}
 .reg-open{display:none}
 .reg-head{display:none}
+.head-act .btn>.icon{display:none}
 .reg-fold>div{min-height:0}
 .dom-box .form-err{margin:10px 0 0}
 .dom-box .quota-line{padding:0}
@@ -583,12 +593,15 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
   .plan>img{width:40px;height:40px}
   .plan-tg{padding:4px 8px}
   .plan>.dates{position:absolute;top:12px;inset-inline-end:26px;margin:0}
-  .plan>.plan-id>.name{padding-inline-end:100px;flex-wrap:wrap;row-gap:4px}
+  .plan>.plan-id>.name{padding-inline-end:100px;flex-direction:column;align-items:flex-start;row-gap:4px}
+  .plan>.plan-id>.name>.chip{order:-1}
   /* "דומיינים": the register button sits at the top-left, on the title's line */
   .main .head-row{position:relative}
   .head-act{position:absolute;top:0;inset-inline-end:0}
-  .head-act .btn{height:34px;padding:0 12px;font-size:14px}
-  .head-row:has(.head-act) .h1{padding-inline-end:150px;min-height:34px;display:flex;align-items:center}
+  .head-act .btn{width:38px;height:38px;padding:0;border-radius:10px}
+  .head-act .btn .ha-l{display:none}
+  .head-act .btn>.icon{display:block;width:22px;height:22px}
+  .head-row:has(.head-act) .h1{padding-inline-end:50px;min-height:34px;display:flex;align-items:center}
 }
 @media (max-width:340px){.plan>.dates{position:static;flex-basis:100%;margin:6px 0 0}.plan>.plan-id>.name{padding-inline-end:0}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -782,7 +795,7 @@ function subsDomains(){
    <div class="hint" style="margin:2px 0 0">${lim?`ניתן לרשום ${p.n} דומיינים בכל חודש${BONUS?` + ${BONUS} נוספים שנרכשו`:''}. המכסה מתחדשת ב־1 בנובמבר.`:'רישום דומיינים ללא הגבלה, כל עוד המינוי פעיל.'}</div></div>
    ${lim?`<div class="usage"><span class="num"><b>${used}</b> מתוך ${lim} החודש</span><span class="track"><i style="width:${Math.min(100,used/lim*100)}%;background:${full?'var(--bad)':used/lim>=.66?'var(--warn)':'var(--ok)'}"></i></span></div>`:'<span class="chip">ללא הגבלה</span>'}
  </div>
- <div class="box dom-box sub-reg ${state.regOpen?'reg-on':''}">
+ <div class="box dom-box sub-reg ${state.regOpen?'reg-on reg-done':''}">
    ${full?quotaFullPlan():`<button class="btn btn-grad reg-open" data-regopen="1" aria-expanded="${!!state.regOpen}" aria-controls="regFold">${ICON.plus} רישום דומיין חדש</button>
    <div class="reg-fold" id="regFold"><div><div class="reg-head"><b>רישום דומיין חדש</b><button type="button" class="ibtn reg-close" data-regclose="1" aria-label="סגירה וקיפול הטופס">${ICON.close}</button></div><form class="form-row" data-subadd="1" novalidate>
      <div class="fld"><label for="sd2">כתובת האתר *</label><input id="sd2" placeholder="fontshok.co.il" dir="ltr" inputmode="url" autocomplete="off" required></div>
@@ -831,7 +844,7 @@ function subsDownloads(){
 /* פונטים שלי: one list, one row per purchased license. Download + certificate on every row;
    web licenses also show their own domain counter and open a drawer to register. No tabs. */
 V.lic=(tab,open)=>`
- <div class="head-row"><div><h1 class="h1">פונטים שלי</h1><p class="sub">פונטים שקנית בנפרד, מחוץ למינוי. רישיון וובפונט מכסה עד 3 אתרים.</p></div>${licFilterBar()}</div>
+ <div class="head-row"><div><h1 class="h1">פונטים שלי</h1><p class="sub">פונטים שקנית בנפרד, מחוץ למינוי.</p></div>${licFilterBar()}</div>
  ${licTable(open)}`;
 
 /* one row per font + weight. Every purchased licence stays its own record (own certificate, own files);
@@ -905,14 +918,14 @@ V.dom=()=>{
  const thead=`<thead><tr><th>דומיין</th><th>פונטים</th><th>דרך</th><th>תאריך רישום</th><th></th></tr></thead>`;
  return `
  <div class="head-row"><div><h1 class="h1">דומיינים</h1><p class="sub">כל האתרים שלך במקום אחד. רישום אתר חדש נעשה במינוי או בפונט שרכשת.</p></div>
-  <div class="head-act"><button class="btn btn-grad" data-go2="subs">רישום אתר במינוי</button></div></div>
+  <div class="head-act"><button class="btn btn-grad" data-go2="subs" aria-label="רישום אתר במינוי" title="רישום אתר במינוי">${ICON.plus}<span class="ha-l">רישום אתר במינוי</span></button></div></div>
  <h2 class="h2-sec">החודש · ${CYCLE.label} 2026</h2>
- <div class="tbl-wrap"><table class="tbl">${thead}<tbody>
+ <div class="tbl-wrap"><table class="tbl dom-tbl">${thead}<tbody>
  ${now.map(row).join('')||`<tr><td colspan="5" class="hint">עוד לא נרשמו דומיינים החודש</td></tr>`}
  </tbody></table></div>
  <p class="hint lock-note dom-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}. דומיין שהוסר או שונה לא נשמר בהיסטוריה.</p>
  <button class="hist-toggle" data-hist="1" aria-expanded="${!!state.histOpen}" aria-controls="histBody">${ICON.chev}<span class="h2-sec" style="margin:0">היסטוריית דומיינים <span class="hint" style="margin:0;font-weight:400">${past.length} דומיינים</span></span></button>
- <div class="hist-body ${state.histOpen?'open':''}" id="histBody"><div><div class="tbl-wrap hist-scroll"><table class="tbl">${thead}<tbody>${hist}</tbody></table></div></div></div>`;
+ <div class="hist-body ${state.histOpen?'open':''}" id="histBody"><div><div class="tbl-wrap hist-scroll"><table class="tbl dom-tbl">${thead}<tbody>${hist}</tbody></table></div></div></div>`;
 };
 
 V.orders=(open)=>`
@@ -1050,8 +1063,8 @@ document.addEventListener('click',e=>{
  if(t.dataset.view){goPage(t.dataset.view);return}
  if(t.dataset.plantg){state.planOpen=!state.planOpen;t.closest('.plan').classList.toggle('open',state.planOpen);t.setAttribute('aria-expanded',state.planOpen);save();return}
  if(t.dataset.licf){state.licFilter=t.dataset.licf==='all'?'':t.dataset.licf;state.open.lic=-1;render();return}
- if(t.dataset.regclose){state.regOpen=false;const box=t.closest('.sub-reg');box.classList.remove('reg-on');const ob=box.querySelector('.reg-open');ob.setAttribute('aria-expanded','false');ob.focus({preventScroll:true});save();return}
- if(t.dataset.regopen){state.regOpen=true;t.setAttribute('aria-expanded','true');t.closest('.sub-reg').classList.add('reg-on');setTimeout(()=>$('#sd2')&&$('#sd2').focus({preventScroll:true}),420);save();return}
+ if(t.dataset.regclose){state.regOpen=false;const box=t.closest('.sub-reg');box.classList.remove('reg-done');box.classList.remove('reg-on');const ob=box.querySelector('.reg-open');ob.setAttribute('aria-expanded','false');ob.focus({preventScroll:true});save();return}
+ if(t.dataset.regopen){state.regOpen=true;t.setAttribute('aria-expanded','true');const rb=t.closest('.sub-reg');rb.classList.add('reg-on');setTimeout(()=>rb.classList.contains('reg-on')&&rb.classList.add('reg-done'),460);setTimeout(()=>$('#sd2')&&$('#sd2').focus({preventScroll:true}),420);save();return}
  if(t.dataset.hist){state.histOpen=!state.histOpen;t.setAttribute('aria-expanded',state.histOpen);$('#histBody').classList.toggle('open',state.histOpen);return}
  if(t.dataset.go){e.preventDefault();if(t.dataset.go==='dom')state.histOpen=true;goPage(t.dataset.go);return}
  if(t.dataset.subtab){state.sub[state.view]=t.dataset.subtab;render({page:true});return}

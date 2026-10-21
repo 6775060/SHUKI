@@ -43,6 +43,12 @@ Every item below was a decision by the site owner (the user).
 | 29 | Phones, "דומיינים": the "רישום אתר במינוי" button sits at the top-left, on the title's line (smaller, 34px) | `.head-act` |
 | 30 | Phones, open registration form: a header "רישום דומיין חדש" with an X that folds the form back into the button (focus returns to it) | `.reg-head`, `.reg-close`, `data-regclose` |
 | 31 | Rename the section "פונטים שרכשתי" → **"פונטים שלי"** (sidebar/tab and page title) | nav `data-view="lic"`, `V.lic` title |
+| 32 | Phones, subscription box: the "פעיל" chip sits **above** the plan name (column, chip first); checked 320–1300 every 5px, web and extra: no overlap between name, chip, description, logo and "פרטים" | `.plan>.plan-id>.name{flex-direction:column}`, `.chip{order:-1}` |
+| 33 | Phones, registration form: once unfolded (after 460ms) the fold stops clipping, so the font list floats over the page; while folding it clips again | `.reg-done`, `data-regopen` / `data-regclose` handlers |
+| 34 | Phones, "דומיינים": the register button is a square "+" (label kept as aria-label/title); desktop keeps the text | `.head-act .btn`, `.ha-l` |
+| 35 | Domains: the registration date is light grey (`--faint`); on phones it sits at the far left of its line | `.dom-tbl>tbody>tr>td.num` |
+| 36 | All icons 20% lighter than the text (`--ic: color-mix(ink 80%, white)`), full colour on hover: row actions, certificate, invoice, header search/cart, logout. **Download icons keep full strength.** Already-lighter icons (note X, form X) keep their shade | `:root{--ic}`, the `.ibtn:not(...)` rule |
+| 37 | "פונטים שלי" subtitle: "פונטים שקנית בנפרד, מחוץ למינוי." (the webfont-covers-3-sites sentence removed) | `V.lic` |
 
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);
