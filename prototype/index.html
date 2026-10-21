@@ -717,8 +717,8 @@ V.subs=(tab)=>`
 /* font-update note: sits under the download table ("כל הפונטים לאתרים / לדסקטופ") */
 const fontNote=()=>state.noteHidden?'':`<div class="note x-new" data-new="חדש: עדכון פונט">
    <span class="note-ic">${ICON.spark}</span>
-   <span class="note-txt"><b>דיסקברי 2.0</b> זמינה להורדה · 3 משקלים חדשים וניקוד מלא</span>
-   <button class="linkbtn" data-t="מוריד את דיסקברי 2.0">להורדה</button>
+   <span class="note-txt"><b>דיסקברי רב לשוני</b>, בגרסה חדשה <span dir="ltr">V.2</span></span>
+   <button class="linkbtn" data-t="מוריד את דיסקברי רב לשוני V.2">להורדה</button>
    <button class="ibtn note-x" data-hidenote="1" aria-label="הסתרת ההודעה">${ICON.close}</button>
  </div>`;
 
@@ -767,7 +767,7 @@ function weightPick(f,n){
 }
 function subsDownloads(){
  return `<div class="tbl-wrap lic-wrap"><table class="tbl dl-tbl"><thead><tr><th>שם הפונט</th><th>משקלים</th><th>פורמט לאתרים</th><th>פורמט לדסקטופ</th><th>הורדה לפי משקל</th></tr></thead><tbody>
- ${FAMILY.map(([f,n])=>`<tr><td>${f}${f==='דיסקברי'?' <span class="ver" title="גרסה 2.0 זמינה להורדה">גרסה חדשה <span dir="ltr">V.2</span></span>':''}</td><td class="num wcount">${n} משקלים</td>
+ ${FAMILY.map(([f,n])=>`<tr><td>${f}${f==='דיסקברי'?' <span class="ver" title="דיסקברי רב לשוני, בגרסה חדשה V.2">גרסה חדשה <span dir="ltr">V.2</span></span>':''}</td><td class="num wcount">${n} משקלים</td>
  <td><button class="dl" aria-label="הורדת ${f} לאתרים" data-t="מוריד את ${f} לאתרים (WOFF2)">${ICON.dl}<span class="dl-k">אתרים</span></button></td>
  <td><button class="dl" aria-label="הורדת ${f} לדסקטופ" data-t="מוריד את ${f} לדסקטופ (OTF)">${ICON.dl}<span class="dl-k">דסקטופ</span></button></td>
  <td class="wsel-td">${weightPick(f,n)}</td></tr>`).join('')}

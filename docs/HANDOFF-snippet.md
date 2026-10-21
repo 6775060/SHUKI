@@ -32,6 +32,7 @@ Every item below was a decision by the site owner (the user).
 | 18 | Subscription box: the coloured edge always uses the shown subscription's colours (`plan-${plan}` class): web = green-blue, extra = violet, desktop = pink, barter = grey, academic = yellow | `.plan-web::after` etc. |
 | 19 | Phones: the white panel's top corners are square (the tab bar runs straight); the bottom corners stay rounded | `.shell{border-start-start-radius:0;border-start-end-radius:0}` in the 760px block |
 | 20 | Phones: the "גרסה חדשה V.2" label sits on the font name's line, at the far left end (desktop: under the name) | `.dl-tbl tbody tr>td:first-child{display:flex}`, `.dl-tbl .ver{margin-inline-start:auto}` in the 760px block |
+| 21 | Wording of the font-update note: "**דיסקברי רב לשוני**, בגרסה חדשה V.2" (replaces "דיסקברי 2.0 זמינה להורדה · 3 משקלים חדשים וניקוד מלא"); its download toast and the V.2 label's tooltip use the same wording | `fontNote()`, `.ver` title |
 
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);
