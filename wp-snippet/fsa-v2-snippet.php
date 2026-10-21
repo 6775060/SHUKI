@@ -195,7 +195,7 @@ add_shortcode( 'fs_account_v2', function () {
 	$css  = <<<'FSACSS'
 #fsa{direction:rtl;text-align:right;width:100vw;margin-inline:calc(50% - 50vw);position:relative;padding-block:1px}
 #fsa button,#fsa input,#fsa select,#fsa textarea{font:inherit;color:inherit;background:none;border:0;border-radius:0;box-shadow:none;text-transform:none;letter-spacing:inherit;margin:0;min-height:0}
-#fsa button:hover,#fsa button:focus{background:none;color:inherit}
+#fsa :where(button):hover,#fsa :where(button):focus{background:none;color:inherit}
 #fsa a,#fsa a:hover{color:inherit;text-decoration:none}
 #fsa table{margin:0;border:0;font-size:inherit;border-collapse:collapse}
 #fsa table td,#fsa table th{border:0;background:none;padding:0;vertical-align:middle;line-height:inherit}
