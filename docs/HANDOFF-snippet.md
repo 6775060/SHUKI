@@ -1,7 +1,7 @@
 # Handoff: changes to port into the live snippet
 
 For the session that maintains the WordPress snippet `FS · אזור אישי v2 – תצוגה מקדימה` (source: `wp/` on the owner's PC, built with `wp\build.ps1`).
-The source of truth is `prototype/index.html` on branch `claude/fontshok-personal-area-redesign-l4hf60` (artifact https://claude.ai/artifact/EGyx9pYKP34mdrcTJNQSYh, v69).
+The source of truth is `prototype/index.html` on branch `claude/fontshok-personal-area-redesign-l4hf60` (artifact https://claude.ai/artifact/EGyx9pYKP34mdrcTJNQSYh, v70).
 
 How to port:
 - Copy rules exactly, with the snippet's `.fsa-v2` scope prefix.
@@ -55,6 +55,7 @@ Every item below was a decision by the site owner (the user).
 | 41 | Phones, "דומיינים": row icons always pinned to the left, also on locked rows (the placeholder is hidden); the history list scrolls with the page (no inner scrollbar), so the date keeps the same 16px margin as the name | `.dom-tbl .acts>.ibtn.ph`, `.hist-scroll` in the 760px block |
 | 42 | Plan descriptions: "מינוי לאתרים ולדסקטופ" (web) and "מינוי לאתרים לדסקטופ ולאפליקציה" (extra) | `PLAN` |
 | 43 | "המינוי שלי → רישום דומיינים": the list under the form uses the same rows as "דומיינים" (shared `domRow()` / `DOM_THEAD`): name over address, fonts, source with the plan logo, date, actions; newest first. The old `mini lined` table is gone | `domRow()`, `subRow()`, `DOM_THEAD`, `subsDomains()` |
+| 44 | "רישום דומיינים" form: **two fields only**, the address and the fonts; the site name is filled from the address (`siteName(host)`), its field is removed. Look: soft lilac box `#FAF6FE` (border `#F1E8FB`, 20px radius); white pill fields 48px (border `#ECE6F2`); globe icon `#9C59CF` inside the address field; hint "הזן דומיין חדש (למשל: example.co.il)", shortened automatically on narrow fields; lilac pill button `#B075FF` "+ הוסף דומיין". Phones: the fields stack and the opener "+ רישום דומיין חדש" uses the same lilac. 761–1100px: address on its own row, fonts and button below. The new row's highlight now also finds the address inside the name cell | `.sub-reg`, `.reg-row`, `.reg-host`, `.reg-add`, `fitPh()`, the `data-subadd` handler, `render()` `o.fresh` |
 
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);

@@ -508,6 +508,22 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .dom-box .form-row{margin-bottom:0}
 /* subscription registration box (padding moved out of the inline style so phones can fold it) */
 .sub-reg{background:var(--bg);border-radius:10px;padding:22px 24px;transition:background-color .45s var(--ease),padding .45s var(--ease)}
+/* domain registration: soft lilac box, two pill fields (domain, fonts) and a lilac "הוסף דומיין" pill. The site name fills in from the address */
+.sub-reg{background:#FAF6FE;border:1px solid #F1E8FB;border-radius:20px;padding:16px 18px}
+.reg-row{grid-template-columns:minmax(0,1fr) 220px auto;align-items:center;gap:12px}
+.reg-row .reg-host{position:relative}
+@media (min-width:761px) and (max-width:1100px){.reg-row{grid-template-columns:minmax(0,1fr) auto}.reg-row .reg-host{grid-column:1/-1}}
+.reg-row .reg-host>.icon{position:absolute;inset-inline-start:16px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:#9C59CF;pointer-events:none}
+.reg-row .reg-host input{height:48px;border:1px solid #ECE6F2;border-radius:99px;padding:0 46px 0 18px;background:#fff}
+.reg-row .reg-host input:not(:placeholder-shown){direction:ltr;text-align:right}
+.reg-row .reg-host input::placeholder{color:#828F9D}
+.reg-row .reg-host input:focus{outline:none;border-color:#B075FF;box-shadow:0 0 0 3px #EFE3FF}
+.reg-row .fp-btn{height:48px;border:1px solid #ECE6F2;border-radius:99px;padding:0 18px;background:#fff;color:#828F9D}
+.reg-row .fp-btn:has(+ .fp-menu input:checked){color:var(--ink)}
+.reg-row .reg-add{height:48px;border-radius:99px;padding:0 26px;background:#B075FF;color:#fff;border:0;font-weight:600;gap:10px}
+.reg-row .reg-add:hover{background:#9F5FF5}
+.reg-row .reg-add .icon{width:20px;height:20px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .reg-open{display:none}
 .reg-head{display:none}
 .head-act .btn>.icon{display:none}
@@ -601,6 +617,13 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
   /* ZIP buttons sit under their own columns (אתרים, דסקטופ); the empty weight cell keeps the third slot */
   .dl-tbl tbody tr.zip-row>td:first-child{display:none}
   .dl-tbl.tbl tbody tr.zip-row>td:last-child:empty{display:block;flex:1 1 0}
+  /* registration form: fields stack, same lilac look as desktop */
+  .sub-reg:not(.reg-on){border-color:transparent}
+  .sub-reg .reg-row{grid-template-columns:1fr;gap:10px}
+  .sub-reg .reg-row .reg-host input{font-size:14px;padding:0 42px 0 12px}
+  .sub-reg .reg-row .reg-host>.icon{inset-inline-start:14px}
+  .sub-reg .reg-row .reg-add{width:100%;justify-content:center}
+  .sub-reg .reg-open{background:#B075FF;color:#fff;border-radius:99px;height:48px}
   /* "דומיינים": row icons always pinned to the left edge, also when a row has fewer (locked rows) */
   .dom-tbl .acts{justify-content:flex-end}
   .dom-tbl .acts>.ibtn.ph{display:none}
@@ -813,14 +836,13 @@ function subsDomains(){
  </div>
  <div class="box dom-box sub-reg ${state.regOpen?'reg-on reg-done':''}">
    ${full?quotaFullPlan():`<button class="btn btn-grad reg-open" data-regopen="1" aria-expanded="${!!state.regOpen}" aria-controls="regFold">${ICON.plus} רישום דומיין חדש</button>
-   <div class="reg-fold" id="regFold"><div><div class="reg-head"><b>רישום דומיין חדש</b><button type="button" class="ibtn reg-close" data-regclose="1" aria-label="סגירה וקיפול הטופס">${ICON.close}</button></div><form class="form-row" data-subadd="1" novalidate>
-     <div class="fld"><label for="sd2">כתובת האתר *</label><input id="sd2" placeholder="fontshok.co.il" dir="ltr" inputmode="url" autocomplete="off" required></div>
-     <div class="fld"><label for="sd1">שם האתר <span style="color:var(--muted)">(רשות)</span></label><input id="sd1" placeholder="יתמלא אוטומטית מהכתובת"></div>
-     <div class="fld fontpick"><label id="fpl">פונטים <span style="color:var(--muted)">(עד 2)</span></label>
-       <button type="button" class="fp-btn" aria-haspopup="true" aria-expanded="false" aria-labelledby="fpl"><span class="fp-val">בחירת פונטים</span>${ICON.chev}</button>
+   <div class="reg-fold" id="regFold"><div><div class="reg-head"><b>רישום דומיין חדש</b><button type="button" class="ibtn reg-close" data-regclose="1" aria-label="סגירה וקיפול הטופס">${ICON.close}</button></div><form class="form-row reg-row" data-subadd="1" novalidate>
+     <div class="fld reg-host">${ICON.globe}<input id="sd2" placeholder="הזן דומיין חדש (למשל: example.co.il)" aria-label="כתובת הדומיין" inputmode="url" autocomplete="off" required></div>
+     <div class="fld fontpick"><span id="fpl" class="sr">פונטים, עד 2</span>
+       <button type="button" class="fp-btn" aria-haspopup="true" aria-expanded="false" aria-labelledby="fpl"><span class="fp-val">בחירת פונטים (עד 2)</span>${ICON.chev}</button>
        <div class="fp-menu">${FAMILY.map(f=>`<label><input type="checkbox" value="${f[0]}"> ${f[0]}</label>`).join('')}<p class="fp-hint">אפשר לבחור עד 2 פונטים לכל אתר</p></div>
      </div>
-     <button class="btn btn-grad" style="height:40px">רישום דומיין</button>
+     <button class="btn reg-add">${ICON.plus}הוסף דומיין</button>
    </form><p class="form-err" id="sdErr" hidden></p></div></div>`}
  </div>
  <div class="tbl-wrap"><table class="tbl dom-tbl">${DOM_THEAD}<tbody>
@@ -1032,9 +1054,15 @@ function render(o={}){
  el.innerHTML=v==='lic'?V.lic(state.sub.lic,state.open.lic):v==='orders'?V.orders(state.open.orders):v==='subs'?V.subs(state.sub.subs):v==='profile'?V.profile(state.sub.profile):V[v]();
  el.classList.remove('enter');if(o.page){void el.offsetWidth;el.classList.add('enter')}
  if(o.opening)el.querySelectorAll('.drawer').forEach(d=>d.classList.add('opening'));
- if(o.fresh){const td=[...el.querySelectorAll('.mini td, .tbl td')].find(c=>c.textContent.trim()===o.fresh);td&&td.parentElement.classList.add('fresh')}
+ if(o.fresh){const td=[...el.querySelectorAll('.mini td, .tbl td, .tbl bdi')].find(c=>c.textContent.trim()===o.fresh);td&&td.closest('tr').classList.add('fresh')}
+ fitPh();
  save();
 }
+/* the domain field's hint: the full sentence where it fits, shorter on narrow fields */
+const PH=['הזן דומיין חדש (למשל: example.co.il)','הזן דומיין (למשל: example.co.il)','למשל: example.co.il'];
+function fitPh(){const i=$('#sd2');if(!i||!i.clientWidth)return;const cs=getComputedStyle(i),c=fitPh.c||(fitPh.c=document.createElement('canvas').getContext('2d'));c.font=cs.font;
+ const room=i.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);i.placeholder=PH.find(t=>c.measureText(t).width<=room)||PH[PH.length-1]}
+addEventListener('resize',fitPh);document.fonts&&document.fonts.ready.then(fitPh);
 state.editKey=null;
 const goPage=v=>{state.view=v;state.editKey=null;render({page:true});scrollTo({top:0,behavior:'smooth'})};
 /* close the open drawer with a short fold, then re-render */
@@ -1082,7 +1110,7 @@ document.addEventListener('click',e=>{
  if(t.dataset.plantg){state.planOpen=!state.planOpen;t.closest('.plan').classList.toggle('open',state.planOpen);t.setAttribute('aria-expanded',state.planOpen);save();return}
  if(t.dataset.licf){state.licFilter=t.dataset.licf==='all'?'':t.dataset.licf;state.open.lic=-1;render();return}
  if(t.dataset.regclose){state.regOpen=false;const box=t.closest('.sub-reg');box.classList.remove('reg-done');box.classList.remove('reg-on');const ob=box.querySelector('.reg-open');ob.setAttribute('aria-expanded','false');ob.focus({preventScroll:true});save();return}
- if(t.dataset.regopen){state.regOpen=true;t.setAttribute('aria-expanded','true');const rb=t.closest('.sub-reg');rb.classList.add('reg-on');setTimeout(()=>rb.classList.contains('reg-on')&&rb.classList.add('reg-done'),460);setTimeout(()=>$('#sd2')&&$('#sd2').focus({preventScroll:true}),420);save();return}
+ if(t.dataset.regopen){state.regOpen=true;t.setAttribute('aria-expanded','true');const rb=t.closest('.sub-reg');rb.classList.add('reg-on');setTimeout(()=>{rb.classList.contains('reg-on')&&rb.classList.add('reg-done');fitPh()},460);fitPh();setTimeout(()=>$('#sd2')&&$('#sd2').focus({preventScroll:true}),420);save();return}
  if(t.dataset.hist){state.histOpen=!state.histOpen;t.setAttribute('aria-expanded',state.histOpen);$('#histBody').classList.toggle('open',state.histOpen);return}
  if(t.dataset.go){e.preventDefault();if(t.dataset.go==='dom')state.histOpen=true;goPage(t.dataset.go);return}
  if(t.dataset.subtab){state.sub[state.view]=t.dataset.subtab;render({page:true});return}
@@ -1114,7 +1142,7 @@ document.addEventListener('submit',e=>{
   const host=cleanHost($('#sd2').value),picked=[...f.querySelectorAll('.fp-menu input:checked')].map(i=>i.value),err=$('#sdErr');
   const msg=!host||!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)?'צריך להזין כתובת אתר תקינה, למשל studio.co.il':!picked.length?'צריך לבחור לפחות פונט אחד':'';
   if(msg){err.textContent=msg;err.hidden=false;(msg.includes('כתובת')?$('#sd2'):f.querySelector('.fp-btn')).focus();return}
-  state.regOpen=false;SUBDOM[state.plan].unshift([today(),$('#sd1').value.trim()||siteName(host),host,picked.join(', ')]);render({fresh:host});toast('האתר נרשם במינוי. התעודה מוכנה להורדה');return}
+  state.regOpen=false;SUBDOM[state.plan].unshift([today(),siteName(host),host,picked.join(', ')]);render({fresh:host});toast('האתר נרשם במינוי. התעודה מוכנה להורדה');return}
  if(f.dataset.add!==undefined){const l=LIC[+f.dataset.add];const host=cleanHost(f.querySelector('[data-namefor]').value);if(!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)){toast('צריך להזין כתובת אתר תקינה');return}l.sites.unshift([today(),f.querySelector('.sitename').value.trim()||siteName(host),host]);l.u=l.sites.length;render({fresh:host});toast('הדומיין נרשם. התעודה מוכנה להורדה');return}
  toast('השינויים נשמרו');
 });
@@ -1146,7 +1174,7 @@ document.addEventListener('click',e=>{const fb=e.target.closest('.fp-btn');
  if(fb){const m=fb.parentElement.querySelector('.fp-menu');const open=m.classList.toggle('open');fb.setAttribute('aria-expanded',open);return}
  if(!e.target.closest('.fp-menu'))closeMenus()});
 document.addEventListener('input',e=>{if(e.target.dataset.namefor){const n=document.getElementById(e.target.dataset.namefor);const h=cleanHost(e.target.value);if(n&&!n.dataset.touched)n.value=h.includes('.')?siteName(h):''}if(e.target.classList.contains('sitename'))e.target.dataset.touched=e.target.value?'1':''});
-document.addEventListener('input',e=>{if(e.target.id==='sd2'){const n=$('#sd1');const h=cleanHost(e.target.value);if(!n.dataset.touched)n.value=h.includes('.')?siteName(h):'';$('#sdErr').hidden=true}if(e.target.id==='sd1')e.target.dataset.touched=e.target.value?'1':''});
+document.addEventListener('input',e=>{if(e.target.id==='sd2')$('#sdErr').hidden=true});
 document.addEventListener('input',e=>{if(e.target.id==='oq'){const q=e.target.value.trim().replace('#','');document.querySelectorAll('#otb tr[data-oid]').forEach(r=>r.hidden=q&&!r.dataset.oid.includes(q))}});
 const sn=$('#showNew');sn.addEventListener('change',()=>document.body.classList.toggle('show-new',sn.checked));
 const h=new Date().getHours();$('#greet').textContent=h<5?'לילה טוב':h<12?'בוקר טוב':h<17?'צהריים טובים':h<21?'ערב טוב':'לילה טוב';
