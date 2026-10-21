@@ -30,6 +30,7 @@ Every item below was a decision by the site owner (the user).
 | 16 | "פונטים להורדה", desktop layout: the name and "N משקלים" columns hug their text at the right; the three action buttons have equal gaps (12px padding on each side). The count is lighter (weight 300, muted). Tablets: compact sizes; the count is hidden ≤1100px; icon-only buttons and short labels ("הכל", "משקל") ≤920px. Checked every 6px from 320 to 1600: no overflow, equal gaps | the `.dl-tbl` media blocks, `.wcount`, `.zl` |
 | 17 | Phones: the note under the downloads table has its text on its own lines, with the "להורדה" link and the X together on the last line | `.note` rules in the 760px block |
 | 18 | Subscription box: the coloured edge always uses the shown subscription's colours (`plan-${plan}` class): web = green-blue, extra = violet, desktop = pink, barter = grey, academic = yellow | `.plan-web::after` etc. |
+| 19 | Phones: the white panel's top corners are square (the tab bar runs straight); the bottom corners stay rounded | `.shell{border-start-start-radius:0;border-start-end-radius:0}` in the 760px block |
 
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);
