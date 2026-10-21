@@ -124,7 +124,7 @@ a{color:inherit}
   .dl-tbl .wsel .wsel-l{display:none}
   .dl-tbl .wsel .wsel-s{display:inline}
   /* new-version label: same line as the font name, at the far (left) end */
-  .dl-tbl tbody tr>td:first-child{display:flex!important;align-items:baseline;gap:8px}
+  .dl-tbl tbody tr:not(.zip-row)>td:first-child{display:flex!important;align-items:baseline;gap:8px}
   .dl-tbl .ver{margin:0 auto 0 0;margin-inline-start:auto;margin-inline-end:0}
   /* subscription fold: next payment | start date side by side, payment method underneath */
   .plan .plan-more-in{grid-template-columns:1fr 1fr;column-gap:16px}
@@ -597,9 +597,21 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
   .plan>.plan-id>.name{padding-inline-end:100px;flex-direction:column;align-items:flex-start;row-gap:4px}
   .plan>.plan-id>.name>.chip{order:-1}
   /* small status badge, tucked at the top next to the logo */
-  .plan>.plan-id{padding-top:14px}
-  .plan>.plan-id>.name>.chip{position:absolute;top:8px;inset-inline-start:66px;font-size:11px;padding:0 7px;height:18px;line-height:18px;gap:4px}
+  .plan{align-items:flex-start}
+  .plan>.plan-id{padding-top:24px}
+  .plan>img{margin-top:24px}
+  /* centred over the logo (logo: 40px wide, 16px from the edge) */
+  .plan>.plan-id>.name>.chip{position:absolute;top:10px;inset-inline-start:36px;transform:translateX(50%);font-size:11px;padding:0 7px;height:18px;line-height:18px;gap:4px}
   .plan>.plan-id>.name>.chip::before{width:5px;height:5px}
+  .plan>.plan-id>.name>.chip{background:#FFF3C4;color:#8A6400}
+  /* ZIP buttons sit under their own columns (אתרים, דסקטופ); the empty weight cell keeps the third slot */
+  .dl-tbl tbody tr.zip-row>td:first-child{display:none}
+  .dl-tbl.tbl tbody tr.zip-row>td:last-child:empty{display:block;flex:1 1 0}
+  /* "דומיינים": row icons always pinned to the left edge, also when a row has fewer (locked rows) */
+  .dom-tbl .acts{justify-content:flex-end}
+  .dom-tbl .acts>.ibtn.ph{display:none}
+  /* history scrolls with the page on phones, so no inner scrollbar eats the left margin */
+  .hist-scroll{max-height:none;overflow:visible}
   /* "דומיינים": the register button sits at the top-left, on the title's line */
   .main .head-row{position:relative}
   .head-act{position:absolute;top:0;inset-inline-end:0}
@@ -700,7 +712,7 @@ const SUBS={
  app:{name:'רכישה בודדת',en:'App license',logo:'logos/desktop.svg'}
 };
 /* domains registered under the SUBSCRIPTION (quota belongs to the plan, not to a font) */
-const PLAN={web:{n:3,label:'וובסטופ',desc:'מינוי אתרים + דסקטופ'},extra:{n:0,label:'אקסטרה',desc:'מינוי אתרים + דסקטופ + אפליקציה'}};
+const PLAN={web:{n:3,label:'וובסטופ',desc:'מינוי לאתרים ולדסקטופ'},extra:{n:0,label:'אקסטרה',desc:'מינוי לאתרים, לדסקטופ ולאפליקציה'}};
 /* older months = history (closed & kept, scrollable back through the years) */
 const OLDDOM=[['22.09.2026','סטודיו לוי','studio-levi.co.il','טאלנט'],['20.09.2026','חנות הבד','bad.co.il','אומץ'],['04.08.2026','קמפיין קיץ','summer-sale.co.il','דיסקברי'],['11.07.2026','גן ילדים שקד','shaked-kids.co.il','פריימריז, פורטו'],['02.05.2026','משרד עו״ד כהן','cohen-law.co.il','יזכור פרו'],['18.02.2026','מאפיית הכפר','hakfar.co.il','אומץ, טאלנט'],['09.12.2025','עמותת אור','or-org.org.il','פורטו'],['21.10.2025','סטודיו מור','mor-studio.co.il','דיסקברי, טאלנט'],['05.06.2025','כנס עיצוב 2025','design-conf.co.il','פריימריז'],['14.03.2025','קפה גינה','gina-cafe.co.il','אומץ'],['30.11.2024','חנות הספרים','books-il.co.il','יזכור פרו, פורטו'],['08.07.2024','מגזין אדריכלות','arch-mag.co.il','טאלנט']];
 const SUBDOM={web:[['03.10.2026','סטודיו דיין','studio-dayan.co.il','פורטו, טאלנט'],['14.10.2026','מגזין עגלה','agala.co.il','דיסקברי, פורטו'],...OLDDOM.map(r=>r.slice())],extra:[['03.10.2026','סטודיו דיין','studio-dayan.co.il','פורטו, טאלנט'],['14.10.2026','מגזין עגלה','agala.co.il','דיסקברי, פורטו'],['12.10.2026','אדריכלות בע״מ','fontshok.co.il','פורטו'],...OLDDOM.map(r=>r.slice())]};

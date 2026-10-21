@@ -1,7 +1,7 @@
 # Handoff: changes to port into the live snippet
 
 For the session that maintains the WordPress snippet `FS · אזור אישי v2 – תצוגה מקדימה` (source: `wp/` on the owner's PC, built with `wp\build.ps1`).
-The source of truth is `prototype/index.html` on branch `claude/fontshok-personal-area-redesign-l4hf60` (artifact https://claude.ai/artifact/EGyx9pYKP34mdrcTJNQSYh, v44).
+The source of truth is `prototype/index.html` on branch `claude/fontshok-personal-area-redesign-l4hf60` (artifact https://claude.ai/artifact/EGyx9pYKP34mdrcTJNQSYh, v67).
 
 How to port:
 - Copy rules exactly, with the snippet's `.fsa-v2` scope prefix.
@@ -43,7 +43,7 @@ Every item below was a decision by the site owner (the user).
 | 29 | (superseded by 34) |
 | 30 | Phones, open registration form: a header "רישום דומיין חדש" with an X that folds the form back into the button (focus returns to it) | `.reg-head`, `.reg-close`, `data-regclose` |
 | 31 | Rename the section "פונטים שרכשתי" → **"פונטים שלי"** (sidebar/tab and page title) | nav `data-view="lic"`, `V.lic` title |
-| 32 | Phones, subscription box: the "פעיל" chip is a **small badge** (11px, 18px tall) at the top, right next to the logo, above the plan name; checked 320–1300 every 5px, web and extra: no overlap between name, chip, description, logo and "פרטים" | `.plan>.plan-id>.name{flex-direction:column}`, `.chip{order:-1}` |
+| 32 | Phones, subscription box: the "פעיל" chip is a **small yellow badge** (11px, 18px tall, `#FFF3C4` on `#8A6400`) centred above the logo at the top of the box; the name and logo move down 24px to make room. Checked 320–760, web and extra: no overlap | the `.plan>.plan-id>.name>.chip` rules in the 760px block |
 | 33 | Phones, registration form: once unfolded (after 460ms) the fold stops clipping, so the font list floats over the page; while folding it clips again | `.reg-done`, `data-regopen` / `data-regclose` handlers |
 | 34 | Phones, "דומיינים": the header register button is hidden; instead a soft round "+" (32px, lilac background, violet plus) sits at the left end of the "החודש · …" line, right above the list it adds to. Desktop keeps the full "רישום אתר במינוי" button by the title | `.sec-row`, `.sec-add`, `.head-act` |
 | 35 | Domains: the registration date is light grey (`--faint`); on phones it sits at the far left of its line | `.dom-tbl>tbody>tr>td.num` |
@@ -51,6 +51,9 @@ Every item below was a decision by the site owner (the user).
 | 37 | "פונטים שלי" subtitle: "פונטים שקנית בנפרד, מחוץ למינוי." (the webfont-covers-3-sites sentence removed) | `V.lic` |
 | 38 | Quota text: "ניתן לרשום 3 דומיינים בכל חודש. מתחדש ב־1 בנובמבר." The date is **not hard-coded**: take it from the Stage 2 API (`quota.resets`, the first day of the next cycle) and format it as "1 ב<month>"; the quota-full line uses the same date ("מתחדש ב־… צריך עוד עכשיו?") | `nextReset()`, `subsDomains()`, `quotaFullPlan()` |
 | 39 | The lock note, in "המינוי שלי → רישום דומיינים" and in "דומיינים": just "אפשר לערוך או להסיר עד סוף <month>." (the follow-up sentences and the history link removed) | the two `.lock-note` paragraphs |
+| 40 | Phones, "פונטים להורדה": "הכל לאתרים" sits under the אתרים column and "הכל לדסקטופ" under דסקטופ, same widths (the weight slot stays empty) | `.dl-tbl tbody tr.zip-row` rules; the first-cell flex rule is `tr:not(.zip-row)` |
+| 41 | Phones, "דומיינים": row icons always pinned to the left, also on locked rows (the placeholder is hidden); the history list scrolls with the page (no inner scrollbar), so the date keeps the same 16px margin as the name | `.dom-tbl .acts>.ibtn.ph`, `.hist-scroll` in the 760px block |
+| 42 | Plan descriptions: "מינוי לאתרים ולדסקטופ" (web) and "מינוי לאתרים, לדסקטופ ולאפליקציה" (extra) | `PLAN` |
 
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);
