@@ -116,6 +116,95 @@ function fsa_v2_weight_download() {
 	exit;
 }
 
+// 2e. domains: the same table the Easy Font Table plugin uses (wp_easy_font_domains: user, year, month, slot 1..n, name, url, fonts).
+// Reading and writing it here keeps every domain customers already registered, with no migration.
+function fsa_v2_eft_table() {
+	global $wpdb;
+	$t = $wpdb->prefix . 'easy_font_domains';
+	return $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) === $t ? $t : '';
+}
+function fsa_v2_domain_limit( $plan ) {
+	return 'extra' === $plan ? 0 : ( 'web' === $plan ? 3 : -1 ); // 0 = unlimited, -1 = no domains in this plan
+}
+function fsa_v2_domains( $uid ) {
+	global $wpdb;
+	$t = fsa_v2_eft_table();
+	if ( ! $t ) return array();
+	$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM `$t` WHERE user_id = %d AND domain_url <> '' ORDER BY year DESC, month DESC, domain_slot ASC", $uid ) );
+	$out = array();
+	foreach ( $rows as $r ) {
+		$c = $r->created_at ? strtotime( $r->created_at ) : 0;
+		$d = ( $c && (int) date( 'Y', $c ) === (int) $r->year && (int) date( 'n', $c ) === (int) $r->month ) ? date( 'd.m.Y', $c ) : sprintf( '01.%02d.%d', $r->month, $r->year );
+		$out[] = array( $d, (string) $r->domain_name, (string) $r->domain_url, (string) $r->font_name, (int) $r->id );
+	}
+	return $out;
+}
+function fsa_v2_domain_fonts() {
+	$raw = function_exists( 'get_field' ) ? get_field( 'list_of_fonts_for_domain_registration', 'option' ) : '';
+	if ( is_array( $raw ) ) $raw = implode( ',', array_filter( $raw, 'is_scalar' ) ); // the field is plain text today; tolerate a list too
+	$raw = (string) $raw;
+	return array_values( array_filter( array_map( 'trim', explode( ',', $raw ) ) ) );
+}
+function fsa_v2_clean_host( $v ) {
+	$v = strtolower( trim( (string) $v ) );
+	$v = preg_replace( '#^https?://#', '', $v );
+	$v = preg_replace( '#^www\.#', '', $v );
+	$v = preg_split( '#[/?\#]#', $v )[0];
+	return preg_match( '/^[a-z0-9\x{0590}-\x{05FF}-]+(\.[a-z0-9\x{0590}-\x{05FF}-]+)+$/u', $v ) ? $v : '';
+}
+// register / edit / remove a subscription domain (preview viewers only while the area is being tested)
+add_action( 'wp_ajax_fsa_v2_dom', 'fsa_v2_dom_ajax' );
+function fsa_v2_dom_ajax() {
+	global $wpdb;
+	$err = function ( $m ) { wp_send_json_error( array( 'message' => $m ) ); };
+	if ( ! fsa_v2_can_view() || ! check_ajax_referer( 'fsa_v2_dom', 'nonce', false ) ) $err( 'פג תוקף העמוד. רעננו ונסו שוב.' );
+	$t = fsa_v2_eft_table();
+	if ( ! $t ) $err( 'רישום הדומיינים לא זמין כרגע.' );
+	$uid = get_current_user_id();
+	list( $plan ) = fsa_v2_plan_info( wp_get_current_user() );
+	$limit = fsa_v2_domain_limit( $plan );
+	if ( $limit < 0 ) $err( 'המינוי שלך לא כולל רישום דומיינים.' );
+	$op = isset( $_POST['op'] ) ? sanitize_key( $_POST['op'] ) : '';
+	$y = (int) current_time( 'Y' ); $m = (int) current_time( 'n' );
+	$id = isset( $_POST['id'] ) ? (int) $_POST['id'] : 0;
+	$host = fsa_v2_clean_host( isset( $_POST['host'] ) ? wp_unslash( $_POST['host'] ) : '' );
+	$name = sanitize_text_field( isset( $_POST['name'] ) ? wp_unslash( $_POST['name'] ) : '' );
+	$allowed = fsa_v2_domain_fonts();
+	$fonts = array_values( array_filter( array_map( 'trim', explode( ',', sanitize_text_field( isset( $_POST['fonts'] ) ? wp_unslash( $_POST['fonts'] ) : '' ) ) ) ) );
+	if ( 'del' !== $op ) {
+		if ( ! $host ) $err( 'צריך להזין כתובת אתר תקינה, למשל studio.co.il' );
+		if ( ! $fonts ) $err( 'צריך לבחור לפחות פונט אחד' );
+		if ( count( $fonts ) > 2 ) $err( 'אפשר לבחור עד 2 פונטים לכל אתר' );
+		if ( $allowed && array_diff( $fonts, $allowed ) ) $err( 'אחד הפונטים לא זמין לרישום' );
+		if ( '' === $name ) $name = $host;
+	}
+	$mine = $id ? $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `$t` WHERE id = %d AND user_id = %d", $id, $uid ) ) : null;
+	if ( 'edit' === $op || 'del' === $op ) {
+		if ( ! $mine ) $err( 'הדומיין לא נמצא.' );
+		if ( (int) $mine->year !== $y || (int) $mine->month !== $m ) $err( 'דומיין מחודש קודם סגור לעריכה.' );
+	}
+	$dup = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM `$t` WHERE user_id = %d AND year = %d AND month = %d AND domain_url = %s AND id <> %d", $uid, $y, $m, $host, $id ) );
+	if ( 'del' !== $op && $dup ) $err( 'הדומיין הזה כבר רשום החודש.' );
+	if ( 'add' === $op ) {
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT domain_slot, domain_url FROM `$t` WHERE user_id = %d AND year = %d AND month = %d", $uid, $y, $m ) );
+		$used = 0; $free = 0; $max = 0;
+		foreach ( $rows as $r ) { $max = max( $max, (int) $r->domain_slot ); if ( '' !== $r->domain_url ) $used++; elseif ( ! $free ) $free = (int) $r->domain_slot; }
+		if ( $limit && $used >= $limit ) $err( 'ניצלת את הדומיינים של החודש.' );
+		if ( ! $free ) { for ( $k = 1; $k <= max( $max, 0 ) + 1; $k++ ) { if ( ! in_array( $k, array_map( 'intval', wp_list_pluck( $rows, 'domain_slot' ) ), true ) ) { $free = $k; break; } } }
+		$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM `$t` WHERE user_id = %d AND year = %d AND month = %d AND domain_slot = %d", $uid, $y, $m, $free ) );
+		$data = array( 'domain_name' => $name, 'domain_url' => $host, 'font_name' => implode( ', ', $fonts ) );
+		$ok = $exists ? $wpdb->update( $t, $data, array( 'id' => $exists ) ) : $wpdb->insert( $t, $data + array( 'user_id' => $uid, 'year' => $y, 'month' => $m, 'domain_slot' => $free ) );
+	} elseif ( 'edit' === $op ) {
+		$ok = $wpdb->update( $t, array( 'domain_name' => $name, 'domain_url' => $host, 'font_name' => implode( ', ', $fonts ) ), array( 'id' => $id ) );
+	} elseif ( 'del' === $op ) {
+		$ok = $wpdb->delete( $t, array( 'id' => $id, 'user_id' => $uid ) );
+	} else {
+		$err( 'פעולה לא מוכרת.' );
+	}
+	if ( false === $ok ) $err( 'השמירה נכשלה. נסו שוב.' );
+	wp_send_json_success( array( 'domains' => fsa_v2_domains( $uid ) ) );
+}
+
 // 2. data (everything the area shows, read from what already exists on the site)
 function fsa_v2_he_date( $ts ) {
 	$m = array( 'ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר' );
@@ -224,6 +313,8 @@ function fsa_v2_data() {
 	$addr = trim( implode( ', ', array_filter( array( get_user_meta( $uid, 'billing_address_1', true ), get_user_meta( $uid, 'billing_city', true ) ) ) ) );
 	$shop = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/' );
 	return array(
+		'domains' => fsa_v2_domains( $uid ), 'domainFonts' => fsa_v2_domain_fonts(),
+		'domAjax' => admin_url( 'admin-ajax.php' ), 'domNonce' => wp_create_nonce( 'fsa_v2_dom' ),
 		'plan' => $plan, 'planStart' => $start, 'nextPay' => '', 'card' => '',
 		'fonts' => $fonts, 'lic' => $lic, 'orders' => $orders,
 		'user' => array(
@@ -987,7 +1078,7 @@ const editCells=(name,host)=>`<td><input class="ed ed-name" value="${name}" aria
 const editHost=(name,host)=>`<input class="ed ed-name" value="${name}" aria-label="שם האתר"><input class="ed ed-host" dir="ltr" value="${host}" aria-label="כתובת האתר">`;
 const editBtns=()=>`<div class="acts"><button class="ibtn ok-btn" data-edsave="1" aria-label="שמירה">${ICON.ok}</button><button class="ibtn" data-edcancel="1" aria-label="ביטול">${ICON.close}</button></div>`;
 function fontPicker(sel){const on=sel.length>=2;return `<div class="fld fontpick ed-fonts"><button type="button" class="fp-btn" aria-haspopup="true" aria-expanded="false" aria-label="פונטים"><span class="fp-val">${sel.join(', ')||'בחירת פונטים'}</span>${ICON.chev}</button>
- <div class="fp-menu">${FAMILY.map(f=>{const c=sel.includes(f[0]);return `<label class="${!c&&on?'off':''}"><input type="checkbox" value="${f[0]}" ${c?'checked':''} ${!c&&on?'disabled':''}> ${f[0]}</label>`}).join('')}<p class="fp-hint ${on?'max':''}">אפשר לבחור עד 2 פונטים לכל אתר</p></div></div>`}
+ <div class="fp-menu">${DOMF.map(f=>{const c=sel.includes(f);return `<label class="${!c&&on?'off':''}"><input type="checkbox" value="${ea(f)}" ${c?'checked':''} ${!c&&on?'disabled':''}> ${ea(f)}</label>`}).join('')}<p class="fp-hint ${on?'max':''}">אפשר לבחור עד 2 פונטים לכל אתר</p></div></div>`}
 const logo=(k,cls='sublogo')=>`<img class="${cls}" src="${SUBS[k].logo}" alt="${SUBS[k].name}">`;
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1900)}
 function meter(u,n){if(!n)return `<span class="chip">ללא הגבלה</span>`;const p=u/n;const c=p>=1?'bad':p>=.66?'warn':'';return `<span class="meter ${c}"><span class="num">${u}/${n}</span><span class="bar"><i style="width:${Math.max(p*100,8)}%"></i></span></span>`}
@@ -1032,6 +1123,14 @@ FAMILY.length=0;(FS.fonts||[]).forEach(f=>FAMILY.push([f.name,(f.weights||[]).le
 LIC.length=0;(FS.lic||[]).forEach(l=>{l.sites=l.sites||[];l.u=l.sites.length;LIC.push(l)});
 ORDERS.length=0;(FS.orders||[]).forEach(o=>ORDERS.push(o));
 Object.keys(SUBDOM).forEach(k=>SUBDOM[k]=[]);HISTORY.length=0;
+/* the subscription's domains come from the site (the Easy Font Table records): [date, name, address, fonts, id] */
+SUBDOM[FS.plan||'web']=(FS.domains||[]).map(r=>r.slice());
+const DOMF=(FS.domainFonts&&FS.domainFonts.length)?FS.domainFonts:FAMILY.map(f=>f[0]);
+const DOM_PLANS=['web','extra'];
+function domApi(op,d){const b=new URLSearchParams(Object.assign({action:'fsa_v2_dom',nonce:FS.domNonce||'',op},d));
+ return fetch(FS.domAjax,{method:'POST',credentials:'same-origin',body:b}).then(r=>r.json()).catch(()=>null).then(j=>{
+  if(!j||!j.success)throw new Error((j&&j.data&&j.data.message)||'השמירה נכשלה. נסו שוב.');
+  SUBDOM[state.plan]=(j.data.domains||[]).map(r=>r.slice());return j})}
 const soon=()=>toast('הפעולה הזו תחובר בשלב הבא');
 /* views */
 const V={};
@@ -1067,7 +1166,8 @@ const fontNote=()=>state.noteHidden?'':`<div class="note x-new" data-new="חדש
  </div>`;
 
 function subsDomains(){
- const p=PLAN[state.plan],list=SUBDOM[state.plan],lim=p.n?p.n+BONUS:0,used=list.filter(s=>canEdit(s[0])).length,full=lim&&used>=lim;
+ if(!DOM_PLANS.includes(state.plan))return `<p class="empty">המינוי שלך לא כולל רישום דומיינים לאתרים.</p>`;
+ const p=PLAN[state.plan],list=SUBDOM[state.plan]||[],lim=p.n?p.n+BONUS:0,used=list.filter(s=>canEdit(s[0])).length,full=lim&&used>=lim;
  const demo=``;const _demoOff=`<div class="demo x-new" data-new="לתצוגה בלבד"><span>תצוגה לפי מינוי:</span>${['web','extra'].map(k=>`<button class="${state.plan===k?'on':''}" data-plan="${k}">${PLAN[k].label}</button>`).join('')}</div>`;
  return `${demo}
  <div class="dom-head">
@@ -1081,7 +1181,7 @@ function subsDomains(){
      <div class="fld reg-host">${ICON.globe}<input id="sd2" placeholder="הזן דומיין חדש (למשל: example.co.il)" aria-label="כתובת הדומיין" inputmode="url" autocomplete="off" required></div>
      <div class="fld fontpick"><span id="fpl" class="sr">פונטים, עד 2</span>
        <button type="button" class="fp-btn" aria-haspopup="true" aria-expanded="false" aria-labelledby="fpl"><span class="fp-val">בחירת פונטים (עד 2)</span>${ICON.chev}</button>
-       <div class="fp-menu">${FAMILY.map(f=>`<label><input type="checkbox" value="${f[0]}"> ${f[0]}</label>`).join('')}<p class="fp-hint">אפשר לבחור עד 2 פונטים לכל אתר</p></div>
+       <div class="fp-menu">${DOMF.map(f=>`<label><input type="checkbox" value="${ea(f)}"> ${ea(f)}</label>`).join('')}<p class="fp-hint">אפשר לבחור עד 2 פונטים לכל אתר</p></div>
      </div>
      <button class="btn btn-grad reg-add">${ICON.plus}הוסף דומיין</button>
    </form><p class="form-err" id="sdErr" hidden></p></div></div>`}
@@ -1355,7 +1455,7 @@ modal.addEventListener('click',e=>{if(e.target.id==='certModal')hideModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){hideModal();closeMenus();closeCart()}});
 document.addEventListener('click',e=>{
  const t=e.target.closest('button,a');if(!t||!t.closest('#fsa,#fsa-layer'))return;
- if(t.dataset.del||t.dataset.sddel||t.dataset.edit||t.dataset.addon||t.dataset.planaddon||t.dataset.edsave){e.preventDefault();soon();return}
+ {const lic=k=>String(k||'').startsWith('dom:');if(t.dataset.del||t.dataset.addon||t.dataset.planaddon||(t.dataset.edit&&lic(t.dataset.edit))||(t.dataset.edsave&&lic((t.closest('tr')||{}).dataset&&t.closest('tr').dataset.key))){e.preventDefault();soon();return}}
  if(t.dataset.view){goPage(t.dataset.view);return}
  if(t.dataset.plantg){state.planOpen=!state.planOpen;t.closest('.plan').classList.toggle('open',state.planOpen);t.setAttribute('aria-expanded',state.planOpen);save();return}
  if(t.dataset.licf){state.licFilter=t.dataset.licf==='all'?'':t.dataset.licf;state.open.lic=-1;render();return}
@@ -1381,18 +1481,20 @@ document.addEventListener('click',e=>{
  if(t.dataset.planaddon){openCart({name:`דומיין נוסף · מינוי ${PLAN[state.plan].label}`,desc:`רישום אחד נוסף לחודש ${CYCLE.label}`,price:79,
    okText:`נוסף רישום אחד למכסת ${CYCLE.label}.`,backText:'חזרה לרישום הדומיין',
    grant:()=>{BONUS+=1},back:()=>{state.view='subs';state.sub.subs='reg';render();backTo('#sd2','אפשר לרשום את הדומיין הנוסף')}});return}
- if(t.dataset.sddel){const s=SUBDOM[state.plan].splice(+t.dataset.sddel,1)[0];render();toast(`${s[2]} הוסר והמקום במכסה התפנה`);return}
+ if(t.dataset.sddel){const s=SUBDOM[state.plan][+t.dataset.sddel];if(!s||!confirm(`להסיר את ${s[2]}?`))return;t.disabled=true;
+  domApi('del',{id:s[4]}).then(()=>{render();toast(`${s[2]} הוסר והמקום במכסה התפנה`)}).catch(x=>{t.disabled=false;toast(x.message)});return}
  if(t.dataset.go2){state.sub.subs='reg';goPage(t.dataset.go2);return}
  if(t.id==='logout'){location.href=FS.links.logout;return}
  if(t.dataset.t){e.preventDefault();soon()}
 });
 document.addEventListener('submit',e=>{
- const f=e.target;if(!f.closest('#fsa,#fsa-layer'))return;e.preventDefault();if(f.dataset.subadd||f.dataset.add!==undefined||f.id==='pform'){soon();return}
+ const f=e.target;if(!f.closest('#fsa,#fsa-layer'))return;e.preventDefault();if(f.dataset.add!==undefined||f.id==='pform'){soon();return}
  if(f.dataset.subadd){
   const host=cleanHost($('#sd2').value),picked=[...f.querySelectorAll('.fp-menu input:checked')].map(i=>i.value),err=$('#sdErr');
   const msg=!host||!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)?'צריך להזין כתובת אתר תקינה, למשל studio.co.il':!picked.length?'צריך לבחור לפחות פונט אחד':'';
   if(msg){err.textContent=msg;err.hidden=false;(msg.includes('כתובת')?$('#sd2'):f.querySelector('.fp-btn')).focus();return}
-  state.regOpen=false;SUBDOM[state.plan].unshift([today(),siteName(host),host,picked.join(', ')]);render({fresh:host});toast('האתר נרשם במינוי. התעודה מוכנה להורדה');return}
+  const btn=f.querySelector('.reg-add');if(btn)btn.disabled=true;
+  domApi('add',{host,name:siteName(host),fonts:picked.join(', ')}).then(()=>{state.regOpen=false;render({fresh:host});toast('האתר נרשם במינוי. התעודה מוכנה להורדה')}).catch(x=>{if(btn)btn.disabled=false;err.textContent=x.message;err.hidden=false});return}
  if(f.dataset.add!==undefined){const l=LIC[+f.dataset.add];const host=cleanHost(f.querySelector('[data-namefor]').value);if(!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)){toast('צריך להזין כתובת אתר תקינה');return}l.sites.unshift([today(),f.querySelector('.sitename').value.trim()||siteName(host),host]);l.u=l.sites.length;render({fresh:host});toast('הדומיין נרשם. התעודה מוכנה להורדה');return}
  toast('השינויים נשמרו');
 });
@@ -1409,9 +1511,9 @@ function saveEdit(tr){
  const fonts=[...tr.querySelectorAll('.fp-menu input:checked')].map(i=>i.value);
  if(tr.querySelector('.fp-menu')&&!fonts.length){toast('צריך לבחור לפחות פונט אחד');return}
  const p=key.split(':');
- if(p[0]==='sd'){const s=SUBDOM[state.plan][+p[1]];s[1]=name;s[2]=host;s[3]=fonts.join(', ')}
- else{const s=LIC[+p[1]].sites[+p[2]];s[1]=name;s[2]=host}
- state.editKey=null;render({fresh:host});toast('הדומיין עודכן, וגם התעודה שלו');
+ if(p[0]==='sd'){const s=SUBDOM[state.plan][+p[1]];tr.querySelectorAll('button').forEach(b=>b.disabled=true);
+  domApi('edit',{id:s[4],host,name,fonts:fonts.join(', ')}).then(()=>{state.editKey=null;render({fresh:host});toast('הדומיין עודכן, וגם התעודה שלו')}).catch(x=>{tr.querySelectorAll('button').forEach(b=>b.disabled=false);toast(x.message)});return}
+ soon();
 }
 document.addEventListener('keydown',e=>{const tr=e.target.closest&&e.target.closest('tr.editing');if(!tr)return;if(e.key==='Enter'){e.preventDefault();saveEdit(tr)}if(e.key==='Escape'){state.editKey=null;render()}});
 function closeMenus(){document.querySelectorAll('.fp-menu.open').forEach(m=>{m.classList.remove('open');m.parentElement.querySelector('.fp-btn').setAttribute('aria-expanded','false')})}

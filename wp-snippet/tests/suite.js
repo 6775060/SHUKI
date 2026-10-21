@@ -9,6 +9,13 @@ async function snapshot(p){return p.evaluate(()=>{const sel=['#fsa .shell','#fsa
 for(const w of [390,1280]){
  const pages={};
  for(const v of ['plain','theme']){const p=await b.newPage({viewport:{width:w,height:800}});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>{if(m.type()==='error'&&!/ERR_|net::|Failed to load/.test(m.text()))errs.push(m.text())});
+  const DB={rows:[["05.10.2026","סטודיו","studio.co.il","פורטו",11],["03.09.2026","ישן","old.co.il","טאלנט",10]],next:20};
+  await p.route('**/admin-ajax.php',async r=>{const q=new URLSearchParams(r.request().postData()||'');const op=q.get('op');let ok=true,msg='';
+   if(op==='add'){if(DB.rows.filter(x=>x[0].endsWith('.10.2026')).length>=3){ok=false;msg='ניצלת את הדומיינים של החודש.'}else DB.rows.unshift(['21.10.2026',q.get('name'),q.get('host'),q.get('fonts'),DB.next++])}
+   else if(op==='edit'){const x=DB.rows.find(x=>x[4]==q.get('id'));x[1]=q.get('name');x[2]=q.get('host');x[3]=q.get('fonts')}
+   else if(op==='del'){DB.rows=DB.rows.filter(x=>x[4]!=q.get('id'))}
+   await r.fulfill({contentType:'application/json',body:JSON.stringify(ok?{success:true,data:{domains:DB.rows}}:{success:false,data:{message:msg}})})});
+  p.on('dialog',dl=>dl.accept());
   await p.goto('file://'+S+'/page-'+v+'.html');await p.waitForTimeout(500);pages[v]={p,errs,snap:{}};
   for(const vw of VIEWS){await p.evaluate(x=>document.querySelector(`#fsa .side button[data-view="${x}"]`).click(),vw);await p.waitForTimeout(500);
    pages[v].snap[vw]=await snapshot(p);
@@ -44,15 +51,26 @@ for(const w of [390,1280]){
  if(!(await p.evaluate(()=>document.querySelector('#certModal').hidden)))await p.evaluate(()=>document.querySelector('#certClose').click()),await p.waitForTimeout(400);
  // download menu items are real links
  const dlm=await p.locator('#fsa .pop button.btn.dl-sm[data-pop]').count();if(dlm){await p.locator('#fsa .pop button.btn.dl-sm[data-pop]').first().click();await p.waitForTimeout(300);const hrefs=await p.locator('#fsa .pop-menu a[href]').evaluateAll(a=>a.map(x=>x.getAttribute('href')));if(!hrefs.length||hrefs.some(h=>!/^https?:/.test(h)))bad(`${w} download menu links ${hrefs}`);await p.keyboard.press('Escape');await p.mouse.click(5,5)}
- // domain actions -> "next stage" message, nothing changes
- await go('dom');const rows0=await p.locator('#fsa .dom-tbl tbody tr').count();
- for(const a of ['[data-edit]','[data-del]']){await p.evaluate(s=>document.querySelector('#fsa '+s).click(),a);const t=await toastNow();if(!t.includes('בשלב הבא'))bad(`${w} ${a} gives "${t}"`);if(await inView('#toast')!==true)bad(`${w} toast off screen after ${a}`)}
- if(await p.locator('#fsa .dom-tbl tbody tr').count()!==rows0||await p.locator('#fsa tr.editing').count())bad(`${w} domain rows changed`);
+ // subscription domains: edit and remove go to the server; licence sites still wait for stage 2
+ await go('dom');
+ await p.evaluate(()=>document.querySelector('#fsa .dom-tbl [data-edit^="sd:"]').click());await p.waitForTimeout(250);
+ await p.locator('#fsa tr.editing .ed-host').fill('studio-new.co.il');await p.evaluate(()=>document.querySelector('#fsa tr.editing [data-edsave]').click());await p.waitForTimeout(500);
+ if(!(await p.evaluate(()=>document.querySelector('#fsa .dom-tbl').innerText.includes('studio-new.co.il'))))bad(`${w} edit was not saved`);
+ if(!(await toastNow()).includes('עודכן'))bad(`${w} no message after edit`);
+ const before=await p.locator('#fsa .dom-tbl tbody tr').count();
+ await p.evaluate(()=>document.querySelector('#fsa [data-sddel]').click());await p.waitForTimeout(500);
+ if(await p.evaluate(()=>document.querySelector('#fsa .dom-tbl').innerText.includes('studio-new.co.il')))bad(`${w} remove did not remove`);
+ if(await inView('#toast')!==true)bad(`${w} toast off screen after remove`);
+ const licEdit=await p.$('#fsa [data-edit^="dom:"]');if(licEdit){await licEdit.click();const lt=await toastNow();if(!lt.includes('בשלב הבא'))bad(`${w} licence-site edit gives "${lt}"`)}
+ if(await p.locator('#fsa .dom-tbl tr.editing').count())bad(`${w} licence row went into edit mode`);
  // registration
  await go('subs');await p.evaluate(()=>document.querySelector('#fsa [data-subtab="reg"]').click());await p.waitForTimeout(400);
  const ro=await p.locator('#fsa [data-regopen]').isVisible();if(ro){await p.click('#fsa [data-regopen]');await p.waitForTimeout(600)}
- await p.fill('#sd2','x.co.il');await p.click('#fsa .reg-add');const rt=await toastNow();if(!rt.includes('בשלב הבא'))bad(`${w} register gives "${rt}"`);
+ await p.fill('#sd2','x.co.il');await p.evaluate(()=>{const f=document.querySelector('#fsa .reg-row .fp-menu input');f.checked=true;f.dispatchEvent(new Event('change',{bubbles:true}))});await p.click('#fsa .reg-add');await p.waitForTimeout(500);const rt=await toastNow();if(!rt.includes('נרשם'))bad(`${w} register gives "${rt}"`);
+ if(!(await p.evaluate(()=>document.querySelector('#fsa .sub-reg ~ .tbl-wrap').innerText.includes('x.co.il'))))bad(`${w} registered domain not in the list`);
+ const regFonts=await p.evaluate(()=>[...document.querySelectorAll('#fsa .reg-row .fp-menu input')].map(i=>i.value));if(regFonts.join()!=='פורטו,טאלנט,דיסקברי')bad(`${w} font list is not the site's list: ${regFonts}`);
  // hover/focus keep our button look
+ if(await p.locator('#fsa [data-regopen]').isVisible()){await p.click('#fsa [data-regopen]');await p.waitForTimeout(600)}
  for(const s of ['#fsa .reg-add','#fsa .plan-tg','#fsa .tabs button']){const el=p.locator(s).first();const before=await el.evaluate(e=>getComputedStyle(e).backgroundImage+getComputedStyle(e).backgroundColor);await el.hover();await p.waitForTimeout(350);const after=await el.evaluate(e=>{const c=getComputedStyle(e);return c.backgroundImage+c.backgroundColor+'|'+c.color});if(/rgb\(0, 0, 204\)|255, 255, 0/.test(after))bad(`${w} ${s} takes the theme hover colour`);if(s==='#fsa .reg-add'&&!after.includes('gradient'))bad(`${w} ${s} loses its gradient on hover`)}
  // weight picker: real weights, each with its own links, menu stays inside the screen
  await go('subs');await p.evaluate(()=>document.querySelector('#fsa [data-subtab="dl"]').click());await p.waitForTimeout(400);

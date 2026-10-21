@@ -31,6 +31,8 @@ function wc_get_product( $id ) { return $GLOBALS['P'][ $id ] ?? null; }
 class WC_Download_Handler { static function download( $f, $pid ) { $GLOBALS['served'] = array( $f, $pid ); throw new Exception( 'served' ); } }
 function wc_get_customer_available_downloads( $u ) { return array( array( 'product_id' => 30004, 'product_name' => 'נוסטלה - רגיל, וובפונט', 'order_id' => 0, 'download_url' => 'https://x/dl', 'download_name' => 'Nostela_Regular_Web' ) ); }
 function wc_get_order( $id ) { return null; } function wc_get_orders( $a ) { return array(); } function get_user_meta() { return ''; } function wc_get_page_permalink() { return '/'; } function wc_logout_url() { return '/'; } function get_permalink() { return '/'; }
+class NoTableDB { public $prefix = 'wp_'; function prepare( $q, ...$a ) { return $q; } function get_var( $q ) { return null; } function get_results( $q ) { return array(); } }
+$GLOBALS['wpdb'] = new NoTableDB(); function admin_url( $p = '' ) { return 'https://fontshok.co.il/wp-admin/' . $p; }
 eval( file_get_contents( __DIR__ . '/../fsa-v2-snippet.php' ) );
 
 $fail = 0; $t = function ( $ok, $m ) use ( &$fail ) { echo ( $ok ? 'ok   ' : 'FAIL ' ) . $m . "\n"; if ( ! $ok ) $fail++; };
@@ -58,4 +60,5 @@ $GLOBALS['user']->user_login = 'claude-test';
 $d = fsa_v2_data(); $l = $d['lic'][0];
 $t( 'נוסטלה' === $l['f'] && 'רגיל' === $l['w'] && 'וובפונט' === $l['t'] && 1 === $l['web'], "licence row: {$l['f']} / {$l['w']} / {$l['t']}" );
 $t( 3 === count( $d['fonts'][0]['weights'] ), 'subscription data carries the weights' );
+$t( array() === $d['domains'] && isset( $d['domNonce'], $d['domAjax'] ), 'no domains table: empty list, no error' );
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n"; exit( $fail ? 1 : 0 );
