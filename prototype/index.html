@@ -137,6 +137,9 @@ a{color:inherit}
   .sub-reg .reg-open{display:flex;width:100%;height:46px;font-size:16px;gap:8px}
   .sub-reg .reg-open .icon{width:20px;height:20px}
   .sub-reg.reg-on .reg-open{display:none}
+  .sub-reg .reg-head{display:flex;align-items:center;justify-content:space-between;margin:-6px 0 10px;font-size:16px}
+  .sub-reg .reg-close{width:32px;height:32px;color:var(--muted)}
+  .sub-reg .reg-close .icon{width:20px;height:20px}
   .reg-fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s var(--ease)}
   .reg-fold>div{overflow:hidden}
   .reg-fold>div>*{opacity:0;transform:translateY(-6px);transition:opacity .3s ease,transform .4s var(--ease)}
@@ -371,7 +374,7 @@ body.show-new .x-new::before{content:attr(data-new);position:absolute;top:-22px;
 .note{display:flex;align-items:center;gap:10px;padding:4px 4px;margin-top:18px;font-size:15px;color:var(--muted)}
 .btn.icon-only{width:44px;height:38px;padding:0}
 .btn.icon-only .icon{width:20px;height:20px}
-/* download in "פונטים שרכשתי": small, grey hairline frame; on hover the same soft grey as the other icon buttons */
+/* download in "פונטים שלי": small, grey hairline frame; on hover the same soft grey as the other icon buttons */
 .btn.dl-sm{width:34px;height:32px;padding:0;background:transparent;border:1px solid #D6D6D6;color:var(--ink);border-radius:8px}
 .btn.dl-sm .icon{width:18px;height:18px}
 .btn.dl-sm:hover{background:var(--soft);border-color:#BDBDBD;filter:none}
@@ -445,6 +448,7 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .hist-scroll{max-height:440px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .hist-scroll thead th{position:sticky;top:0;z-index:2}
 .tbl tr.mgroup td{position:sticky;top:44px;z-index:1;background:#fff;font-size:13px;font-weight:600!important;color:var(--violet);padding:14px 16px 6px;border-bottom:1px solid var(--line)}
+.tbl>tbody>tr.mgroup>td,.tbl>tbody>tr.mgroup>td:first-child{color:var(--violet);background:#F6F3FF;font-weight:600}
 .lock-note .icon{width:14px;height:14px;color:var(--faint)}
 .lic-form{grid-template-columns:repeat(2,minmax(0,1fr)) auto}
 /* purchased fonts: the whole row opens/closes the site registration; chevron sits to the right of the font name */
@@ -496,6 +500,7 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 /* subscription registration box (padding moved out of the inline style so phones can fold it) */
 .sub-reg{background:var(--bg);border-radius:10px;padding:22px 24px;transition:background-color .45s var(--ease),padding .45s var(--ease)}
 .reg-open{display:none}
+.reg-head{display:none}
 .reg-fold>div{min-height:0}
 .dom-box .form-err{margin:10px 0 0}
 .dom-box .quota-line{padding:0}
@@ -568,6 +573,24 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
   .mini tbody tr:has(> td > .acts)::after{content:"";order:1;flex-basis:100%;height:0}
   .mini tbody tr:has(> td > .acts)>td:first-child{order:0;flex:1 1 0;min-width:0}
 }
+/* phones: "פרטים" sits at the left end of the subscription's top row */
+@media (max-width:1000px){
+  .plan>.plan-id{flex:1 1 0;min-width:0}
+  .plan>.dates{margin-inline-start:auto;align-self:flex-start;flex-wrap:nowrap}
+}
+@media (max-width:760px){
+  .plan{padding-inline-start:16px;column-gap:12px}
+  .plan>img{width:40px;height:40px}
+  .plan-tg{padding:4px 8px}
+  .plan>.dates{position:absolute;top:12px;inset-inline-end:26px;margin:0}
+  .plan>.plan-id>.name{padding-inline-end:100px;flex-wrap:wrap;row-gap:4px}
+  /* "דומיינים": the register button sits at the top-left, on the title's line */
+  .main .head-row{position:relative}
+  .head-act{position:absolute;top:0;inset-inline-end:0}
+  .head-act .btn{height:34px;padding:0 12px;font-size:14px}
+  .head-row:has(.head-act) .h1{padding-inline-end:150px;min-height:34px;display:flex;align-items:center}
+}
+@media (max-width:340px){.plan>.dates{position:static;flex-basis:100%;margin:6px 0 0}.plan>.plan-id>.name{padding-inline-end:0}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -590,7 +613,7 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
   <div class="shell">
     <nav class="side" aria-label="אזור אישי">
       <button data-view="subs">המינוי שלי</button>
-      <button data-view="lic">פונטים שרכשתי</button>
+      <button data-view="lic">פונטים שלי</button>
       <button data-view="dom">דומיינים</button>
       <button data-view="orders">הזמנות</button>
       <button data-view="profile">פרופיל</button>
@@ -761,7 +784,7 @@ function subsDomains(){
  </div>
  <div class="box dom-box sub-reg ${state.regOpen?'reg-on':''}">
    ${full?quotaFullPlan():`<button class="btn btn-grad reg-open" data-regopen="1" aria-expanded="${!!state.regOpen}" aria-controls="regFold">${ICON.plus} רישום דומיין חדש</button>
-   <div class="reg-fold" id="regFold"><div><form class="form-row" data-subadd="1" novalidate>
+   <div class="reg-fold" id="regFold"><div><div class="reg-head"><b>רישום דומיין חדש</b><button type="button" class="ibtn reg-close" data-regclose="1" aria-label="סגירה וקיפול הטופס">${ICON.close}</button></div><form class="form-row" data-subadd="1" novalidate>
      <div class="fld"><label for="sd2">כתובת האתר *</label><input id="sd2" placeholder="fontshok.co.il" dir="ltr" inputmode="url" autocomplete="off" required></div>
      <div class="fld"><label for="sd1">שם האתר <span style="color:var(--muted)">(רשות)</span></label><input id="sd1" placeholder="יתמלא אוטומטית מהכתובת"></div>
      <div class="fld fontpick"><label id="fpl">פונטים <span style="color:var(--muted)">(עד 2)</span></label>
@@ -805,10 +828,10 @@ function subsDownloads(){
  </tbody></table></div>`;
 }
 
-/* פונטים שרכשתי: one list, one row per purchased license. Download + certificate on every row;
+/* פונטים שלי: one list, one row per purchased license. Download + certificate on every row;
    web licenses also show their own domain counter and open a drawer to register. No tabs. */
 V.lic=(tab,open)=>`
- <div class="head-row"><div><h1 class="h1">פונטים שרכשתי</h1><p class="sub">פונטים שקנית בנפרד, מחוץ למינוי. רישיון וובפונט מכסה עד 3 אתרים.</p></div>${licFilterBar()}</div>
+ <div class="head-row"><div><h1 class="h1">פונטים שלי</h1><p class="sub">פונטים שקנית בנפרד, מחוץ למינוי. רישיון וובפונט מכסה עד 3 אתרים.</p></div>${licFilterBar()}</div>
  ${licTable(open)}`;
 
 /* one row per font + weight. Every purchased licence stays its own record (own certificate, own files);
@@ -866,7 +889,7 @@ function quotaFull(l){
  </div>`;
 }
 
-/* דומיינים: read-only overview of every site, whatever it came through. Registering happens in "המינוי שלי" or "פונטים שרכשתי". */
+/* דומיינים: read-only overview of every site, whatever it came through. Registering happens in "המינוי שלי" or "פונטים שלי". */
 V.dom=()=>{
  const p=PLAN[state.plan];
  const fromSub=SUBDOM[state.plan].map((s,j)=>({s,src:`<span class="src sub">${logo(state.plan)}${p.label}</span>`,font:s[3],cert:`sd:${j}`,del:`data-sddel="${j}"`}));
@@ -882,7 +905,7 @@ V.dom=()=>{
  const thead=`<thead><tr><th>דומיין</th><th>פונטים</th><th>דרך</th><th>תאריך רישום</th><th></th></tr></thead>`;
  return `
  <div class="head-row"><div><h1 class="h1">דומיינים</h1><p class="sub">כל האתרים שלך במקום אחד. רישום אתר חדש נעשה במינוי או בפונט שרכשת.</p></div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-grad" data-go2="subs">רישום אתר במינוי</button></div></div>
+  <div class="head-act"><button class="btn btn-grad" data-go2="subs">רישום אתר במינוי</button></div></div>
  <h2 class="h2-sec">החודש · ${CYCLE.label} 2026</h2>
  <div class="tbl-wrap"><table class="tbl">${thead}<tbody>
  ${now.map(row).join('')||`<tr><td colspan="5" class="hint">עוד לא נרשמו דומיינים החודש</td></tr>`}
@@ -1027,6 +1050,7 @@ document.addEventListener('click',e=>{
  if(t.dataset.view){goPage(t.dataset.view);return}
  if(t.dataset.plantg){state.planOpen=!state.planOpen;t.closest('.plan').classList.toggle('open',state.planOpen);t.setAttribute('aria-expanded',state.planOpen);save();return}
  if(t.dataset.licf){state.licFilter=t.dataset.licf==='all'?'':t.dataset.licf;state.open.lic=-1;render();return}
+ if(t.dataset.regclose){state.regOpen=false;const box=t.closest('.sub-reg');box.classList.remove('reg-on');const ob=box.querySelector('.reg-open');ob.setAttribute('aria-expanded','false');ob.focus({preventScroll:true});save();return}
  if(t.dataset.regopen){state.regOpen=true;t.setAttribute('aria-expanded','true');t.closest('.sub-reg').classList.add('reg-on');setTimeout(()=>$('#sd2')&&$('#sd2').focus({preventScroll:true}),420);save();return}
  if(t.dataset.hist){state.histOpen=!state.histOpen;t.setAttribute('aria-expanded',state.histOpen);$('#histBody').classList.toggle('open',state.histOpen);return}
  if(t.dataset.go){e.preventDefault();if(t.dataset.go==='dom')state.histOpen=true;goPage(t.dataset.go);return}

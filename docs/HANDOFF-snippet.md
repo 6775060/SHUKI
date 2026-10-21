@@ -37,7 +37,12 @@ Every item below was a decision by the site owner (the user).
 | 23 | "דומיינים": next to the subscription logo, only the plan name ("וובסטופ"), without the word "מינוי" | `V.dom` `.src.sub` |
 | 24 | Accordions start **closed** on every visit: the invoice in "הזמנות" (open only via the eye button) and the licence drawer. Also: the first invoice line's amount sits level with its label (`.tbl .mini tbody tr:first-child td{padding-top:11px}`) | initial `state.open`, the restore after `localStorage` |
 | 25 | "פונטים שרכשתי": a segmented filter at the left of the header, **הכל / וובפונט / דסקטופ / אפליקציה**. Only the types this customer owns appear (no "אפליקציה" if they have no app licence); with a single type the bar is hidden. A row shows when any of its licences has the chosen type. Phones: the filter sits under the title | `licFilterBar()`, `.seg-f`, `data-licf` handler, the filter in `licTable()` |
-| 26 | Phones, "המינוי שלי → רישום דומיינים": the form starts folded as one "+ רישום דומיין חדש" button. Tapping it unfolds the form (grid-rows animation, fields fade in), focuses the address field; after a successful registration it folds back. Desktop: the form is always open | `.sub-reg`, `.reg-open`, `.reg-fold`, `data-regopen`, `state.regOpen` |
+| 26 | Phones, "המינוי שלי → רישום דומיינים": the form starts folded as one "+ רישום דומיין חדש" button. Tapping it unfolds the form (grid-rows animation, fields fade in), focuses the address field; after a successful registration it folds back. Desktop: the form is always open | `.sub-reg`, `.reg-open`, `.reg-fold`, `data-regopen`, `data-regclose`, `state.regOpen` |
+| 27 | Phones, subscription box: "פרטים" sits at the left end of the name row (pinned top-left; the name row reserves 100px so "פעיל" wraps instead of hiding; ≤340px it drops to its own line). Checked every 5px 320–1300 with web and extra: no overlap | the `.plan>.dates` / `.plan>.plan-id>.name` rules near the end of the CSS |
+| 28 | Domain history month rows ("ספטמבר 2026"): distinct violet text on a light lilac band, on every width | `.tbl>tbody>tr.mgroup>td` |
+| 29 | Phones, "דומיינים": the "רישום אתר במינוי" button sits at the top-left, on the title's line (smaller, 34px) | `.head-act` |
+| 30 | Phones, open registration form: a header "רישום דומיין חדש" with an X that folds the form back into the button (focus returns to it) | `.reg-head`, `.reg-close`, `data-regclose` |
+| 31 | Rename the section "פונטים שרכשתי" → **"פונטים שלי"** (sidebar/tab and page title) | nav `data-view="lic"`, `V.lic` title |
 
 Open questions to report back:
 - the store's weight and licence-type keys (item 5);
