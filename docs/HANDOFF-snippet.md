@@ -43,7 +43,7 @@ Every item below was a decision by the site owner (the user).
 | 29 | (superseded by 34) |
 | 30 | Phones, open registration form: a header "רישום דומיין חדש" with an X that folds the form back into the button (focus returns to it) | `.reg-head`, `.reg-close`, `data-regclose` |
 | 31 | Rename the section "פונטים שרכשתי" → **"פונטים שלי"** (sidebar/tab and page title) | nav `data-view="lic"`, `V.lic` title |
-| 32 | Phones, subscription box: the "פעיל" chip sits **above** the plan name (column, chip first); checked 320–1300 every 5px, web and extra: no overlap between name, chip, description, logo and "פרטים" | `.plan>.plan-id>.name{flex-direction:column}`, `.chip{order:-1}` |
+| 32 | Phones, subscription box: the "פעיל" chip is a **small badge** (11px, 18px tall) at the top, right next to the logo, above the plan name; checked 320–1300 every 5px, web and extra: no overlap between name, chip, description, logo and "פרטים" | `.plan>.plan-id>.name{flex-direction:column}`, `.chip{order:-1}` |
 | 33 | Phones, registration form: once unfolded (after 460ms) the fold stops clipping, so the font list floats over the page; while folding it clips again | `.reg-done`, `data-regopen` / `data-regclose` handlers |
 | 34 | Phones, "דומיינים": the header register button is hidden; instead a soft round "+" (32px, lilac background, violet plus) sits at the left end of the "החודש · …" line, right above the list it adds to. Desktop keeps the full "רישום אתר במינוי" button by the title | `.sec-row`, `.sec-add`, `.head-act` |
 | 35 | Domains: the registration date is light grey (`--faint`); on phones it sits at the far left of its line | `.dom-tbl>tbody>tr>td.num` |
