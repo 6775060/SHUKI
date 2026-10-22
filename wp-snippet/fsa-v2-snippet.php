@@ -833,7 +833,14 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .ed:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(91,63,255,.12)}
 :is(#fsa,#fsa-layer) .ed-fonts .fp-btn{height:30px;border:1px solid #DCD6F7}
 :is(#fsa,#fsa-layer) .lock-note{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:12px}
-:is(#fsa,#fsa-layer) .dom-note{margin-top:44px}
+/* "דומיינים": the edit-until note sits on the month line, at its far end; the history header follows the table */
+/* order search: a rounded pill like the other fields */
+:is(#fsa,#fsa-layer) .fld input#oq{border-radius:99px;padding:0 18px}
+:is(#fsa,#fsa-layer) .sec-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+:is(#fsa,#fsa-layer) .sec-row .sec-note{margin-inline-start:auto;display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:400;color:var(--muted)}
+:is(#fsa,#fsa-layer) .sec-row .sec-note .icon{width:16px;height:16px}
+:is(#fsa,#fsa-layer) .sec-row + .tbl-wrap + .hist-toggle{margin-top:36px}
+@media (max-width:760px){:is(#fsa,#fsa-layer) .sec-row .sec-note{order:3;flex-basis:100%;margin:0;font-size:13px}}
 :is(#fsa,#fsa-layer) .lock-note .linkbtn{font-size:13px}
 :is(#fsa,#fsa-layer) .h2-sec{font-size:18px;font-weight:700;margin:8px 0 12px;display:flex;align-items:baseline;gap:10px}
 :is(#fsa,#fsa-layer) .hist-toggle{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;margin-top:14px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
@@ -848,7 +855,7 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .hist-scroll{max-height:440px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 :is(#fsa,#fsa-layer) .hist-scroll thead th{position:sticky;top:0;z-index:2}
 :is(#fsa,#fsa-layer) .tbl td.hint{font-weight:400;font-size:15px;color:var(--muted)}
-:is(#fsa,#fsa-layer) .tbl.dom-tbl thead th{background:var(--card);color:#333;border-bottom:1px solid var(--line);border-radius:0}
+:is(#fsa,#fsa-layer) .tbl.reg-tbl thead th{background:var(--card);color:#333;border-bottom:1px solid var(--line);border-radius:0}
 :is(#fsa,#fsa-layer) .tbl tr.mgroup td{position:sticky;top:44px;z-index:1;background:#fff;font-size:13px;font-weight:600!important;color:var(--violet);padding:14px 16px 6px;border-bottom:1px solid var(--line)}
 :is(#fsa,#fsa-layer) .tbl>tbody>tr.mgroup>td,:is(#fsa,#fsa-layer) .tbl>tbody>tr.mgroup>td:first-child{color:var(--violet);background:var(--card);font-weight:600;border-bottom:0!important}
 :is(#fsa,#fsa-layer) .lock-note .icon{width:14px;height:14px;color:var(--faint)}
@@ -1023,6 +1030,12 @@ html body.fsa-v2{overflow-x:clip}
 :is(#fsa,#fsa-layer) .pop-menu a{display:block;width:100%;padding:9px 12px;border-radius:6px;font-size:15px;cursor:pointer;white-space:nowrap;text-align:start}
 :is(#fsa,#fsa-layer) .pop-menu a:hover,:is(#fsa,#fsa-layer) .pop-menu a:focus-visible{background:var(--soft)}
 #fsa-layer{width:auto;height:0;margin:0;padding:0;background:none;position:static}
+:is(#fsa,#fsa-layer) .wcell{position:relative;display:block;max-width:180px;outline:none}
+:is(#fsa,#fsa-layer) .wlist{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:is(#fsa,#fsa-layer) .wcell.trunc{cursor:help}
+:is(#fsa,#fsa-layer) .wtip{display:none;position:absolute;top:calc(100% + 6px);inset-inline-start:0;z-index:8;background:var(--card);box-shadow:0 8px 28px rgba(0,0,0,.14);border-radius:10px;padding:10px 14px;font-size:14px;line-height:1.8;white-space:nowrap}
+:is(#fsa,#fsa-layer) .wcell.trunc:hover .wtip,:is(#fsa,#fsa-layer) .wcell.trunc:focus .wtip{display:block}
+@media (max-width:760px){:is(#fsa,#fsa-layer) .wcell{max-width:min(180px,55vw)}}
 :is(#fsa,#fsa-layer) .tbl tbody tr td.hint{font-weight:400;font-size:15px;color:var(--muted)}
 :is(#fsa,#fsa-layer) .pop.up .pop-menu{top:auto;bottom:calc(100% + 6px)}
 :is(#fsa,#fsa-layer) .wsel-menu .wrow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:6px 6px 6px 4px;border-radius:6px}
@@ -1238,7 +1251,7 @@ function subsDomains(){
      <button class="btn btn-grad reg-add">${ICON.plus}הוסף דומיין</button>
    </form><p class="form-err" id="sdErr" hidden></p></div></div>`}
  </div>
- <div class="tbl-wrap"><table class="tbl dom-tbl">${DOM_THEAD}<tbody>
+ <div class="tbl-wrap"><table class="tbl dom-tbl reg-tbl">${DOM_THEAD}<tbody>
  ${list.map(subRow).filter(r=>canEdit(r.s[0])).sort((a,b)=>parseD(b.s[0])-parseD(a.s[0])).map(domRow).join('')||`<tr><td colspan="5" class="hint" style="padding:18px 0">עוד לא נרשמו דומיינים החודש</td></tr>`}
  </tbody></table></div>
  <p class="hint lock-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</p>`;
@@ -1280,12 +1293,16 @@ V.lic=(tab,open)=>`
 
 /* one row per font + weight. Every purchased licence stays its own record (own certificate, own files);
    the row only groups them: all licence names as tags, certificate/download offer a choice when there is more than one */
-function licGroups(){const g=new Map();LIC.forEach((l,i)=>{const k=l.f+'|'+l.w;if(!g.has(k))g.set(k,[]);g.get(k).push(i)});return [...g.values()]}
+/* one row per font: every licence and weight bought for it sits on the same row */
+function licGroups(){const g=new Map();LIC.forEach((l,i)=>{const k=l.f;if(!g.has(k))g.set(k,[]);g.get(k).push(i)});return [...g.values()]}
 const FMT={'וובפונט':'לאתרים (WOFF2)','דסקטופ':'לדסקטופ (OTF)','אפליקציה':'לאפליקציה'};
-/* several licences of one font: name each by its type, or (same type) by its file or order */
-const licTag=(i,ids)=>{const L=LIC[i];if(!ids.every(j=>LIC[j].t===L.t))return ea(L.t);
- if(L.file&&!ids.every(j=>LIC[j].file===L.file))return `${ea(L.t)} · <bdi>${ea(L.file)}</bdi>`;
- return `${ea(L.t)}${L.oid?` · הזמנה #${ea(L.oid)}`:` ${ids.indexOf(i)+1}`}${L.d?` · ${ea(L.d)}`:''}`};
+/* names an item in a row's menus, in Hebrew: "אזכור במשקל קל"; the licence type or order is added only when it is needed to tell two apart */
+const licTag=(i,ids)=>{const L=LIC[i];let s=L.w?`${ea(L.f)} במשקל ${ea(L.w)}`:ea(L.f);
+ const same=ids.filter(j=>(LIC[j].w||'')===(L.w||''));
+ if(same.length>1){if(!same.every(j=>LIC[j].t===L.t))s+=` · ${ea(L.t)}`;else s+=L.oid?` · הזמנה #${ea(L.oid)}`:` · ${same.indexOf(i)+1}`}
+ return s};
+/* all of a row's weights on one line, cut with "…" when they don't fit; the full list floats on hover / tap */
+const wcell=ws=>ws.length?`<span class="wcell" tabindex="0"><span class="wlist">${ws.map(ea).join(', ')}</span><span class="wtip" role="tooltip">${ws.map(ea).join('<br>')}</span></span>`:'';
 function choice(icon,label,cls,items){
  if(items.length===1)return items[0].replace('%B',`class="${cls}" aria-label="${label}" title="${label}"`).replace('%I',icon);
  return `<div class="pop"><button class="${cls}" data-pop="1" aria-haspopup="true" aria-expanded="false" aria-label="${label}" title="${label}">${icon}</button><div class="pop-menu" role="menu">${items.map(x=>x.replace('%B','role="menuitem"').replace('%I','')).join('')}</div></div>`;
@@ -1301,15 +1318,16 @@ function licTable(open){
  return `<div class="tbl-wrap lic-wrap"><table class="tbl"><thead><tr><th>שם הפונט</th>${hasW?'<th>משקל</th>':''}<th>רישיון</th>${hasSites?'<th>ניצול אתרים</th>':''}<th></th></tr></thead><tbody>
  ${licGroups().filter(ids=>!state.licFilter||ids.some(i=>LIC[i].t.split(' + ').includes(state.licFilter))).map(ids=>{const L=ids.map(i=>LIC[i]),l=L[0],wi=ids.find(i=>LIC[i].web),w=wi===undefined?null:LIC[wi],isOpen=w&&open===wi,full=w&&w.u>=w.n;
  const types=[...new Set(L.flatMap(x=>x.t.split(' + ')))];
- const certs=ids.map(i=>`<button %B data-cert="lic:${i}">%I${ids.length>1?`תעודת ${licTag(i,ids)}`:''}</button>`);
- const dls=ids.filter(i=>LIC[i].dl).map(i=>`<a %B href="${ea(LIC[i].dl)}" download>%I${ids.filter(j=>LIC[j].dl).length>1?`הורדה · ${licTag(i,ids)}`:''}</a>`);
+ /* one certificate per font, listing every weight bought for it */
+ const certs=[`<button %B data-cert="lic:${ids.join(',')}">%I</button>`];
+ const dls=ids.filter(i=>LIC[i].dl).map(i=>`<a %B href="${ea(LIC[i].dl)}" download>%I${ids.filter(j=>LIC[j].dl).length>1?`הורדת ${licTag(i,ids)}`:''}</a>`);
  return `<tr class="${isOpen?'is-open':''}">
  <td><span class="fname">${w?`<button class="ibtn exp" data-open="${wi}" aria-expanded="${isOpen}" aria-label="${isOpen?'סגירת':'פתיחת'} רישום האתרים של ${l.f}" title="${isOpen?'סגירה':'רישום אתרים'}">${ICON.globe}</button>`:'<span class="exp-ph"></span>'}${l.f}</span></td>
- ${hasW?`<td>${l.w}</td>`:''}<td>${types.map(x=>`<span class="ltag">${x}</span>`).join(' ')}</td>
+ ${hasW?`<td class="wcol">${wcell([...new Set(L.map(x=>x.w).filter(Boolean))])}</td>`:''}<td>${types.map(x=>`<span class="ltag">${x}</span>`).join(' ')}</td>
  ${hasSites?`<td>${w?meter(w.u,w.n):''}</td>`:''}
  <td><div class="acts">
    ${choice(ICON.cert,'תעודת רישיון','ibtn',certs)}
-   ${dls.length?choice(ICON.dl,`הורדת ${l.f} ${l.w}`,'btn dl-sm',dls):''}</div></td></tr>
+   ${dls.length?choice(ICON.dl,`הורדת ${ea(l.f)}`,'btn dl-sm',dls):''}</div></td></tr>
  ${isOpen?licDrawer(wi,cols,full):''}`}).join('')}
  ${state.licFilter&&!licGroups().some(ids=>ids.some(i=>LIC[i].t.split(' + ').includes(state.licFilter)))?`<tr><td colspan="${cols}" class="hint" style="padding:22px 16px">אין פונטים עם רישיון ${state.licFilter}</td></tr>`:''}
  </tbody></table></div>`;
@@ -1360,11 +1378,10 @@ V.dom=()=>{
  return `
  <div class="head-row"><div><h1 class="h1">דומיינים</h1><p class="sub">כל האתרים שלך במקום אחד. רישום אתר חדש נעשה במינוי או בפונט שרכשת.</p></div>
   <div class="head-act"><button class="btn btn-grad" data-go2="subs" aria-label="רישום אתר במינוי" title="רישום אתר במינוי">${ICON.plus}<span class="ha-l">רישום אתר במינוי</span></button></div></div>
- <h2 class="h2-sec sec-row">החודש · ${CYCLE.label} ${_n.getFullYear()}<button class="sec-add" data-go2="subs" aria-label="רישום אתר במינוי" title="רישום אתר במינוי">${ICON.plus}</button></h2>
+ <h2 class="h2-sec sec-row">החודש · ${CYCLE.label} ${_n.getFullYear()}<span class="sec-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</span><button class="sec-add" data-go2="subs" aria-label="רישום אתר במינוי" title="רישום אתר במינוי">${ICON.plus}</button></h2>
  <div class="tbl-wrap"><table class="tbl dom-tbl">${thead}<tbody>
  ${now.map(row).join('')||`<tr><td colspan="5" class="hint">עוד לא נרשמו דומיינים החודש</td></tr>`}
  </tbody></table></div>
- <p class="hint lock-note dom-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</p>
  <button class="hist-toggle" data-hist="1" aria-expanded="${!!state.histOpen}" aria-controls="histBody">${ICON.chev}<span class="h2-sec" style="margin:0">היסטוריית דומיינים <span class="hint" style="margin:0;font-weight:400">${past.length} דומיינים</span></span></button>
  <div class="hist-body ${state.histOpen?'open':''}" id="histBody"><div><div class="tbl-wrap hist-scroll"><table class="tbl dom-tbl">${thead}<tbody>${hist}</tbody></table></div></div></div>`;
 };
@@ -1373,16 +1390,16 @@ V.orders=(open)=>`
  <div class="head-row"><div><h1 class="h1">הזמנות</h1><p class="sub">כאן מופיעות ההזמנות (רכישות) שביצעת</p></div>
   <div class="fld"><input placeholder="חיפוש לפי מספר הזמנה" style="background:var(--soft);width:220px;max-width:100%" aria-label="חיפוש הזמנה" id="oq" inputmode="numeric"></div></div>
  <div class="tbl-wrap"><table class="tbl otbl"><thead><tr><th>מספר הזמנה</th><th>תאריך</th><th>פירוט</th><th>סטטוס</th><th>סה״כ</th><th></th></tr></thead><tbody id="otb">${ORDERS.length?"":`<tr><td colspan="6" class="empty">עוד אין הזמנות.</td></tr>`}
- ${ORDERS.map((o,i)=>{const sum=o.total!=null?o.total:o.items.reduce((a,b)=>a+b[1],0);const tot=sum;const paid=!!o.inv;return `<tr data-oid="${o.id}" class="orow"><td class="num"><span class="oid">${paid?`<button class="ibtn eye${open===i?' on':''}" aria-label="פירוט החשבונית" data-oopen="${i}" aria-expanded="${open===i}">${ICON.eye}</button>`:'<span class="eye-ph"></span>'}#${o.id}</span></td><td class="num">${o.d.slice(0,6)+o.d.slice(8)}</td><td class="odet" title="${o.items.map(x=>x[0]).join(' + ')}"><span>${o.items[0][0]}</span>${o.items.length>1?`<span class="more">+${o.items.length-1}</span>`:''}</td>
+ ${ORDERS.map((o,i)=>{const sum=o.total!=null?o.total:o.items.reduce((a,b)=>a+b[1],0);const tot=sum;const paid=!!o.inv;return `<tr data-oid="${o.id}" class="orow"><td class="num"><span class="oid"><button class="ibtn eye${open===i?' on':''}" aria-label="פירוט ההזמנה" data-oopen="${i}" aria-expanded="${open===i}">${ICON.eye}</button>#${o.id}</span></td><td class="num">${o.d.slice(0,6)+o.d.slice(8)}</td><td class="odet" title="${o.items.map(x=>x[0]).join(' + ')}"><span>${o.items[0][0]}</span>${o.items.length>1?`<span class="more">+${o.items.length-1}</span>`:''}</td>
  <td><span class="chip ${o.st==='הושלם'?'ok':o.st==='בוטל'?'bad':'wait'}">${o.st}</span></td><td class="num">${ils(tot)}</td>
- <td><div class="acts">${o.pay?`<a class="btn btn-grad" href="${ea(o.pay)}">לתשלום</a>`:o.inv?`<a class="ibtn" href="${ea(o.inv)}" target="_blank" rel="noopener" aria-label="הורדת חשבונית">${ICON.doc}</a>`:`<a class="ibtn" href="${ea(o.view)}" aria-label="פרטי ההזמנה">${ICON.eye}</a>`}</div></td></tr>
+ <td><div class="acts">${o.pay?`<a class="btn btn-grad" href="${ea(o.pay)}">לתשלום</a>`:o.inv?`<a class="ibtn" href="${ea(o.inv)}" target="_blank" rel="noopener" aria-label="הורדת חשבונית">${ICON.doc}</a>`:''}</div></td></tr>
  ${open===i?`<tr class="drawer"><td colspan="6"><div class="box">
-   <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px"><b>${o.invNum?"חשבונית מס/קבלה "+ea(o.invNum):"הזמנה #"+o.id}</b><span class="chip ok">שולם</span></div>
+   <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px"><b>${o.invNum?"חשבונית מס/קבלה "+ea(o.invNum):"הזמנה #"+o.id}</b><span class="chip ${o.st==='הושלם'?'ok':o.st==='בוטל'?'bad':'wait'}">${paid?'שולם':ea(o.st)}</span></div>
    <table class="mini"><tbody>${o.items.map(it=>`<tr><td>${it[0]}</td><td class="num" style="text-align:left">${ils(it[1])}</td></tr>`).join('')}
    <tr><td style="color:var(--muted)">לפני מע״מ</td><td class="num" style="text-align:left">${ils(+(sum/1.18).toFixed(2))}</td></tr>
    <tr><td style="color:var(--muted)">מע״מ 18%</td><td class="num" style="text-align:left">${ils(+(sum-sum/1.18).toFixed(2))}</td></tr>
    <tr><td><b>סה״כ</b></td><td class="num" style="text-align:left"><b>${ils(sum)}</b></td></tr></tbody></table>
-   <div style="display:flex;justify-content:flex-end;margin-top:12px"><a class="btn btn-grad" href="${ea(o.inv)}" target="_blank" rel="noopener">${ICON.dl} הורדת חשבונית</a></div>
+   ${o.inv?`<div style="display:flex;justify-content:flex-end;margin-top:12px"><a class="btn btn-grad" href="${ea(o.inv)}" target="_blank" rel="noopener">${ICON.dl} הורדת חשבונית</a></div>`:o.pay?`<div style="display:flex;justify-content:flex-end;margin-top:12px"><a class="btn btn-grad" href="${ea(o.pay)}">לתשלום</a></div>`:''}
  </div></td></tr>`:''}`}).join('')}
  </tbody></table></div>`;
 
@@ -1422,7 +1439,7 @@ function cert(l,site){
   <div class="cert-body">
    <div class="cert-row"><div class="who"><span style="color:var(--muted)">רושם הרישיון</span><b>${ea((FS.user.first||"")+" "+(FS.user.last||""))}</b>${ea(FS.user.email)}</div><div style="text-align:left">מונפק על ידי פונטשוק בע״מ<br><span class="num" style="color:var(--bad)">תצוגה מקדימה · לא בתוקף</span></div></div>
    <p style="margin:0">בהתאם להסכם הרישוי ותנאי השימוש של פונטשוק בע״מ, מאושר בזאת כי הפונט הרשום להלן מותר לשימוש ${site?'בתחומי עיצוב ממשק והטמעה באתר הרשום בלבד, תחת הדומיין שלהלן:':`בתחומים הכלולים ברישיון ${l.t}:`}</p>
-   <dl>${site?`<dt>שם האתר:</dt><dd>${site[1]}</dd><dt>כתובת הדומיין:</dt><dd><bdi dir="ltr">${site[2]}</bdi></dd>`:''}<dt>רישיון לפונט:</dt><dd>${l.f} ${l.w}</dd><dt>תאריך רישום:</dt><dd class="num">${site?site[0]:'26.01.2023'}</dd><dt>מינוי:</dt><dd>${s.name} (${s.en})</dd><dt>סוג רישיון:</dt><dd>${l.t}</dd></dl>
+   <dl>${site?`<dt>שם האתר:</dt><dd>${site[1]}</dd><dt>כתובת הדומיין:</dt><dd><bdi dir="ltr">${site[2]}</bdi></dd>`:''}<dt>רישיון לפונט:</dt><dd>${ea(l.f)}${l.w?(String(l.w).includes(',')?` · משקלים: ${ea(l.w)}`:` ${ea(l.w)}`):''}</dd><dt>תאריך רישום:</dt><dd class="num">${site?site[0]:ea(l.d||'—')}</dd><dt>מינוי:</dt><dd>${s.name} (${s.en})</dd><dt>סוג רישיון:</dt><dd>${l.t}</dd></dl>
    <p style="margin:0">${CERT_TEXT[l.sub](l)}</p>
    ${l.removed?`<p style="margin:0;color:var(--bad)">הדומיין הוסר מהחשבון ב־${l.removed}. הרישיון היה בתוקף בתקופה ${site[0]}–${l.removed}.</p>`:''}
    <div class="cert-foot"><div>בברכה,<br>צוות פונטשוק<br>support@fontshok.co.il</div><img class="seal" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMzUuNjYgMzM1LjY2Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZnNQdXJwbGUiIHgxPSI2MCIgeTE9IjMwIiB4Mj0iMjgwIiB5Mj0iMzEwIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzhhNGZmZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNjMDZhZmYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxjaXJjbGUgY3g9IjE2Ny44MyIgY3k9IjE2Ny44MyIgcj0iMTY3LjgzIiBmaWxsPSJ1cmwoI2ZzUHVycGxlKSIvPgogIDxnIGZpbGw9IiNmZmYiPgogICAgPHBhdGggZD0ibTEwNS40OSwyNTguMTZ2LTcuMTRjMC03LjM2LDIuNzgtMTUuNDkwLDguMzYtMjQuMzlsNi4wNi0xMC41MWMxLjYyLTIuOTcsMi40My01LjcsMi40My04LjIyLDAtMS42Mi0uMzYtMy4xNS0xLjA4LTQuNTgtMS44LTMuNS00Ljk0LTUuMjUtOS40My01LjI1aC00MS4yM3YtMTcuMjVoNDEuMzZjMTIuMDQsMCwyMC4zOSw0LjgxLDI1LjA3LDE0LjQyLDEuOTcsNC4xMywyLjk2LDguMzEsMi45NiwxMi41MywwLDUuNDgtMS44LDExLTUuMzksMTYuNTdsLTYuMiwxMC43OGMtMi45Nyw0Ljg1LTQuNDUsMTAuMjktNC40NSwxNi4zMXY2Ljc0aC0xOC40NlptLTMwLjcyLDE3LjY1di02NS43NWgxOC44N3Y2NS43NWgtMTguODdaIi8+CiAgICA8cGF0aCBkPSJtMTQ4Ljg4LDE5OC42di0xNy43OWgyNC45M3YxNy43OWgtMjQuOTNabTI0LjkzLDguNzZ2NTAuOGgtMTguOTl2LTUwLjhoMTguOTlaIi8+CiAgICA8cGF0aCBkPSJtMjQ2LjAzLDI0MC43OGM4LjA4LDAsMTIuMTItNC44NSwxMi4xMi0xNC41NXYtNDUuNDFoMTguODd2NDVjLS4wOSw5LjUyLTMuMSwxNy4zLTkuMDQsMjMuMzEtNS45Miw2LjAyLTEzLjM4LDkuMDMtMjIuMzYsOS4wMzBoLTU3Ljk0di03Ny4zNGgxOC45OXY1OS45NmgzOS4zNVptMS4zNC00Mi43MWgtMy42M2MtNC41OCwwLTcuNjksMS4zOS05LjMsNC4xOC0uNTQuOTktLjgxLDIuMDctLjgxLDMuMjMwLDAsMS45OC44Niw0LjE4LDIuNTcsNi42MWw3LjQsOS43LTEzLjA3LDkuOTctOC4zNC0xMC4xMWMtMy42OC00Ljc2LTUuNTMtOS44OC01LjUzLTE1LjM2LDAtMy41Ljc2LTcuMTksMi4yOS0xMS4wNSw0Ljc2LTkuNjEsMTMuMTYtMTQuNDIsMjUuMTktMTQuNDJoMy4xbC4xMywxNy4yNVoiLz4KICAgIDxwYXRoIGQ9Im01MS43NSwxNjMuMTd2LTc3LjM0aDE4Ljg2djU5Ljk2aDIzLjE4YzkuMTYsMCwxMy43NC00Ljg1LDEzLjc0LTE0LjU1di0yNy4wOGgtMS4yMmwtMTAuNSwxNC41NS0uMTMtLjEzaC0xOC42bC4xMy0xLjg5LDI0LjEyLTMwLjg2aDI0LjY2djQ1YzAsOS41Mi0yLjY4LDE3LjMtOC4wMywyMy4zMS01LjM0LDYuMDItMTIuNTYsOS4wMy0yMS42Miw5LjAzaC00NC42WiIvPgogICAgPHBhdGggZD0ibTE2My40NSw4NS44M3YxMS4wNWMwLDMuNi42Nyw2Ljc4LDIuMDIsOS41N2w2LjM0LDEyLjY2YzMuMzEsNi4yLDQuOTgsMTEuOSw0Ljk4LDE3LjExLDAsMy45Ni0uOTksOC0yLjk2LDEyLjEzLTQuNjcsOS42Mi0xMi45LDE0LjU1LTI0LjY2LDE0LjgzaC0xNy4xMXYtMTcuMzloMTYuNTdjNC40LDAsNy42My0xLjYyLDkuNy00Ljg1LDIuMDYtMy4yMywxLjUyLTcuNjQtMS42Mi0xMy4yMWwtOC4zNi0xNi40NGMtMi43OS01LjY2LTQuMTgtMTEuMjctNC4xOC0xNi44NHYtOC42MmgxOS4yOFoiLz4KICAgIDxwYXRoIGQ9Im0xODEuNzYsMTAzLjYxdi0xNy43OWgyNC45MnYxNy43OWgtMjQuOTJabTI0LjkyLDguNzZ2NTAuOGgtMTguOTl2LTUwLjhoMTguOTlaIi8+CiAgICA8cGF0aCBkPSJtMjMyLjI5LDEzNi43NmwtNy42OS0xMC4xMWMtNi4xMS03LjktNy4xOC0xNi43MS0zLjIyLTI2LjQsNC43Ni05LjYxLDEzLjE2LTE0LjQyLDI1LjE5LTE0LjQyaDM2Ljkydjc3LjM0aC02Mi4zOHYtMTcuMzloNDMuMzl2LTQyLjcxaC0xOC4zMmMtNC41OCwwLTcuNjYsMS4zNy05LjIzLDQuMTEtMS41ODAsMi43NC0xLjAxLDYuMDQsMS42OCw5LjkxbDguNjMsMTEuOTktMTQuOTYsNy42OFoiLz4KICA8L2c+Cjwvc3ZnPgo=" alt="פונטשוק"></div>
@@ -1456,14 +1473,16 @@ function render(o={}){
  el.classList.remove('enter');if(o.page){void el.offsetWidth;el.classList.add('enter')}
  if(o.opening)el.querySelectorAll('.drawer').forEach(d=>d.classList.add('opening'));
  if(o.fresh){const td=[...el.querySelectorAll('.mini td, .tbl td, .tbl bdi')].find(c=>c.textContent.trim()===o.fresh);td&&td.closest('tr').classList.add('fresh')}
- fitPh();
+ fitPh();wfit();
  save();
 }
 /* the domain field's hint: the full sentence where it fits, shorter on narrow fields */
 const PH=['הזן דומיין חדש (למשל: example.co.il)','הזן דומיין (למשל: example.co.il)','למשל: example.co.il'];
 function fitPh(){const i=$('#sd2');if(!i||!i.clientWidth)return;const cs=getComputedStyle(i),c=fitPh.c||(fitPh.c=document.createElement('canvas').getContext('2d'));c.font=cs.font;
  const room=i.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);i.placeholder=PH.find(t=>c.measureText(t).width<=room)||PH[PH.length-1]}
-addEventListener('resize',fitPh);document.fonts&&document.fonts.ready.then(fitPh);
+addEventListener('resize',fitPh);
+function wfit(){document.querySelectorAll('#fsa .wlist').forEach(x=>x.parentElement.classList.toggle('trunc',x.scrollWidth>x.clientWidth+1))}
+addEventListener('resize',wfit);document.fonts&&document.fonts.ready.then(fitPh);
 state.editKey=null;
 const goPage=v=>{state.view=v;state.editKey=null;render({page:true});scrollTo({top:0,behavior:'smooth'})};
 /* close the open drawer with a short fold, then re-render */
@@ -1495,11 +1514,14 @@ function backTo(sel,msg){setTimeout(()=>{const f=$(sel);if(f){f.scrollIntoView({
 const modal=$('#certModal');
 function showModal(){modal.hidden=false;void modal.offsetWidth;setTimeout(()=>modal.classList.add('show'),16);$('#certClose').focus()}
 function hideModal(){if(modal.hidden)return;modal.classList.remove('show');setTimeout(()=>{modal.hidden=true},350)}
+/* several licences of one font as one: all weights, all licence types, the first purchase date */
+function licMerge(ids){const L=ids.map(i=>LIC[i]),u=a=>[...new Set(a.filter(Boolean))];
+ return Object.assign({},L[0],{w:u(L.map(x=>x.w)).join(', '),t:u(L.flatMap(x=>x.t.split(' + '))).join(' + '),d:u(L.map(x=>x.d)).sort((a,b)=>{const k=s=>s.split('.').reverse().join('');return k(a)<k(b)?-1:1})[0]||''})}
 function openCert(spec){
  const p=spec.split(':');let l,site=null;
  if(p[0]==='sd'){const s=SUBDOM[state.plan][+p[1]];l={f:s[3],w:'',t:'וובפונט',sub:state.plan,n:PLAN[state.plan].n};site=s}
  else if(p[0]==='hist'){const h=HISTORY[+p[1]];const base=LIC.find(x=>x.f===h.f&&x.w===h.w)||{};l=Object.assign({},base,{sub:h.sub,removed:h.removed});site=h.site}
- else{l=LIC[+p[1]];if(p[0]==='dom')site=l.sites[+p[2]]}
+ else{const ids=String(p[1]).split(',').map(Number);l=ids.length>1?licMerge(ids):LIC[ids[0]];if(p[0]==='dom')site=l.sites[+p[2]]}
  $('#certBody').innerHTML=cert(l,site);showModal();
 }
 $('#certClose').onclick=hideModal;

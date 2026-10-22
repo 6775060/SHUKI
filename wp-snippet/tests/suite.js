@@ -34,17 +34,18 @@ for(const w of [390,1280]){
  const toastNow=async()=>{await p.waitForTimeout(260);return p.evaluate(()=>{const t=document.querySelector('#toast');return t.classList.contains('show')?t.textContent:''})};
  const go=async vw=>{await p.evaluate(x=>document.querySelector(`#fsa .side button[data-view="${x}"]`).click(),vw);await p.waitForTimeout(450);await p.evaluate(()=>scrollTo(0,document.querySelector('#fsa .main').getBoundingClientRect().top+scrollY+200));await p.waitForTimeout(150)};
  await go('lic');
- const pops=await p.locator('#fsa .pop button.ibtn[data-pop]').count();
- if(pops){await p.locator('#fsa .pop button.ibtn[data-pop]').first().click();await p.waitForTimeout(300);
-  const labels=await p.locator('#fsa .pop-menu [data-cert]').allInnerTexts();if(new Set(labels).size!==labels.length)bad(`${w} cert menu has identical labels: ${labels}`);
-  await p.locator('#fsa .pop-menu [data-cert]').nth(1).click();await p.waitForTimeout(600);
-  const iv=await inView('#certModal .sheet-bar');if(iv!==true)bad(`${w} certificate opens off screen (${iv})`);
-  const name=await p.evaluate(()=>document.querySelector('#certBody').innerText.includes('דיסקברי'));if(!name)bad(`${w} certificate shows the wrong font`);
-  await p.evaluate(()=>document.querySelector('#certModal [data-t]').click());const tt=await toastNow();if(!tt.includes('בשלב הבא'))bad(`${w} PDF button gives no message (${tt})`);
-  if(await inView('#toast')!==true)bad(`${w} message off screen`);
-  await p.evaluate(()=>document.querySelector('#certClose').click());await p.waitForTimeout(450);
-  if(!(await p.evaluate(()=>document.querySelector('#certModal').hidden)))bad(`${w} certificate does not close`);}
- else bad(`${w} no multi-licence row to test`);
+ // one certificate per font: a single button, all of the font's weights in it
+ if(await p.locator('#fsa .lic-wrap .pop button.ibtn[data-pop]').count())bad(`${w} a certificate menu is still there`);
+ const crow=p.locator('#fsa .lic-wrap tbody tr:not(.drawer)').filter({hasText:'אזכור'}).first();
+ await crow.locator('button.ibtn[data-cert]').click();await p.waitForTimeout(600);
+ const iv=await inView('#certModal .sheet-bar');if(iv!==true)bad(`${w} certificate opens off screen (${iv})`);
+ const cb=await p.evaluate(()=>document.querySelector('#certBody').innerText);
+ if(!['קל','דמוי מודגש','שחור','דקיק','בינוני'].every(x=>cb.includes(x))||!cb.includes('אזכור'))bad(`${w} certificate does not list all weights`);
+ if(cb.includes('26.01.2023'))bad(`${w} certificate shows the made-up demo date`);
+ await p.evaluate(()=>document.querySelector('#certModal [data-t]').click());const tt=await toastNow();if(!tt.includes('בשלב הבא'))bad(`${w} PDF button gives no message (${tt})`);
+ if(await inView('#toast')!==true)bad(`${w} message off screen`);
+ await p.evaluate(()=>document.querySelector('#certClose').click());await p.waitForTimeout(450);
+ if(!(await p.evaluate(()=>document.querySelector('#certModal').hidden)))bad(`${w} certificate does not close`);
  // single cert button
  await p.locator('#fsa .acts > button.ibtn[data-cert]').first().click();await p.waitForTimeout(600);if(await inView('#certModal .sheet-bar')!==true)bad(`${w} single certificate off screen`);
  await p.keyboard.press('Escape');await p.waitForTimeout(400);
@@ -84,6 +85,10 @@ for(const w of [390,1280]){
  // plan details
  await p.click('#fsa [data-plantg]');await p.waitForTimeout(500);if(!(await p.evaluate(()=>document.querySelector('#fsa .plan').classList.contains('open'))))bad(`${w} plan details don't open`);
  // logout & orders links
+ await go('orders');const url0=p.url();const eyes=await p.locator('#fsa .otbl [data-oopen]').count();if(eyes<2)bad(`${w} not every order has the details button (${eyes})`);
+ await p.locator('#fsa .otbl [data-oopen]').nth(1).click();await p.waitForTimeout(600);
+ if(p.url()!==url0)bad(`${w} order details left the page`);if(!(await p.locator('#fsa .otbl tr.drawer').count()))bad(`${w} order details did not open`);
+ if(await p.locator('#fsa .otbl a[href*="/o/"]').count())bad(`${w} a link still leads to the old order page`);
  await go('orders');const ol=await p.locator('#fsa .otbl a[href]').evaluateAll(a=>a.map(x=>x.getAttribute('href')));if(!ol.length)bad(`${w} orders have no links`);
  for(const v of ['plain','theme'])if(pages[v].errs.length)bad(`${w} ${v} JS errors: ${pages[v].errs}`);
 }

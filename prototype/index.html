@@ -443,7 +443,14 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .ed:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(91,63,255,.12)}
 .ed-fonts .fp-btn{height:30px;border:1px solid #DCD6F7}
 .lock-note{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:12px}
-.dom-note{margin-top:44px}
+/* "דומיינים": the edit-until note sits on the month line, at its far end; the history header follows the table */
+/* order search: a rounded pill like the other fields */
+.fld input#oq{border-radius:99px;padding:0 18px}
+.sec-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sec-row .sec-note{margin-inline-start:auto;display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:400;color:var(--muted)}
+.sec-row .sec-note .icon{width:16px;height:16px}
+.sec-row + .tbl-wrap + .hist-toggle{margin-top:36px}
+@media (max-width:760px){.sec-row .sec-note{order:3;flex-basis:100%;margin:0;font-size:13px}}
 .lock-note .linkbtn{font-size:13px}
 .h2-sec{font-size:18px;font-weight:700;margin:8px 0 12px;display:flex;align-items:baseline;gap:10px}
 /* domain history: collapsed by default, opens smoothly under its header */
@@ -461,8 +468,14 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .hist-scroll thead th{position:sticky;top:0;z-index:2}
 /* "nothing here yet" line inside a table stays quiet on every width */
 .tbl td.hint,.tbl tbody tr td.hint{font-weight:400;font-size:15px;color:var(--muted)}
-/* domain tables: no grey header band, just a dividing line under it; darker header text */
-.tbl.dom-tbl thead th{background:var(--card);color:#333;border-bottom:1px solid var(--line);border-radius:0}
+/* the domain list under "המינוי שלי → רישום דומיינים": no grey header band, just a dividing line, darker text. The "דומיינים" page keeps the grey band like every other table */
+.wcell{position:relative;display:block;max-width:180px;outline:none}
+.wlist{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wcell.trunc{cursor:help}
+.wtip{display:none;position:absolute;top:calc(100% + 6px);inset-inline-start:0;z-index:8;background:var(--card);box-shadow:0 8px 28px rgba(0,0,0,.14);border-radius:10px;padding:10px 14px;font-size:14px;line-height:1.8;white-space:nowrap}
+.wcell.trunc:hover .wtip,.wcell.trunc:focus .wtip{display:block}
+@media (max-width:760px){.wcell{max-width:min(180px,55vw)}}
+.tbl.reg-tbl thead th{background:var(--card);color:#333;border-bottom:1px solid var(--line);border-radius:0}
 .tbl tr.mgroup td{position:sticky;top:44px;z-index:1;background:#fff;font-size:13px;font-weight:600!important;color:var(--violet);padding:14px 16px 6px;border-bottom:1px solid var(--line)}
 .tbl>tbody>tr.mgroup>td,.tbl>tbody>tr.mgroup>td:first-child{color:var(--violet);background:var(--card);font-weight:600;border-bottom:0!important}
 .lock-note .icon{width:14px;height:14px;color:var(--faint)}
@@ -852,7 +865,7 @@ function subsDomains(){
      <button class="btn btn-grad reg-add">${ICON.plus}הוסף דומיין</button>
    </form><p class="form-err" id="sdErr" hidden></p></div></div>`}
  </div>
- <div class="tbl-wrap"><table class="tbl dom-tbl">${DOM_THEAD}<tbody>
+ <div class="tbl-wrap"><table class="tbl dom-tbl reg-tbl">${DOM_THEAD}<tbody>
  ${list.map(subRow).filter(r=>canEdit(r.s[0])).sort((a,b)=>parseD(b.s[0])-parseD(a.s[0])).map(domRow).join('')||`<tr><td colspan="5" class="hint" style="padding:18px 0">עוד לא נרשמו דומיינים החודש</td></tr>`}
  </tbody></table></div>
  <p class="hint lock-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</p>`;
@@ -891,7 +904,11 @@ V.lic=(tab,open)=>`
 
 /* one row per font + weight. Every purchased licence stays its own record (own certificate, own files);
    the row only groups them: all licence names as tags, certificate/download offer a choice when there is more than one */
-function licGroups(){const g=new Map();LIC.forEach((l,i)=>{const k=l.f+'|'+l.w;if(!g.has(k))g.set(k,[]);g.get(k).push(i)});return [...g.values()]}
+/* one row per font: every licence and weight bought for it sits on the same row */
+/* all of a row's weights on one line, cut with "…" when they don't fit; the full list floats on hover / tap */
+const wcell=ws=>ws.length?`<span class="wcell" tabindex="0"><span class="wlist">${ws.join(', ')}</span><span class="wtip" role="tooltip">${ws.join('<br>')}</span></span>`:'';
+function licMerge(ids){const L=ids.map(i=>LIC[i]),u=a=>[...new Set(a.filter(Boolean))];return Object.assign({},L[0],{w:u(L.map(x=>x.w)).join(', '),t:u(L.flatMap(x=>x.t.split(' + '))).join(' + ')})}
+function licGroups(){const g=new Map();LIC.forEach((l,i)=>{const k=l.f;if(!g.has(k))g.set(k,[]);g.get(k).push(i)});return [...g.values()]}
 const FMT={'וובפונט':'לאתרים (WOFF2)','דסקטופ':'לדסקטופ (OTF)','אפליקציה':'לאפליקציה'};
 function choice(icon,label,cls,items){
  if(items.length===1)return items[0].replace('%B',`class="${cls}" aria-label="${label}" title="${label}"`).replace('%I',icon);
@@ -908,11 +925,12 @@ function licTable(open){
  return `<div class="tbl-wrap lic-wrap"><table class="tbl"><thead><tr><th>שם הפונט</th>${hasW?'<th>משקל</th>':''}<th>רישיון</th>${hasSites?'<th>ניצול אתרים</th>':''}<th></th></tr></thead><tbody>
  ${licGroups().filter(ids=>!state.licFilter||ids.some(i=>LIC[i].t.split(' + ').includes(state.licFilter))).map(ids=>{const L=ids.map(i=>LIC[i]),l=L[0],wi=ids.find(i=>LIC[i].web),w=wi===undefined?null:LIC[wi],isOpen=w&&open===wi,full=w&&w.u>=w.n;
  const types=[...new Set(L.flatMap(x=>x.t.split(' + ')))];
- const certs=ids.map(i=>`<button %B data-cert="lic:${i}">%I${ids.length>1?`תעודת ${LIC[i].t}`:''}</button>`);
+ /* one certificate per font, listing every weight bought for it */
+ const certs=[`<button %B data-cert="lic:${ids.join(',')}">%I</button>`];
  const dls=ids.flatMap(i=>LIC[i].t.split(' + ').map(t=>`<button %B data-t="מוריד את ${l.f} ${l.w} ${FMT[t]||''}">%I${ids.length>1||LIC[i].t.includes('+')?`הורדה ${FMT[t]||t}`:''}</button>`));
  return `<tr class="${isOpen?'is-open':''}">
  <td><span class="fname">${w?`<button class="ibtn exp" data-open="${wi}" aria-expanded="${isOpen}" aria-label="${isOpen?'סגירת':'פתיחת'} רישום האתרים של ${l.f}" title="${isOpen?'סגירה':'רישום אתרים'}">${ICON.globe}</button>`:'<span class="exp-ph"></span>'}${l.f}</span></td>
- ${hasW?`<td>${l.w}</td>`:''}<td>${types.map(x=>`<span class="ltag">${x}</span>`).join(' ')}</td>
+ ${hasW?`<td class="wcol">${wcell([...new Set(L.map(x=>x.w).filter(Boolean))])}</td>`:''}<td>${types.map(x=>`<span class="ltag">${x}</span>`).join(' ')}</td>
  ${hasSites?`<td>${w?meter(w.u,w.n):''}</td>`:''}
  <td><div class="acts">
    ${choice(ICON.cert,'תעודת רישיון','ibtn',certs)}
@@ -967,11 +985,10 @@ V.dom=()=>{
  return `
  <div class="head-row"><div><h1 class="h1">דומיינים</h1><p class="sub">כל האתרים שלך במקום אחד. רישום אתר חדש נעשה במינוי או בפונט שרכשת.</p></div>
   <div class="head-act"><button class="btn btn-grad" data-go2="subs" aria-label="רישום אתר במינוי" title="רישום אתר במינוי">${ICON.plus}<span class="ha-l">רישום אתר במינוי</span></button></div></div>
- <h2 class="h2-sec sec-row">החודש · ${CYCLE.label} 2026<button class="sec-add" data-go2="subs" aria-label="רישום אתר במינוי" title="רישום אתר במינוי">${ICON.plus}</button></h2>
+ <h2 class="h2-sec sec-row">החודש · ${CYCLE.label} 2026<span class="sec-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</span><button class="sec-add" data-go2="subs" aria-label="רישום אתר במינוי" title="רישום אתר במינוי">${ICON.plus}</button></h2>
  <div class="tbl-wrap"><table class="tbl dom-tbl">${thead}<tbody>
  ${now.map(row).join('')||`<tr><td colspan="5" class="hint">עוד לא נרשמו דומיינים החודש</td></tr>`}
  </tbody></table></div>
- <p class="hint lock-note dom-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</p>
  <button class="hist-toggle" data-hist="1" aria-expanded="${!!state.histOpen}" aria-controls="histBody">${ICON.chev}<span class="h2-sec" style="margin:0">היסטוריית דומיינים <span class="hint" style="margin:0;font-weight:400">${past.length} דומיינים</span></span></button>
  <div class="hist-body ${state.histOpen?'open':''}" id="histBody"><div><div class="tbl-wrap hist-scroll"><table class="tbl dom-tbl">${thead}<tbody>${hist}</tbody></table></div></div></div>`;
 };
@@ -1029,7 +1046,7 @@ function cert(l,site){
   <div class="cert-body">
    <div class="cert-row"><div class="who"><span style="color:var(--muted)">רושם הרישיון</span><b>יהושע דיין</b>shukon87@gmail.com</div><div style="text-align:left">מונפק על ידי פונטשוק בע״מ<br><span class="num">מספר רישיון: 638509</span></div></div>
    <p style="margin:0">בהתאם להסכם הרישוי ותנאי השימוש של פונטשוק בע״מ, מאושר בזאת כי הפונט הרשום להלן מותר לשימוש ${site?'בתחומי עיצוב ממשק והטמעה באתר הרשום בלבד, תחת הדומיין שלהלן:':`בתחומים הכלולים ברישיון ${l.t}:`}</p>
-   <dl>${site?`<dt>שם האתר:</dt><dd>${site[1]}</dd><dt>כתובת הדומיין:</dt><dd><bdi dir="ltr">${site[2]}</bdi></dd>`:''}<dt>רישיון לפונט:</dt><dd>${l.f} ${l.w}</dd><dt>תאריך רישום:</dt><dd class="num">${site?site[0]:'26.01.2023'}</dd><dt>מינוי:</dt><dd>${s.name} (${s.en})</dd><dt>סוג רישיון:</dt><dd>${l.t}</dd></dl>
+   <dl>${site?`<dt>שם האתר:</dt><dd>${site[1]}</dd><dt>כתובת הדומיין:</dt><dd><bdi dir="ltr">${site[2]}</bdi></dd>`:''}<dt>רישיון לפונט:</dt><dd>${l.f}${l.w?(String(l.w).includes(',')?` · משקלים: ${l.w}`:` ${l.w}`):''}</dd><dt>תאריך רישום:</dt><dd class="num">${site?site[0]:'26.01.2023'}</dd><dt>מינוי:</dt><dd>${s.name} (${s.en})</dd><dt>סוג רישיון:</dt><dd>${l.t}</dd></dl>
    <p style="margin:0">${CERT_TEXT[l.sub](l)}</p>
    ${l.removed?`<p style="margin:0;color:var(--bad)">הדומיין הוסר מהחשבון ב־${l.removed}. הרישיון היה בתוקף בתקופה ${site[0]}–${l.removed}.</p>`:''}
    <div class="cert-foot"><div>בברכה,<br>צוות פונטשוק<br>support@fontshok.co.il</div><img class="seal" src="logos/fontshok-round-purple.svg" alt="פונטשוק"></div>
@@ -1063,14 +1080,16 @@ function render(o={}){
  el.classList.remove('enter');if(o.page){void el.offsetWidth;el.classList.add('enter')}
  if(o.opening)el.querySelectorAll('.drawer').forEach(d=>d.classList.add('opening'));
  if(o.fresh){const td=[...el.querySelectorAll('.mini td, .tbl td, .tbl bdi')].find(c=>c.textContent.trim()===o.fresh);td&&td.closest('tr').classList.add('fresh')}
- fitPh();
+ fitPh();wfit();
  save();
 }
 /* the domain field's hint: the full sentence where it fits, shorter on narrow fields */
 const PH=['הזן דומיין חדש (למשל: example.co.il)','הזן דומיין (למשל: example.co.il)','למשל: example.co.il'];
 function fitPh(){const i=$('#sd2');if(!i||!i.clientWidth)return;const cs=getComputedStyle(i),c=fitPh.c||(fitPh.c=document.createElement('canvas').getContext('2d'));c.font=cs.font;
  const room=i.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);i.placeholder=PH.find(t=>c.measureText(t).width<=room)||PH[PH.length-1]}
-addEventListener('resize',fitPh);document.fonts&&document.fonts.ready.then(fitPh);
+addEventListener('resize',fitPh);
+function wfit(){document.querySelectorAll('.wlist').forEach(x=>x.parentElement.classList.toggle('trunc',x.scrollWidth>x.clientWidth+1))}
+addEventListener('resize',wfit);document.fonts&&document.fonts.ready.then(fitPh);
 state.editKey=null;
 const goPage=v=>{state.view=v;state.editKey=null;render({page:true});scrollTo({top:0,behavior:'smooth'})};
 /* close the open drawer with a short fold, then re-render */
@@ -1106,7 +1125,7 @@ function openCert(spec){
  const p=spec.split(':');let l,site=null;
  if(p[0]==='sd'){const s=SUBDOM[state.plan][+p[1]];l={f:s[3],w:'',t:'וובפונט',sub:state.plan,n:PLAN[state.plan].n};site=s}
  else if(p[0]==='hist'){const h=HISTORY[+p[1]];const base=LIC.find(x=>x.f===h.f&&x.w===h.w)||{};l=Object.assign({},base,{sub:h.sub,removed:h.removed});site=h.site}
- else{l=LIC[+p[1]];if(p[0]==='dom')site=l.sites[+p[2]]}
+ else{const ids=String(p[1]).split(',').map(Number);l=ids.length>1?licMerge(ids):LIC[ids[0]];if(p[0]==='dom')site=l.sites[+p[2]]}
  $('#certBody').innerHTML=cert(l,site);showModal();
 }
 $('#certClose').onclick=hideModal;
