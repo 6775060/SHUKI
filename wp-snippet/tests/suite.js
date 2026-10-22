@@ -9,8 +9,15 @@ async function snapshot(p){return p.evaluate(()=>{const sel=['#fsa .shell','#fsa
 for(const w of [390,1280]){
  const pages={};
  for(const v of ['plain','theme']){const p=await b.newPage({viewport:{width:w,height:800}});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>{if(m.type()==='error'&&!/ERR_|net::|Failed to load/.test(m.text()))errs.push(m.text())});
-  const DB={rows:[["05.10.2026","סטודיו","studio.co.il","פורטו",11],["03.09.2026","ישן","old.co.il","טאלנט",10]],next:20};
+  const DB={lic:{},rows:[["05.10.2026","סטודיו","studio.co.il","פורטו",11],["03.09.2026","ישן","old.co.il","טאלנט",10]],next:20};
+  await p.addInitScript(()=>{window.print=()=>{window.__printed=(window.__printed||0)+1}});
+  await p.route('https://site.test/pay/**',r=>r.fulfill({contentType:'text/html',body:'<p>pay</p>'}));
   await p.route('**/admin-ajax.php',async r=>{const q=new URLSearchParams(r.request().postData()||'');const op=q.get('op');let ok=true,msg='';
+   if(q.get('action')==='fsa_v2_addon'){return r.fulfill({contentType:'application/json',body:JSON.stringify({success:true,data:{url:'https://site.test/pay/'+q.get('kind')+'/'+q.get('key')}})})}
+   if(q.get('action')==='fsa_v2_lic'){const L=DB.lic[q.get('key')]=DB.lic[q.get('key')]||[];
+    if(op==='add'){if(L.length>=3)return r.fulfill({contentType:'application/json',body:JSON.stringify({success:false,data:{message:'כל האתרים של הרישיון רשומים.'}})});L.push(['22.10.2026',q.get('name'),q.get('host'),'n'+L.length])}
+    else if(op==='del'){const i=L.findIndex(x=>x[3]===q.get('id'));L.splice(i,1)}
+    return r.fulfill({contentType:'application/json',body:JSON.stringify({success:true,data:{sites:L,n:3}})})}
    if(op==='add'){if(DB.rows.filter(x=>x[0].endsWith('.10.2026')).length>=3){ok=false;msg='ניצלת את הדומיינים של החודש.'}else DB.rows.unshift(['21.10.2026',q.get('name'),q.get('host'),q.get('fonts'),DB.next++])}
    else if(op==='edit'){const x=DB.rows.find(x=>x[4]==q.get('id'));x[1]=q.get('name');x[2]=q.get('host');x[3]=q.get('fonts')}
    else if(op==='del'){DB.rows=DB.rows.filter(x=>x[4]!=q.get('id'))}
@@ -42,10 +49,29 @@ for(const w of [390,1280]){
  const cb=await p.evaluate(()=>document.querySelector('#certBody').innerText);
  if(!['קל','דמוי מודגש','שחור','דקיק','בינוני'].every(x=>cb.includes(x))||!cb.includes('אזכור'))bad(`${w} certificate does not list all weights`);
  if(cb.includes('26.01.2023'))bad(`${w} certificate shows the made-up demo date`);
- await p.evaluate(()=>document.querySelector('#certModal [data-t]').click());const tt=await toastNow();if(!tt.includes('בשלב הבא'))bad(`${w} PDF button gives no message (${tt})`);
- if(await inView('#toast')!==true)bad(`${w} message off screen`);
  await p.evaluate(()=>document.querySelector('#certClose').click());await p.waitForTimeout(450);
  if(!(await p.evaluate(()=>document.querySelector('#certModal').hidden)))bad(`${w} certificate does not close`);
+ // PDF: the browser's print dialog
+ await crow.locator('button.ibtn[data-cert]').click();await p.waitForTimeout(500);await p.evaluate(()=>document.querySelector('#certPdf').click());await p.waitForTimeout(300);
+ if(!(await p.evaluate(()=>window.__printed)))bad(`${w} PDF button did not open printing`);
+ await p.evaluate(()=>document.querySelector('#certClose').click());await p.waitForTimeout(450);
+ // a purchased webfont licence: fixed checkout domain is locked; registering a site works
+ const drow=p.locator('#fsa .lic-wrap tbody tr:not(.drawer)').filter({hasText:'אזכור'}).first();
+ await drow.locator('button.exp').click();await p.waitForTimeout(700);
+ const form=p.locator('#fsa form.lic-form').first();
+ if(await form.count()){await form.locator('[data-namefor]').fill('licsite.co.il');await form.locator('button').click();await p.waitForTimeout(600);
+  if(!(await p.evaluate(()=>document.querySelector('#fsa .lic-drawer').innerText.includes('licsite.co.il'))))bad(`${w} licence site not registered`);
+  if(!(await toastNow()).includes('נרשם'))bad(`${w} no message after licence site`)} else bad(`${w} no licence registration form`);
+ await drow.locator('button.exp').click();await p.waitForTimeout(500);
+ const trow=p.locator('#fsa .lic-wrap tbody tr:not(.drawer)').filter({hasText:'תניא'}).first();
+ await trow.locator('button.exp').click();await p.waitForTimeout(700);
+ if(!(await p.locator('#fsa .lic-drawer .ibtn.locked').count()))bad(`${w} the checkout domain is not locked`);
+ const ab=p.locator('#fsa .lic-drawer [data-addon]');
+ if(await ab.count()){await ab.click();await p.waitForTimeout(500);if(!(await p.locator('#cart:not([hidden])').count()))bad(`${w} add-on cart did not open`);
+  const cartTxt=await p.evaluate(()=>document.querySelector('#cartBody').innerText);if(/ויזה|4821/.test(cartTxt))bad(`${w} cart still shows a made-up card`);
+  await Promise.all([p.waitForURL('**/pay/**',{timeout:5000}).catch(()=>bad(`${w} add-on did not go to the payment page`)),p.click('#cartPay')]);
+  if(!/\/pay\/lic\/6\d\d/.test(p.url()))bad(`${w} payment page is for the wrong item: ${p.url()}`);
+  await p.goto('file://'+S+'/page-theme.html');await p.waitForTimeout(500);await go('lic')} else bad(`${w} full licence offers no add-on`);
  // single cert button
  await p.locator('#fsa .acts > button.ibtn[data-cert]').first().click();await p.waitForTimeout(600);if(await inView('#certModal .sheet-bar')!==true)bad(`${w} single certificate off screen`);
  await p.keyboard.press('Escape');await p.waitForTimeout(400);
@@ -62,8 +88,9 @@ for(const w of [390,1280]){
  await p.evaluate(()=>document.querySelector('#fsa [data-sddel]').click());await p.waitForTimeout(500);
  if(await p.evaluate(()=>document.querySelector('#fsa .dom-tbl').innerText.includes('studio-new.co.il')))bad(`${w} remove did not remove`);
  if(await inView('#toast')!==true)bad(`${w} toast off screen after remove`);
- const licEdit=await p.$('#fsa [data-edit^="dom:"]');if(licEdit){await licEdit.click();const lt=await toastNow();if(!lt.includes('בשלב הבא'))bad(`${w} licence-site edit gives "${lt}"`)}
- if(await p.locator('#fsa .dom-tbl tr.editing').count())bad(`${w} licence row went into edit mode`);
+ const licEdit=await p.$('#fsa [data-edit^="dom:"]');if(licEdit){await licEdit.click();await p.waitForTimeout(300);
+  if(!(await p.locator('#fsa .dom-tbl tr.editing').count()))bad(`${w} a licence site does not open for editing`);
+  await p.evaluate(()=>document.querySelector('#fsa tr.editing [data-edcancel]').click());await p.waitForTimeout(300)} else bad(`${w} no editable licence site in the domains list`);
  // registration
  await go('subs');await p.evaluate(()=>document.querySelector('#fsa [data-subtab="reg"]').click());await p.waitForTimeout(400);
  const ro=await p.locator('#fsa [data-regopen]').isVisible();if(ro){await p.click('#fsa [data-regopen]');await p.waitForTimeout(600)}

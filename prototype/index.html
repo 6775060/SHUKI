@@ -77,7 +77,7 @@ a{color:inherit}
 .tabs{display:flex;box-shadow:inset 0 -1.5px 0 #BDBDBD;margin-bottom:26px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
 .fontpick{position:relative}
-.fp-btn{all:unset;box-sizing:border-box;cursor:pointer;width:100%;height:40px;background:var(--card);border-radius:var(--r-ctl);padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px}
+.fp-btn{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--ink);height:44px;border:1px solid #ECE6F2;border-radius:99px;background:#fff;padding:0 18px;font-size:15px;transition:border-color .2s,box-shadow .2s}
 .fp-btn:focus-visible{outline:2px solid var(--violet)}
 .fp-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fp-menu{position:absolute;top:100%;inset-inline:0;margin-top:4px;background:var(--card);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:8px;z-index:6;min-width:200px;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:top center;transition:opacity .25s var(--ease),transform .3s var(--ease),visibility 0s linear .3s}
@@ -262,8 +262,11 @@ a{color:inherit}
 .drawer .box{background:var(--bg);border-radius:10px;padding:24px 26px}
 .form-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:8px;align-items:end;margin-bottom:26px}
 .fld label{display:block;font-size:12px;margin-bottom:4px}
-.fld input,.fld select{width:100%;height:40px;border:0;border-radius:var(--r-ctl);background:var(--card);padding:0 14px;font-size:15px}
-.fld input::placeholder{color:var(--faint)}
+.fld input,.fld select{width:100%;height:44px;border:1px solid #ECE6F2;border-radius:99px;background:#fff;padding:0 18px;font-size:15px;transition:border-color .2s,box-shadow .2s}
+.fld input::placeholder,.pf input::placeholder{color:#828F9D}
+/* every field the customer fills in looks like the domain-registration field: white, lilac hairline, pill; violet ring on focus */
+.fld input:focus,.fld select:focus,.pf input:not(.sw):focus,.ed:focus{outline:none;border-color:#B075FF;box-shadow:0 0 0 3px #EFE3FF}
+.fp-btn:focus-visible,.fp-btn[aria-expanded="true"]{outline:none;border-color:#B075FF;box-shadow:0 0 0 3px #EFE3FF}
 .mini{width:100%;border-collapse:collapse;font-size:15px}
 .mini th{font-weight:500;text-align:start;padding:8px 14px;border-bottom:1px solid #8C8C8C}
 .mini td{padding:11px 14px}
@@ -279,7 +282,7 @@ a{color:inherit}
 /* profile form */
 .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 28px}
 .pf label{display:block;font-size:16px;margin-bottom:4px}
-.pf input{width:100%;height:40px;border:0;border-radius:var(--r-ctl);background:var(--soft);padding:0 14px;font-size:16px}
+.pf input{width:100%;height:44px;border:1px solid #ECE6F2;border-radius:99px;background:#fff;padding:0 18px;font-size:15px;transition:border-color .2s,box-shadow .2s}
 .hint{font-size:13px;margin-top:4px;color:var(--muted)}
 .prefs{display:grid;gap:4px;max-width:640px}
 .pref{display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--line)}
@@ -439,7 +442,7 @@ tr.editing td{background:#F8F6FF!important;vertical-align:middle}
 .ed-pair.stacked .ed{height:28px;flex:none}
 .ed-pair{display:flex;gap:8px}
 .ed-pair.stacked{flex-direction:column;gap:6px}
-.ed{height:30px;width:100%;font-weight:400;border:1px solid #DCD6F7;border-radius:6px;background:var(--card);padding:0 10px;font-size:15px;min-width:0;flex:1;transition:border-color .2s var(--ease),box-shadow .2s var(--ease)}
+.ed{height:30px;width:100%;font-weight:400;border:1px solid #ECE6F2;border-radius:99px;background:#fff;padding:0 12px;font-size:15px;min-width:0;flex:1;transition:border-color .2s,box-shadow .2s}
 .ed:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(91,63,255,.12)}
 .ed-fonts .fp-btn{height:30px;border:1px solid #DCD6F7}
 .lock-note{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:12px}
@@ -995,7 +998,7 @@ V.dom=()=>{
 
 V.orders=(open)=>`
  <div class="head-row"><div><h1 class="h1">הזמנות</h1><p class="sub">כאן מופיעות ההזמנות (רכישות) שביצעת</p></div>
-  <div class="fld"><input placeholder="חיפוש לפי מספר הזמנה" style="background:var(--soft);width:220px;max-width:100%" aria-label="חיפוש הזמנה" id="oq" inputmode="numeric"></div></div>
+  <div class="fld"><input placeholder="חיפוש לפי מספר הזמנה" style="width:240px;max-width:100%" aria-label="חיפוש הזמנה" id="oq" inputmode="numeric"></div></div>
  <div class="tbl-wrap"><table class="tbl otbl"><thead><tr><th>מספר הזמנה</th><th>תאריך</th><th>פירוט</th><th>סטטוס</th><th>סה״כ</th><th></th></tr></thead><tbody id="otb">
  ${ORDERS.map((o,i)=>{const sum=o.items.reduce((a,b)=>a+b[1],0);const tot=o.st==='בוטל'?0:sum;const paid=o.st==='הושלם';return `<tr data-oid="${o.id}" class="orow"><td class="num"><span class="oid">${paid?`<button class="ibtn eye${open===i?' on':''}" aria-label="פירוט החשבונית" data-oopen="${i}" aria-expanded="${open===i}">${ICON.eye}</button>`:'<span class="eye-ph"></span>'}#${o.id}</span></td><td class="num">${o.d.slice(0,6)+o.d.slice(8)}</td><td class="odet" title="${o.items.map(x=>x[0]).join(' + ')}"><span>${o.items[0][0]}</span>${o.items.length>1?`<span class="more">+${o.items.length-1}</span>`:''}</td>
  <td><span class="chip ${o.st==='הושלם'?'ok':o.st==='בוטל'?'bad':'wait'}">${o.st}</span></td><td class="num">${ils(tot)}</td>

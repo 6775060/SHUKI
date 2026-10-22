@@ -32,7 +32,7 @@ class WC_Download_Handler { static function download( $f, $pid ) { $GLOBALS['ser
 function wc_get_customer_available_downloads( $u ) { return array( array( 'product_id' => 30004, 'product_name' => 'נוסטלה - רגיל, וובפונט', 'order_id' => 0, 'download_url' => 'https://x/dl', 'download_name' => 'Nostela_Regular_Web' ) ); }
 function wc_get_order( $id ) { return null; } function wc_get_orders( $a ) { return array(); } function get_user_meta() { return ''; } function wc_get_page_permalink() { return '/'; } function wc_logout_url() { return '/'; } function get_permalink() { return '/'; }
 class NoTableDB { public $prefix = 'wp_'; function prepare( $q, ...$a ) { return $q; } function get_var( $q ) { return null; } function get_results( $q ) { return array(); } }
-$GLOBALS['wpdb'] = new NoTableDB(); function admin_url( $p = '' ) { return 'https://fontshok.co.il/wp-admin/' . $p; }
+$GLOBALS['wpdb'] = new NoTableDB(); function current_time( $f ) { return array( 'Y' => 2026, 'n' => 10, 'd.m.Y' => '22.10.2026' )[ $f ]; } function admin_url( $p = '' ) { return 'https://fontshok.co.il/wp-admin/' . $p; }
 eval( file_get_contents( __DIR__ . '/../fsa-v2-snippet.php' ) );
 
 $fail = 0; $t = function ( $ok, $m ) use ( &$fail ) { echo ( $ok ? 'ok   ' : 'FAIL ' ) . $m . "\n"; if ( ! $ok ) $fail++; };

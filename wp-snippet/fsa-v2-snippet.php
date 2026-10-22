@@ -15,6 +15,8 @@ define( 'FSA_V2_TESTER', 'claude-test' );
 define( 'FSA_V2_LIVE_FOR', 'admins' );
 // for 'list': usernames or emails, separated by commas
 define( 'FSA_V2_LIVE_USERS', '' );
+// the ₪79 additional domain: ID of a hidden virtual WooCommerce product. 0 = not offered yet (the button says "next stage")
+define( 'FSA_V2_ADDON_PRODUCT', 0 );
 // ─────────────────────────────────────────────────────────────────────────
 
 function fsa_v2_is_tester() {
@@ -214,6 +216,7 @@ function fsa_v2_dom_ajax() {
 	list( $plan ) = fsa_v2_plan_info( wp_get_current_user() );
 	$limit = fsa_v2_domain_limit( $plan );
 	if ( $limit < 0 ) $err( 'המינוי שלך לא כולל רישום דומיינים.' );
+	if ( $limit ) $limit += fsa_v2_bonus_sub( $uid, (int) current_time( 'Y' ), (int) current_time( 'n' ) );
 	$op = isset( $_POST['op'] ) ? sanitize_key( $_POST['op'] ) : '';
 	$y = (int) current_time( 'Y' ); $m = (int) current_time( 'n' );
 	$id = isset( $_POST['id'] ) ? (int) $_POST['id'] : 0;
@@ -254,6 +257,162 @@ function fsa_v2_dom_ajax() {
 	if ( false === $ok ) $err( 'השמירה נכשלה. נסו שוב.' );
 	wp_send_json_success( array( 'domains' => fsa_v2_domains( $uid ) ) );
 }
+
+// 2f. extra allowances bought with the ₪79 add-on (user meta): this month's subscription slots, and extra sites per licence
+function fsa_v2_bonus_sub( $uid, $y, $m ) { return (int) get_user_meta( $uid, "fsa_v2_bonus_{$y}_{$m}", true ); }
+function fsa_v2_lic_bonus( $uid ) { $b = get_user_meta( $uid, 'fsa_v2_lic_bonus', true ); return is_array( $b ) ? $b : array(); }
+function fsa_v2_lic_sites_all( $uid ) { $s = get_user_meta( $uid, 'fsa_v2_lic_sites', true ); return is_array( $s ) ? $s : array(); }
+function fsa_v2_addon_product() {
+	return ( FSA_V2_ADDON_PRODUCT && function_exists( 'wc_get_product' ) ) ? wc_get_product( FSA_V2_ADDON_PRODUCT ) : null;
+}
+// a purchased webfont licence of this user (key = the downloaded product/variation id): its checkout domains, or null if it isn't theirs / isn't a webfont licence
+function fsa_v2_user_web_lic( $uid, $key ) {
+	if ( ! function_exists( 'wc_get_customer_available_downloads' ) ) return null;
+	foreach ( wc_get_customer_available_downloads( $uid ) as $dl ) {
+		if ( (string) (int) $dl['product_id'] !== (string) $key ) continue;
+		$prod  = wc_get_product( (int) $key );
+		$t     = $prod ? (string) $prod->get_attribute( 'pa_license' ) : '';
+		$order = wc_get_order( $dl['order_id'] );
+		$od    = $order ? (string) $order->get_meta( '_fs_domain' ) : '';
+		// the licence type decides; the order's checkout domain counts only when the type is unknown (the domain belongs to the whole order)
+		$web = '' !== $t ? ( false !== strpos( $t, 'וובפונט' ) || false !== stripos( $t, 'web' ) ) : '' !== $od;
+		if ( ! $web ) return null;
+		return array( 'order_domains' => $od ? array( $od ) : array() );
+	}
+	return null;
+}
+function fsa_v2_lic_limit( $uid, $key ) { $b = fsa_v2_lic_bonus( $uid ); return 3 + (int) ( $b[ (string) $key ] ?? 0 ); }
+
+// register / edit / remove a site on a purchased webfont licence (sites are kept in user meta; the checkout domain stays fixed)
+add_action( 'wp_ajax_fsa_v2_lic', 'fsa_v2_lic_ajax' );
+function fsa_v2_lic_ajax() {
+	$err = function ( $m ) { wp_send_json_error( array( 'message' => $m ) ); };
+	if ( ! fsa_v2_can_view() || ! check_ajax_referer( 'fsa_v2_dom', 'nonce', false ) ) $err( 'פג תוקף העמוד. רעננו ונסו שוב.' );
+	$uid = get_current_user_id();
+	$key = isset( $_POST['key'] ) ? (string) (int) $_POST['key'] : '';
+	$lic = $key ? fsa_v2_user_web_lic( $uid, $key ) : null;
+	if ( ! $lic ) $err( 'הרישיון הזה לא כולל רישום אתרים.' );
+	$op   = isset( $_POST['op'] ) ? sanitize_key( $_POST['op'] ) : '';
+	$id   = isset( $_POST['id'] ) ? sanitize_key( $_POST['id'] ) : '';
+	$host = fsa_v2_clean_host( isset( $_POST['host'] ) ? wp_unslash( $_POST['host'] ) : '' );
+	$name = sanitize_text_field( isset( $_POST['name'] ) ? wp_unslash( $_POST['name'] ) : '' );
+	$all  = fsa_v2_lic_sites_all( $uid );
+	$list = isset( $all[ $key ] ) && is_array( $all[ $key ] ) ? $all[ $key ] : array();
+	$idx  = null;
+	foreach ( $list as $k => $r ) { if ( $r['id'] === $id ) $idx = $k; }
+	if ( 'del' !== $op ) {
+		if ( ! $host ) $err( 'צריך להזין כתובת אתר תקינה, למשל studio.co.il' );
+		$taken = array_merge( $lic['order_domains'], wp_list_pluck( array_filter( $list, function ( $r ) use ( $id ) { return $r['id'] !== $id; } ), 'host' ) );
+		if ( in_array( $host, $taken, true ) ) $err( 'האתר הזה כבר רשום ברישיון.' );
+		if ( '' === $name ) $name = $host;
+	}
+	if ( 'add' === $op ) {
+		if ( count( $lic['order_domains'] ) + count( $list ) >= fsa_v2_lic_limit( $uid, $key ) ) $err( 'כל האתרים של הרישיון רשומים.' );
+		$list[] = array( 'id' => strtolower( wp_generate_password( 8, false ) ), 'd' => current_time( 'd.m.Y' ), 'name' => $name, 'host' => $host );
+	} elseif ( 'edit' === $op || 'del' === $op ) {
+		if ( null === $idx ) $err( 'האתר לא נמצא.' );
+		if ( 'del' === $op ) { array_splice( $list, $idx, 1 ); } else { $list[ $idx ]['host'] = $host; $list[ $idx ]['name'] = $name; }
+	} else {
+		$err( 'פעולה לא מוכרת.' );
+	}
+	$all[ $key ] = array_values( $list );
+	update_user_meta( $uid, 'fsa_v2_lic_sites', $all );
+	wp_send_json_success( array( 'sites' => fsa_v2_lic_site_rows( $uid, $key, $lic['order_domains'] ), 'n' => fsa_v2_lic_limit( $uid, $key ) ) );
+}
+// rows for the area: checkout domains first (fixed, no id), then the ones registered here
+function fsa_v2_lic_site_rows( $uid, $key, $order_domains, $order_date = '' ) {
+	$rows = array();
+	foreach ( $order_domains as $d ) $rows[] = array( $order_date, '', $d, '' );
+	$all = fsa_v2_lic_sites_all( $uid );
+	foreach ( (array) ( $all[ (string) $key ] ?? array() ) as $r ) $rows[] = array( $r['d'], $r['name'], $r['host'], $r['id'] );
+	return $rows;
+}
+
+// ₪79 add-on: a pending order for the hidden product; the allowance is granted only after payment (and taken back on refund / cancel)
+add_action( 'wp_ajax_fsa_v2_addon', 'fsa_v2_addon_ajax' );
+function fsa_v2_addon_ajax() {
+	$err = function ( $m ) { wp_send_json_error( array( 'message' => $m ) ); };
+	if ( ! fsa_v2_can_view() || ! check_ajax_referer( 'fsa_v2_dom', 'nonce', false ) ) $err( 'פג תוקף העמוד. רעננו ונסו שוב.' );
+	$product = fsa_v2_addon_product();
+	if ( ! $product || ! function_exists( 'wc_create_order' ) ) $err( 'הרכישה לא זמינה כרגע.' );
+	$uid  = get_current_user_id();
+	$kind = isset( $_POST['kind'] ) && 'lic' === $_POST['kind'] ? 'lic' : 'sub';
+	$key  = isset( $_POST['key'] ) ? (string) (int) $_POST['key'] : '';
+	if ( 'sub' === $kind ) {
+		list( $plan ) = fsa_v2_plan_info( wp_get_current_user() );
+		if ( 'web' !== $plan ) $err( 'הרחבת מכסה זמינה למינוי וובסטופ.' );
+	} elseif ( ! fsa_v2_user_web_lic( $uid, $key ) ) {
+		$err( 'הרישיון הזה לא כולל רישום אתרים.' );
+	}
+	$order = wc_create_order( array( 'customer_id' => $uid ) );
+	$item  = $order->add_product( $product, 1 );
+	wc_add_order_item_meta( $item, '_fsa_v2_kind', $kind );
+	if ( 'lic' === $kind ) wc_add_order_item_meta( $item, '_fsa_v2_key', $key );
+	$u = wp_get_current_user();
+	$order->set_billing_email( $u->user_email );
+	$order->set_billing_first_name( (string) $u->first_name );
+	$order->set_billing_last_name( (string) $u->last_name );
+	$order->update_meta_data( '_fsa_v2_addon', 1 );
+	$order->calculate_totals();
+	$order->save();
+	wp_send_json_success( array( 'url' => $order->get_checkout_payment_url() ) );
+}
+function fsa_v2_addon_lines( $order ) {
+	$out = array();
+	foreach ( $order->get_items() as $it ) {
+		$kind = $it->get_meta( '_fsa_v2_kind' );
+		if ( $kind ) $out[] = array( 'kind' => $kind, 'key' => (string) $it->get_meta( '_fsa_v2_key' ), 'qty' => max( 1, (int) $it->get_quantity() ) );
+	}
+	return $out;
+}
+foreach ( array( 'woocommerce_payment_complete', 'woocommerce_order_status_processing', 'woocommerce_order_status_completed' ) as $fsa_h ) {
+	add_action( $fsa_h, 'fsa_v2_addon_grant' );
+}
+function fsa_v2_addon_grant( $order_id ) {
+	$order = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
+	if ( ! $order || ! $order->get_meta( '_fsa_v2_addon' ) || $order->get_meta( '_fsa_v2_granted' ) || ! $order->is_paid() ) return;
+	$uid  = (int) $order->get_customer_id();
+	$paid = $order->get_date_paid();
+	$ym   = $paid ? array( (int) $paid->date( 'Y' ), (int) $paid->date( 'n' ) ) : array( (int) current_time( 'Y' ), (int) current_time( 'n' ) );
+	foreach ( fsa_v2_addon_lines( $order ) as $l ) {
+		if ( 'sub' === $l['kind'] ) {
+			update_user_meta( $uid, "fsa_v2_bonus_{$ym[0]}_{$ym[1]}", fsa_v2_bonus_sub( $uid, $ym[0], $ym[1] ) + $l['qty'] );
+		} else {
+			$b = fsa_v2_lic_bonus( $uid ); $b[ $l['key'] ] = (int) ( $b[ $l['key'] ] ?? 0 ) + $l['qty']; update_user_meta( $uid, 'fsa_v2_lic_bonus', $b );
+		}
+	}
+	$order->update_meta_data( '_fsa_v2_granted', $ym[0] . '-' . $ym[1] );
+	$order->save();
+	$order->add_order_note( 'FS: הרחבת דומיינים הוענקה' );
+}
+foreach ( array( 'woocommerce_order_status_refunded', 'woocommerce_order_status_cancelled' ) as $fsa_h ) {
+	add_action( $fsa_h, 'fsa_v2_addon_revoke' );
+}
+function fsa_v2_addon_revoke( $order_id ) {
+	$order = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
+	if ( ! $order || ! $order->get_meta( '_fsa_v2_granted' ) || $order->get_meta( '_fsa_v2_revoked' ) ) return;
+	$uid = (int) $order->get_customer_id();
+	list( $y, $m ) = array_map( 'intval', explode( '-', $order->get_meta( '_fsa_v2_granted' ) ) );
+	foreach ( fsa_v2_addon_lines( $order ) as $l ) {
+		if ( 'sub' === $l['kind'] ) {
+			update_user_meta( $uid, "fsa_v2_bonus_{$y}_{$m}", max( 0, fsa_v2_bonus_sub( $uid, $y, $m ) - $l['qty'] ) );
+		} else {
+			$b = fsa_v2_lic_bonus( $uid ); $b[ $l['key'] ] = max( 0, (int) ( $b[ $l['key'] ] ?? 0 ) - $l['qty'] ); update_user_meta( $uid, 'fsa_v2_lic_bonus', $b );
+		}
+	}
+	$order->update_meta_data( '_fsa_v2_revoked', 1 );
+	$order->save();
+	$order->add_order_note( 'FS: הרחבת דומיינים בוטלה (אתרים שכבר נרשמו נשארים)' );
+}
+// after paying for an add-on, straight back to the registration form instead of the "order received" page
+add_filter( 'woocommerce_get_return_url', function ( $url, $order ) {
+	if ( ! $order instanceof WC_Order || ! $order->get_meta( '_fsa_v2_addon' ) ) return $url;
+	$l = fsa_v2_addon_lines( $order )[0] ?? null;
+	if ( ! $l ) return $url;
+	$args = array( 'fs_addon' => 'paid', 'kind' => $l['kind'] );
+	if ( 'lic' === $l['kind'] ) $args['licence'] = $l['key'];
+	return add_query_arg( $args, wc_get_page_permalink( 'myaccount' ) );
+}, 20, 2 );
 
 // 2. data (everything the area shows, read from what already exists on the site)
 function fsa_v2_he_date( $ts ) {
@@ -324,14 +483,17 @@ function fsa_v2_data() {
 				$domain = $order->get_meta( '_fs_domain' );
 				if ( $domain ) {
 					$dt = $order->get_date_created();
-					$sites[] = array( $dt ? $dt->date( 'd.m.Y' ) : '', '', $domain );
+					$sites[] = array( $dt ? $dt->date( 'd.m.Y' ) : '', '', $domain, '' ); // from checkout: fixed
 				}
 			}
 			$t = $types ? implode( ' + ', array_unique( $types ) ) : 'רישיון';
-			$web = ( stripos( $t, 'webstop' ) !== false || strpos( $t, 'וובפונט' ) !== false || $sites ) ? 1 : 0;
+			// the licence type decides; the order's checkout domain counts only when the type is unknown
+			$web = ( stripos( $t, 'webstop' ) !== false || stripos( $t, 'web' ) !== false || strpos( $t, 'וובפונט' ) !== false || ( ! $types && $sites ) ) ? 1 : 0;
+			if ( ! $web ) $sites = array();
 			$by[ $pid ] = array(
 				'f' => $fname, 'w' => $weight, 't' => $t,
-				'sub' => 'buy', 'n' => 3, 'web' => $web, 'sites' => $sites, 'dl' => $dl['download_url'],
+				'sub' => 'buy', 'n' => fsa_v2_lic_limit( $uid, $pid ), 'web' => $web, 'key' => (string) $pid,
+				'sites' => array_merge( $sites, array_slice( fsa_v2_lic_site_rows( $uid, $pid, array() ), 0 ) ), 'dl' => $dl['download_url'],
 				'file' => wp_strip_all_tags( (string) $dl['download_name'] ),
 				'oid' => $order ? $order->get_order_number() : '', 'd' => ( $order && $order->get_date_created() ) ? $order->get_date_created()->date( 'd.m.y' ) : '',
 			);
@@ -364,6 +526,7 @@ function fsa_v2_data() {
 	$shop = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/' );
 	return array(
 		'domains' => fsa_v2_domains( $uid ), 'domainFonts' => fsa_v2_domain_fonts(),
+		'bonus' => fsa_v2_bonus_sub( $uid, (int) current_time( 'Y' ), (int) current_time( 'n' ) ), 'addon' => (bool) fsa_v2_addon_product(),
 		'domAjax' => admin_url( 'admin-ajax.php' ), 'domNonce' => wp_create_nonce( 'fsa_v2_dom' ),
 		'mode' => isset( $GLOBALS['fsa_v2_mode'] ) ? $GLOBALS['fsa_v2_mode'] : 'preview', 'oldUrl' => add_query_arg( 'fsa_old', '1', function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ) ),
 		'plan' => $plan, 'planStart' => $start, 'nextPay' => '', 'card' => '',
@@ -514,7 +677,7 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .tabs{display:flex;box-shadow:inset 0 -1.5px 0 #BDBDBD;margin-bottom:26px;overflow-x:auto;scrollbar-width:none}
 :is(#fsa,#fsa-layer) .tabs::-webkit-scrollbar{display:none}
 :is(#fsa,#fsa-layer) .fontpick{position:relative}
-:is(#fsa,#fsa-layer) .fp-btn{all:unset;box-sizing:border-box;cursor:pointer;width:100%;height:40px;background:var(--card);border-radius:var(--r-ctl);padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px}
+:is(#fsa,#fsa-layer) .fp-btn{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--ink);height:44px;border:1px solid #ECE6F2;border-radius:99px;background:#fff;padding:0 18px;font-size:15px;transition:border-color .2s,box-shadow .2s}
 :is(#fsa,#fsa-layer) .fp-btn:focus-visible{outline:2px solid var(--violet)}
 :is(#fsa,#fsa-layer) .fp-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 :is(#fsa,#fsa-layer) .fp-menu{position:absolute;top:100%;inset-inline:0;margin-top:4px;background:var(--card);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:8px;z-index:6;min-width:200px;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:top center;transition:opacity .25s var(--ease),transform .3s var(--ease),visibility 0s linear .3s}
@@ -672,8 +835,11 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .drawer .box{background:var(--bg);border-radius:10px;padding:24px 26px}
 :is(#fsa,#fsa-layer) .form-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:8px;align-items:end;margin-bottom:26px}
 :is(#fsa,#fsa-layer) .fld label{display:block;font-size:12px;margin-bottom:4px}
-:is(#fsa,#fsa-layer) .fld input,:is(#fsa,#fsa-layer) .fld select{width:100%;height:40px;border:0;border-radius:var(--r-ctl);background:var(--card);padding:0 14px;font-size:15px}
-:is(#fsa,#fsa-layer) .fld input::placeholder{color:var(--faint)}
+:is(#fsa,#fsa-layer) .fld input,:is(#fsa,#fsa-layer) .fld select{width:100%;height:44px;border:1px solid #ECE6F2;border-radius:99px;background:#fff;padding:0 18px;font-size:15px;transition:border-color .2s,box-shadow .2s}
+:is(#fsa,#fsa-layer) .fld input::placeholder,:is(#fsa,#fsa-layer) .pf input::placeholder{color:#828F9D}
+/* every field the customer fills in looks like the domain-registration field: white, lilac hairline, pill; violet ring on focus */
+:is(#fsa,#fsa-layer) .fld input:focus,:is(#fsa,#fsa-layer) .fld select:focus,:is(#fsa,#fsa-layer) .pf input:not(.sw):focus,:is(#fsa,#fsa-layer) .ed:focus{outline:none;border-color:#B075FF;box-shadow:0 0 0 3px #EFE3FF}
+:is(#fsa,#fsa-layer) .fp-btn:focus-visible,:is(#fsa,#fsa-layer) .fp-btn[aria-expanded="true"]{outline:none;border-color:#B075FF;box-shadow:0 0 0 3px #EFE3FF}
 :is(#fsa,#fsa-layer) .mini{width:100%;border-collapse:collapse;font-size:15px}
 :is(#fsa,#fsa-layer) .mini th{font-weight:500;text-align:start;padding:8px 14px;border-bottom:1px solid #8C8C8C}
 :is(#fsa,#fsa-layer) .mini td{padding:11px 14px}
@@ -687,7 +853,7 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .qopt .btn{margin-top:auto;height:34px}
 :is(#fsa,#fsa-layer) .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 28px}
 :is(#fsa,#fsa-layer) .pf label{display:block;font-size:16px;margin-bottom:4px}
-:is(#fsa,#fsa-layer) .pf input{width:100%;height:40px;border:0;border-radius:var(--r-ctl);background:var(--soft);padding:0 14px;font-size:16px}
+:is(#fsa,#fsa-layer) .pf input{width:100%;height:44px;border:1px solid #ECE6F2;border-radius:99px;background:#fff;padding:0 18px;font-size:15px;transition:border-color .2s,box-shadow .2s}
 :is(#fsa,#fsa-layer) .hint{font-size:13px;margin-top:4px;color:var(--muted)}
 :is(#fsa,#fsa-layer) .prefs{display:grid;gap:4px;max-width:640px}
 :is(#fsa,#fsa-layer) .pref{display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--line)}
@@ -829,7 +995,7 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .ed-pair.stacked .ed{height:28px;flex:none}
 :is(#fsa,#fsa-layer) .ed-pair{display:flex;gap:8px}
 :is(#fsa,#fsa-layer) .ed-pair.stacked{flex-direction:column;gap:6px}
-:is(#fsa,#fsa-layer) .ed{height:30px;width:100%;font-weight:400;border:1px solid #DCD6F7;border-radius:6px;background:var(--card);padding:0 10px;font-size:15px;min-width:0;flex:1;transition:border-color .2s var(--ease),box-shadow .2s var(--ease)}
+:is(#fsa,#fsa-layer) .ed{height:30px;width:100%;font-weight:400;border:1px solid #ECE6F2;border-radius:99px;background:#fff;padding:0 12px;font-size:15px;min-width:0;flex:1;transition:border-color .2s,box-shadow .2s}
 :is(#fsa,#fsa-layer) .ed:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(91,63,255,.12)}
 :is(#fsa,#fsa-layer) .ed-fonts .fp-btn{height:30px;border:1px solid #DCD6F7}
 :is(#fsa,#fsa-layer) .lock-note{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:12px}
@@ -1030,6 +1196,9 @@ html body.fsa-v2{overflow-x:clip}
 :is(#fsa,#fsa-layer) .pop-menu a{display:block;width:100%;padding:9px 12px;border-radius:6px;font-size:15px;cursor:pointer;white-space:nowrap;text-align:start}
 :is(#fsa,#fsa-layer) .pop-menu a:hover,:is(#fsa,#fsa-layer) .pop-menu a:focus-visible{background:var(--soft)}
 #fsa-layer{width:auto;height:0;margin:0;padding:0;background:none;position:static}
+@media print{html.fsa-print body>*:not(#fsa-layer){display:none!important}html.fsa-print #fsa-layer>*:not(#certModal){display:none!important}
+ html.fsa-print #certModal{position:static!important;display:block!important;background:none!important;opacity:1!important}html.fsa-print #certModal .sheet{position:static!important;transform:none!important;box-shadow:none!important;max-height:none!important;overflow:visible!important;width:auto!important}
+ html.fsa-print #certModal .sheet-bar{display:none!important}html.fsa-print body{background:#fff!important}}
 :is(#fsa,#fsa-layer) .wcell{position:relative;display:block;max-width:180px;outline:none}
 :is(#fsa,#fsa-layer) .wlist{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 :is(#fsa,#fsa-layer) .wcell.trunc{cursor:help}
@@ -1067,7 +1236,7 @@ FSACSS;
 <div id="fsa-layer">
 <div class="modal" id="certModal" hidden role="dialog" aria-modal="true" aria-label="תעודת רישיון">
   <div class="sheet">
-    <div class="sheet-bar"><b>תעודת רישיון</b><div style="display:flex;gap:8px"><button class="btn btn-grad" style="height:34px" data-t="התעודה הורדה כ־PDF">הורדת PDF</button><button class="ibtn" id="certClose" aria-label="סגירה"><i data-ic="close"></i></button></div></div>
+    <div class="sheet-bar"><b>תעודת רישיון</b><div style="display:flex;gap:8px"><button class="btn btn-grad" style="height:34px" id="certPdf">הורדת PDF</button><button class="ibtn" id="certClose" aria-label="סגירה"><i data-ic="close"></i></button></div></div>
     <div id="certBody"></div>
   </div>
 </div>
@@ -1135,6 +1304,7 @@ const canEdit=s=>{const d=parseD(s);return d>=CYCLE.start&&d<CYCLE.end};
 function rowActs(key,date,certSpec,delAttr){
  const open=key.startsWith('dom:')||canEdit(date);
  const cert=`<button class="ibtn" aria-label="תעודת רישיון" data-cert="${certSpec}">${ICON.cert}</button>`;
+ if(key.startsWith('dom:')){const p=key.split(':');if(licFixed(+p[1],+p[2]))return `<div class="acts"><span class="ibtn locked" title="נרשם בזמן הרכישה: קבוע" aria-label="קבוע">${ICON.lock}</span><button class="ibtn" aria-label="תעודת רישיון" data-cert="${certSpec}">${ICON.cert}</button><span class="ibtn ph" aria-hidden="true"></span></div>`}
  if(!open)return `<div class="acts"><span class="ibtn locked" title="נרשם בחודש קודם: הדומיין סגור ונשמר, לא ניתן לערוך או להסיר" aria-label="נעול">${ICON.lock}</span>${cert}<span class="ibtn ph" aria-hidden="true"></span></div>`;
  const tip=key.startsWith('dom:')?'עריכת הדומיין':`אפשר לערוך עד סוף חודש ${CYCLE.label}`;
  return `<div class="acts"><button class="ibtn" aria-label="עריכת הדומיין" title="${tip}" data-edit="${key}">${ICON.edit}</button>${cert}<button class="ibtn" aria-label="הסרת הדומיין" ${delAttr}>${ICON.trash}</button></div>`;
@@ -1192,6 +1362,12 @@ Object.keys(SUBDOM).forEach(k=>SUBDOM[k]=[]);HISTORY.length=0;
 SUBDOM[FS.plan||'web']=(FS.domains||[]).map(r=>r.slice());
 const DOMF=(FS.domainFonts&&FS.domainFonts.length)?FS.domainFonts:FAMILY.map(f=>f[0]);
 const DOM_PLANS=['web','extra'];
+BONUS=FS.bonus||0;
+/* a site on a purchased licence: [date, name, address, id]; id '' = registered at checkout, fixed */
+const licFixed=(i,j)=>{const s=(LIC[i]&&LIC[i].sites[j])||[];return s.length>3&&!s[3]};
+function postApi(action,d){const b=new URLSearchParams(Object.assign({action,nonce:FS.domNonce||''},d));
+ return fetch(FS.domAjax,{method:'POST',credentials:'same-origin',body:b}).then(r=>r.json()).catch(()=>null).then(j=>{if(!j||!j.success)throw new Error((j&&j.data&&j.data.message)||'הפעולה נכשלה. נסו שוב.');return j.data})}
+function licApi(i,op,d){const l=LIC[i];return postApi('fsa_v2_lic',Object.assign({op,key:l.key},d)).then(r=>{l.sites=r.sites;l.u=r.sites.length;l.n=r.n;return r})}
 function domApi(op,d){const b=new URLSearchParams(Object.assign({action:'fsa_v2_dom',nonce:FS.domNonce||'',op},d));
  return fetch(FS.domAjax,{method:'POST',credentials:'same-origin',body:b}).then(r=>r.json()).catch(()=>null).then(j=>{
   if(!j||!j.success)throw new Error((j&&j.data&&j.data.message)||'השמירה נכשלה. נסו שוב.');
@@ -1388,7 +1564,7 @@ V.dom=()=>{
 
 V.orders=(open)=>`
  <div class="head-row"><div><h1 class="h1">הזמנות</h1><p class="sub">כאן מופיעות ההזמנות (רכישות) שביצעת</p></div>
-  <div class="fld"><input placeholder="חיפוש לפי מספר הזמנה" style="background:var(--soft);width:220px;max-width:100%" aria-label="חיפוש הזמנה" id="oq" inputmode="numeric"></div></div>
+  <div class="fld"><input placeholder="חיפוש לפי מספר הזמנה" style="width:240px;max-width:100%" aria-label="חיפוש הזמנה" id="oq" inputmode="numeric"></div></div>
  <div class="tbl-wrap"><table class="tbl otbl"><thead><tr><th>מספר הזמנה</th><th>תאריך</th><th>פירוט</th><th>סטטוס</th><th>סה״כ</th><th></th></tr></thead><tbody id="otb">${ORDERS.length?"":`<tr><td colspan="6" class="empty">עוד אין הזמנות.</td></tr>`}
  ${ORDERS.map((o,i)=>{const sum=o.total!=null?o.total:o.items.reduce((a,b)=>a+b[1],0);const tot=sum;const paid=!!o.inv;return `<tr data-oid="${o.id}" class="orow"><td class="num"><span class="oid"><button class="ibtn eye${open===i?' on':''}" aria-label="פירוט ההזמנה" data-oopen="${i}" aria-expanded="${open===i}">${ICON.eye}</button>#${o.id}</span></td><td class="num">${o.d.slice(0,6)+o.d.slice(8)}</td><td class="odet" title="${o.items.map(x=>x[0]).join(' + ')}"><span>${o.items[0][0]}</span>${o.items.length>1?`<span class="more">+${o.items.length-1}</span>`:''}</td>
  <td><span class="chip ${o.st==='הושלם'?'ok':o.st==='בוטל'?'bad':'wait'}">${o.st}</span></td><td class="num">${ils(tot)}</td>
@@ -1453,7 +1629,7 @@ state.open={lic:-1,orders:-1};
 {const hv=location.hash.slice(1);if(V[hv])state.view=hv;if(hv==='subdom'){state.view='subs';state.sub.subs='reg'}}state.plan=FS.plan||'web';state.noteHidden=1;
 /* back from paying for an add-on on the live site (WooCommerce return URL): reopen the matching registration form */
 {const q=new URLSearchParams(location.search);if(q.get('fs_addon')==='paid'){const lic=q.get('kind')==='lic';
- if(lic){state.view='lic';state.open.lic=+q.get('licence')||0}else{state.view='subs';state.sub.subs='reg'}
+ if(lic){const li=LIC.findIndex(x=>String(x.key)===q.get('licence'));state.view='lic';state.open.lic=li<0?0:li}else{state.view='subs';state.sub.subs='reg'}
  history.replaceState(null,'',location.pathname+location.hash);
  setTimeout(()=>backTo(lic?'#su'+state.open.lic:'#sd2','התשלום התקבל. אפשר לרשום את '+(lic?'האתר':'הדומיין')+' הנוסף'),300)}}
 function save(){try{localStorage.setItem('fsa-v2',JSON.stringify(state))}catch(e){}}
@@ -1498,16 +1674,16 @@ const cart=$('#cart');let cartItem=null;
 function cartStep(it,step){
  if(step==='pay')return `<div class="cart-item"><span class="cart-ic">${ICON.globe}</span><div><b>${it.name}</b><span>${it.desc}</span></div><b class="num">${ils(it.price)}</b></div>
   <dl class="cart-sum"><dt class="tot">סה״כ לתשלום</dt><dd class="tot num">${ils(it.price)}</dd><dt class="vat">מתוכם מע״מ 18%</dt><dd class="vat num">${ils(+(it.price-it.price/1.18).toFixed(2))}</dd></dl>
-  <div class="cart-pay"><span>${ICON.card} ויזה •••• 4821</span><a href="#" data-t="מעבר לעדכון כרטיס בסמית" style="font-size:13px">שינוי</a></div>
-  <button class="btn btn-grad cart-go" id="cartPay">לתשלום ${ils(it.price)}</button>
-  <p class="hint cart-note">תשלום חד־פעמי מאובטח. החשבונית תופיע ב״הזמנות״.</p>`;
- if(step==='wait')return `<div class="cart-wait" role="status"><span class="spin" aria-hidden="true"></span>מעבד את התשלום…</div>`;
+  <button class="btn btn-grad cart-go" id="cartPay">למעבר לתשלום מאובטח</button>
+  <p class="hint cart-note">התשלום מתבצע בעמוד התשלום של האתר. מיד אחריו חוזרים לכאן, והחשבונית תופיע ב״הזמנות״.</p>`;
+ if(step==='wait')return `<div class="cart-wait" role="status"><span class="spin" aria-hidden="true"></span>מעבירים לעמוד התשלום…</div>`;
  return `<div class="cart-ok" role="status"><span class="ok-ic">${ICON.check}</span><b>התשלום התקבל</b><span>${it.okText}</span><button class="btn btn-grad cart-go" id="cartBack">${it.backText}</button></div>`;
 }
 function openCart(it){cartItem=Object.assign({paid:false},it);$('#cartBody').innerHTML=cartStep(cartItem,'pay');cart.hidden=false;void cart.offsetWidth;cart.classList.add('show');$('#cartPay').focus()}
 function closeCart(){if(cart.hidden||!cartItem||cartItem.busy)return;const it=cartItem;cart.classList.remove('show');setTimeout(()=>{cart.hidden=true},320);if(it.paid)it.back()}
+/* the add-on is a real order: create it, then go to the site's secure payment page; payment returns here (?fs_addon=paid) */
 function payCart(){const it=cartItem;it.busy=true;$('#cartBody').innerHTML=cartStep(it,'wait');
- setTimeout(()=>{it.busy=false;it.paid=true;it.grant();ORDERS.push({id:String(+ORDERS[ORDERS.length-1].id+1),d:today(),items:[[it.name,it.price]],st:'הושלם'});$('#cartBody').innerHTML=cartStep(it,'ok');$('#cartBack').focus()},1400)}
+ postApi('fsa_v2_addon',{kind:it.kind,key:it.key||''}).then(r=>{location.href=r.url}).catch(x=>{it.busy=false;$('#cartBody').innerHTML=cartStep(it,'pay');toast(x.message)})}
 cart.addEventListener('click',e=>{if(e.target===cart)closeCart()});
 /* back in the registration form, ready to type the new domain */
 function backTo(sel,msg){setTimeout(()=>{const f=$(sel);if(f){f.scrollIntoView({behavior:'smooth',block:'center'});f.focus({preventScroll:true})}toast(msg)},60)}
@@ -1517,6 +1693,8 @@ function hideModal(){if(modal.hidden)return;modal.classList.remove('show');setTi
 /* several licences of one font as one: all weights, all licence types, the first purchase date */
 function licMerge(ids){const L=ids.map(i=>LIC[i]),u=a=>[...new Set(a.filter(Boolean))];
  return Object.assign({},L[0],{w:u(L.map(x=>x.w)).join(', '),t:u(L.flatMap(x=>x.t.split(' + '))).join(' + '),d:u(L.map(x=>x.d)).sort((a,b)=>{const k=s=>s.split('.').reverse().join('');return k(a)<k(b)?-1:1})[0]||''})}
+/* "הורדת PDF": the browser's print dialog with only the certificate on the page ("Save as PDF" there) */
+function printCert(){document.documentElement.classList.add('fsa-print');const done=()=>{document.documentElement.classList.remove('fsa-print');removeEventListener('afterprint',done)};addEventListener('afterprint',done);setTimeout(()=>{print();setTimeout(done,1500)},50)}
 function openCert(spec){
  const p=spec.split(':');let l,site=null;
  if(p[0]==='sd'){const s=SUBDOM[state.plan][+p[1]];l={f:s[3],w:'',t:'וובפונט',sub:state.plan,n:PLAN[state.plan].n};site=s}
@@ -1529,7 +1707,8 @@ modal.addEventListener('click',e=>{if(e.target.id==='certModal')hideModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){hideModal();closeMenus();closeCart()}});
 document.addEventListener('click',e=>{
  const t=e.target.closest('button,a');if(!t||!t.closest('#fsa,#fsa-layer'))return;
- {const lic=k=>String(k||'').startsWith('dom:');if(t.dataset.del||t.dataset.addon||t.dataset.planaddon||(t.dataset.edit&&lic(t.dataset.edit))||(t.dataset.edsave&&lic((t.closest('tr')||{}).dataset&&t.closest('tr').dataset.key))){e.preventDefault();soon();return}}
+ if((t.dataset.addon||t.dataset.planaddon)&&!FS.addon){e.preventDefault();soon();return}
+ if(t.id==='certPdf'){printCert();return}
  if(t.dataset.view){goPage(t.dataset.view);return}
  if(t.dataset.plantg){state.planOpen=!state.planOpen;t.closest('.plan').classList.toggle('open',state.planOpen);t.setAttribute('aria-expanded',state.planOpen);save();return}
  if(t.dataset.licf){state.licFilter=t.dataset.licf==='all'?'':t.dataset.licf;state.open.lic=-1;render();return}
@@ -1541,18 +1720,19 @@ document.addEventListener('click',e=>{
  if(t.dataset.open!==undefined){toggleDrawer('lic',+t.dataset.open);return}
  if(t.dataset.oopen!==undefined){toggleDrawer('orders',+t.dataset.oopen);return}
  if(t.dataset.cert){openCert(t.dataset.cert);return}
- if(t.dataset.del){const[i,j]=t.dataset.del.split(':').map(Number);const l=LIC[i];const s=l.sites.splice(j,1)[0];l.u=l.sites.length;render();toast(`${s[2]} הוסר והמקום ברישיון התפנה`);return}
+ if(t.dataset.del){const[i,j]=t.dataset.del.split(':').map(Number);const s=LIC[i].sites[j];if(!s)return;if(licFixed(i,j)){toast('האתר שנרשם ברכישה קבוע ולא ניתן להסיר אותו');return}
+  if(!confirm(`להסיר את ${s[2]}?`))return;t.disabled=true;licApi(i,'del',{id:s[3]}).then(()=>{render();toast(`${s[2]} הוסר והמקום ברישיון התפנה`)}).catch(x=>{t.disabled=false;toast(x.message)});return}
  if(t.id==='cartPay'){payCart();return}
  if(t.id==='cartBack'||t.id==='cartClose'){closeCart();return}
- if(t.dataset.addon){const i=+t.dataset.addon,l=LIC[i];openCart({name:`אתר נוסף · ${l.f} ${l.w}`,desc:'מקום נוסף ברישיון הוובפונט, לצמיתות',price:79,
+ if(t.dataset.addon){const i=+t.dataset.addon,l=LIC[i];openCart({kind:'lic',key:l.key,name:`אתר נוסף · ${l.f} ${l.w}`,desc:'מקום נוסף ברישיון הוובפונט, לצמיתות',price:79,
    okText:`ברישיון של ${l.f} יש עכשיו ${l.n+1} אתרים.`,backText:'חזרה לרישום האתר',
    grant:()=>{l.n+=1},back:()=>{state.view='lic';state.open.lic=i;render({opening:true});backTo('#su'+i,'אפשר לרשום את האתר הנוסף')}});return}
  if(t.dataset.hidenote){const n=$('.note');n.style.transition='opacity .3s var(--ease),transform .3s var(--ease)';n.style.opacity=0;n.style.transform='translateY(-4px)';setTimeout(()=>{state.noteHidden=1;render()},300);return}
- if(t.dataset.edit){state.editKey=t.dataset.edit;render();const r=$(`tr.editing`);r&&r.querySelector('.ed-host').focus();return}
+ if(t.dataset.edit){{const p=t.dataset.edit.split(':');if(p[0]==='dom'&&licFixed(+p[1],+p[2])){toast('האתר שנרשם ברכישה קבוע ולא ניתן לערוך אותו');return}}state.editKey=t.dataset.edit;render();const r=$(`tr.editing`);r&&r.querySelector('.ed-host').focus();return}
  if(t.dataset.edcancel){state.editKey=null;render();return}
  if(t.dataset.edsave){saveEdit(t.closest('tr'));return}
  if(t.dataset.plan){state.plan=t.dataset.plan;render({page:true});return}
- if(t.dataset.planaddon){openCart({name:`דומיין נוסף · מינוי ${PLAN[state.plan].label}`,desc:`רישום אחד נוסף לחודש ${CYCLE.label}`,price:79,
+ if(t.dataset.planaddon){openCart({kind:'sub',name:`דומיין נוסף · מינוי ${PLAN[state.plan].label}`,desc:`רישום אחד נוסף לחודש ${CYCLE.label}`,price:79,
    okText:`נוסף רישום אחד למכסת ${CYCLE.label}.`,backText:'חזרה לרישום הדומיין',
    grant:()=>{BONUS+=1},back:()=>{state.view='subs';state.sub.subs='reg';render();backTo('#sd2','אפשר לרשום את הדומיין הנוסף')}});return}
  if(t.dataset.sddel){const s=SUBDOM[state.plan][+t.dataset.sddel];if(!s||!confirm(`להסיר את ${s[2]}?`))return;t.disabled=true;
@@ -1562,14 +1742,16 @@ document.addEventListener('click',e=>{
  if(t.dataset.t){e.preventDefault();soon()}
 });
 document.addEventListener('submit',e=>{
- const f=e.target;if(!f.closest('#fsa,#fsa-layer'))return;e.preventDefault();if(f.dataset.add!==undefined||f.id==='pform'){soon();return}
+ const f=e.target;if(!f.closest('#fsa,#fsa-layer'))return;e.preventDefault();if(f.id==='pform'){soon();return}
  if(f.dataset.subadd){
   const host=cleanHost($('#sd2').value),picked=[...f.querySelectorAll('.fp-menu input:checked')].map(i=>i.value),err=$('#sdErr');
   const msg=!host||!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)?'צריך להזין כתובת אתר תקינה, למשל studio.co.il':!picked.length?'צריך לבחור לפחות פונט אחד':'';
   if(msg){err.textContent=msg;err.hidden=false;(msg.includes('כתובת')?$('#sd2'):f.querySelector('.fp-btn')).focus();return}
   const btn=f.querySelector('.reg-add');if(btn)btn.disabled=true;
   domApi('add',{host,name:siteName(host),fonts:picked.join(', ')}).then(()=>{state.regOpen=false;render({fresh:host});toast('האתר נרשם במינוי. התעודה מוכנה להורדה')}).catch(x=>{if(btn)btn.disabled=false;err.textContent=x.message;err.hidden=false});return}
- if(f.dataset.add!==undefined){const l=LIC[+f.dataset.add];const host=cleanHost(f.querySelector('[data-namefor]').value);if(!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)){toast('צריך להזין כתובת אתר תקינה');return}l.sites.unshift([today(),f.querySelector('.sitename').value.trim()||siteName(host),host]);l.u=l.sites.length;render({fresh:host});toast('הדומיין נרשם. התעודה מוכנה להורדה');return}
+ if(f.dataset.add!==undefined){const i=+f.dataset.add;const host=cleanHost(f.querySelector('[data-namefor]').value);if(!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)){toast('צריך להזין כתובת אתר תקינה');return}
+  const btn=f.querySelector('button');if(btn)btn.disabled=true;
+  licApi(i,'add',{host,name:f.querySelector('.sitename').value.trim()||siteName(host)}).then(()=>{render({fresh:host});toast('האתר נרשם. התעודה מוכנה להורדה')}).catch(x=>{if(btn)btn.disabled=false;toast(x.message)});return}
  toast('השינויים נשמרו');
 });
 document.addEventListener('change',e=>{
@@ -1587,7 +1769,8 @@ function saveEdit(tr){
  const p=key.split(':');
  if(p[0]==='sd'){const s=SUBDOM[state.plan][+p[1]];tr.querySelectorAll('button').forEach(b=>b.disabled=true);
   domApi('edit',{id:s[4],host,name,fonts:fonts.join(', ')}).then(()=>{state.editKey=null;render({fresh:host});toast('הדומיין עודכן, וגם התעודה שלו')}).catch(x=>{tr.querySelectorAll('button').forEach(b=>b.disabled=false);toast(x.message)});return}
- soon();
+ {const i=+p[1],j=+p[2],st=LIC[i].sites[j];tr.querySelectorAll('button').forEach(b=>b.disabled=true);
+  licApi(i,'edit',{id:st[3],host,name}).then(()=>{state.editKey=null;render({fresh:host});toast('האתר עודכן, וגם התעודה שלו')}).catch(x=>{tr.querySelectorAll('button').forEach(b=>b.disabled=false);toast(x.message)})}
 }
 document.addEventListener('keydown',e=>{const tr=e.target.closest&&e.target.closest('tr.editing');if(!tr)return;if(e.key==='Enter'){e.preventDefault();saveEdit(tr)}if(e.key==='Escape'){state.editKey=null;render()}});
 function closeMenus(){document.querySelectorAll('.fp-menu.open').forEach(m=>{m.classList.remove('open');m.parentElement.querySelector('.fp-btn').setAttribute('aria-expanded','false')})}
