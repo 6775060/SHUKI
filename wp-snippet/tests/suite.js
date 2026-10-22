@@ -49,6 +49,7 @@ for(const w of [390,1280]){
  const cb=await p.evaluate(()=>document.querySelector('#certBody').innerText);
  if(!['קל','דמוי מודגש','שחור','דקיק','בינוני'].every(x=>cb.includes(x))||!cb.includes('אזכור'))bad(`${w} certificate does not list all weights`);
  if(cb.includes('26.01.2023'))bad(`${w} certificate shows the made-up demo date`);
+ if(!/מספר תעודה\s*FS-L-\d+/.test(cb)||cb.includes('לא בתוקף'))bad(`${w} certificate has no fixed number`);
  await p.evaluate(()=>document.querySelector('#certClose').click());await p.waitForTimeout(450);
  if(!(await p.evaluate(()=>document.querySelector('#certModal').hidden)))bad(`${w} certificate does not close`);
  // PDF: the browser's print dialog

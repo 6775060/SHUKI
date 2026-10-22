@@ -1434,8 +1434,8 @@ function subsDomains(){
 }
 function quotaFullPlan(){
  return `<div class="quota-line">
-  <div class="msg"><b>ניצלת את ${PLAN[state.plan].n+BONUS} הדומיינים של החודש</b><span>מתחדש ב־${nextReset()}. צריך עוד עכשיו?</span></div>
-  <button class="btn btn-grad" data-planaddon="1">דומיין נוסף · ₪79</button>
+  <div class="msg"><b>ניצלת את ${PLAN[state.plan].n+BONUS} הדומיינים של החודש</b><span>מתחדש ב־${nextReset()}.${FS.addon?' צריך עוד עכשיו?':''}</span></div>
+  ${FS.addon?'<button class="btn btn-grad" data-planaddon="1">דומיין נוסף · ₪79</button>':''}
   <a class="linkbtn" href="https://fontshok.co.il/מחירון-רישיונות-ומנויים/">או שדרוג לאקסטרה</a>
  </div>`;
 }
@@ -1526,8 +1526,8 @@ function licDrawer(i,cols,full){const l=LIC[i];
 }
 function quotaFull(l){
  return `<div class="quota-line">
-  <div class="msg"><b>כל ${l.n} האתרים של הרישיון רשומים</b><span>צריך עוד אתר? אפשר להוסיף אחד בתשלום חד־פעמי.</span></div>
-  <button class="btn btn-grad" data-addon="${LIC.indexOf(l)}">הוספת אתר · ₪79</button>
+  <div class="msg"><b>כל ${l.n} האתרים של הרישיון רשומים</b>${FS.addon?'<span>צריך עוד אתר? אפשר להוסיף אחד בתשלום חד־פעמי.</span>':'<span>אפשר להסיר אתר כדי לפנות מקום.</span>'}</div>
+  ${FS.addon?`<button class="btn btn-grad" data-addon="${LIC.indexOf(l)}">הוספת אתר · ₪79</button>`:''}
   <a class="linkbtn" href="https://fontshok.co.il/מחירון-רישיונות-ומנויים/">או מינוי וובסטופ</a>
  </div>`;
 }
@@ -1613,7 +1613,7 @@ function cert(l,site){
  return `<div class="cert">
   <div class="cert-head"><h2>${site?'רישיון פונט לדומיין':'רישיון שימוש בפונט'}</h2><img src="${s.logo}" alt="מינוי ${s.name}"></div>
   <div class="cert-body">
-   <div class="cert-row"><div class="who"><span style="color:var(--muted)">רושם הרישיון</span><b>${ea((FS.user.first||"")+" "+(FS.user.last||""))}</b>${ea(FS.user.email)}</div><div style="text-align:left">מונפק על ידי פונטשוק בע״מ<br><span class="num" style="color:var(--bad)">תצוגה מקדימה · לא בתוקף</span></div></div>
+   <div class="cert-row"><div class="who"><span style="color:var(--muted)">רושם הרישיון</span><b>${ea((FS.user.first||"")+" "+(FS.user.last||""))}</b>${ea(FS.user.email)}</div><div style="text-align:left">מונפק על ידי פונטשוק בע״מ<br>מספר תעודה <span class="num" dir="ltr">${ea(l.certNo||'—')}</span></div></div>
    <p style="margin:0">בהתאם להסכם הרישוי ותנאי השימוש של פונטשוק בע״מ, מאושר בזאת כי הפונט הרשום להלן מותר לשימוש ${site?'בתחומי עיצוב ממשק והטמעה באתר הרשום בלבד, תחת הדומיין שלהלן:':`בתחומים הכלולים ברישיון ${l.t}:`}</p>
    <dl>${site?`<dt>שם האתר:</dt><dd>${site[1]}</dd><dt>כתובת הדומיין:</dt><dd><bdi dir="ltr">${site[2]}</bdi></dd>`:''}<dt>רישיון לפונט:</dt><dd>${ea(l.f)}${l.w?(String(l.w).includes(',')?` · משקלים: ${ea(l.w)}`:` ${ea(l.w)}`):''}</dd><dt>תאריך רישום:</dt><dd class="num">${site?site[0]:ea(l.d||'—')}</dd><dt>מינוי:</dt><dd>${s.name} (${s.en})</dd><dt>סוג רישיון:</dt><dd>${l.t}</dd></dl>
    <p style="margin:0">${CERT_TEXT[l.sub](l)}</p>
@@ -1695,11 +1695,19 @@ function licMerge(ids){const L=ids.map(i=>LIC[i]),u=a=>[...new Set(a.filter(Bool
  return Object.assign({},L[0],{w:u(L.map(x=>x.w)).join(', '),t:u(L.flatMap(x=>x.t.split(' + '))).join(' + '),d:u(L.map(x=>x.d)).sort((a,b)=>{const k=s=>s.split('.').reverse().join('');return k(a)<k(b)?-1:1})[0]||''})}
 /* "הורדת PDF": the browser's print dialog with only the certificate on the page ("Save as PDF" there) */
 function printCert(){document.documentElement.classList.add('fsa-print');const done=()=>{document.documentElement.classList.remove('fsa-print');removeEventListener('afterprint',done)};addEventListener('afterprint',done);setTimeout(()=>{print();setTimeout(done,1500)},50)}
+/* certificate number, taken from the registration record so it is fixed:
+   D = subscription domain (its record id), S = site on a purchased licence, L = a font's purchased licence */
+function certNo(spec){const p=spec.split(':'),pad=(v,n)=>String(v).padStart(n,'0');
+ if(p[0]==='sd'){const s=SUBDOM[state.plan][+p[1]]||[];const y=(s[0]||'').split('.')[2]||'';return s[4]?`FS-D-${y}-${pad(s[4],5)}`:''}
+ if(p[0]==='dom'){const l=LIC[+p[1]]||{},s=(l.sites||[])[+p[2]]||[];return l.key?`FS-S-${l.key}-${String(s[3]||'P').toUpperCase()}`:''}
+ if(p[0]==='lic'){const ks=String(p[1]).split(',').map(i=>+(LIC[+i]||{}).key||0).filter(Boolean);return ks.length?`FS-L-${Math.min(...ks)}`:''}
+ return ''}
 function openCert(spec){
  const p=spec.split(':');let l,site=null;
  if(p[0]==='sd'){const s=SUBDOM[state.plan][+p[1]];l={f:s[3],w:'',t:'וובפונט',sub:state.plan,n:PLAN[state.plan].n};site=s}
  else if(p[0]==='hist'){const h=HISTORY[+p[1]];const base=LIC.find(x=>x.f===h.f&&x.w===h.w)||{};l=Object.assign({},base,{sub:h.sub,removed:h.removed});site=h.site}
  else{const ids=String(p[1]).split(',').map(Number);l=ids.length>1?licMerge(ids):LIC[ids[0]];if(p[0]==='dom')site=l.sites[+p[2]]}
+ l=Object.assign({},l,{certNo:certNo(spec)});
  $('#certBody').innerHTML=cert(l,site);showModal();
 }
 $('#certClose').onclick=hideModal;
