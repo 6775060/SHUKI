@@ -22,14 +22,20 @@ echo fsa_v2_takes_account_page() ? "NEW" : "OLD";';
 	$f = tempnam( sys_get_temp_dir(), 'fsa' ); file_put_contents( $f, $stub );
 	$out = trim( (string) shell_exec( 'php ' . escapeshellarg( $f ) . ' 2>&1' ) ); unlink( $f ); return $out;
 };
-$cust = array( 'user_login' => 'dana', 'user_email' => 'Dana@Mail.com' );
+$cust = array( 'user_login' => 'dana', 'user_email' => 'Dana@Mail.com', 'roles' => array( 'customer' ) );
+$sub  = array( 'user_login' => 'noa', 'user_email' => 'noa@mail.com', 'roles' => array( 'customer', 'member-webstop' ) );
 $cases = array(
 	array( 'OLD', 'admins', '', $cust, '', "'admins': a customer keeps the old area" ),
-	array( 'NEW', 'admins', '', array( 'user_login' => 'claude-test', 'user_email' => 'x@y' ), '', "'admins': the test account gets the new area" ),
-	array( 'NEW', 'admins', '', array( 'user_login' => 'boss', 'user_email' => 'b@y' ), '$GLOBALS["admin"]=true;', "'admins': an admin gets the new area" ),
+	array( 'NEW', 'admins', '', array( 'user_login' => 'claude-test', 'user_email' => 'x@y', 'roles' => array() ), '', "'admins': the test account gets the new area" ),
+	array( 'NEW', 'admins', '', array( 'user_login' => 'boss', 'user_email' => 'b@y', 'roles' => array() ), '$GLOBALS["admin"]=true;', "'admins': an admin gets the new area" ),
 	array( 'NEW', 'list', 'someone, dana@mail.com', $cust, '', "'list': a listed customer (by email, any case) gets it" ),
 	array( 'OLD', 'list', 'someone', $cust, '', "'list': an unlisted customer keeps the old area" ),
 	array( 'NEW', 'all', '', $cust, '', "'all': every customer gets it" ),
+	array( 'NEW', 'subscribers', '', $sub, '', "'subscribers': a Webstop subscriber gets it" ),
+	array( 'NEW', 'subscribers', '', array( 'user_login' => 'x', 'user_email' => 'x@y', 'roles' => array( 'member-extra' ) ), '', "'subscribers': an Extra subscriber gets it" ),
+	array( 'OLD', 'subscribers', '', $cust, '', "'subscribers': a customer without a subscription keeps the old area" ),
+	array( 'OLD', 'subscribers', '', null, '', "'subscribers': logged out keeps the login form" ),
+	array( 'OLD', 'subscribers', '', $sub, '$_COOKIE["fsa_old"]="1";', "'subscribers': a subscriber who chose the previous area keeps it" ),
 	array( 'OLD', 'all', '', null, '', 'logged out: the login form stays as it is' ),
 	array( 'OLD', 'all', '', $cust, '$GLOBALS["ep"]=true;', 'orders / password / addresses pages stay as they are' ),
 	array( 'OLD', 'all', '', $cust, '$_COOKIE["fsa_old"]="1";', 'a customer who chose the previous area keeps it' ),

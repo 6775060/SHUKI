@@ -11,8 +11,8 @@ define( 'FSA_V2_SLUG', 'my-account-new' );
 define( 'FSA_V2_TESTER', 'claude-test' );
 
 // ── rollout of the new area at /my-account/ ──────────────────────────────
-// 'admins' = admins + the test account only · 'list' = also the users below · 'all' = every logged-in customer
-define( 'FSA_V2_LIVE_FOR', 'admins' );
+// 'admins' = admins + the test account only · 'list' = also the users below · 'subscribers' = everyone with an active subscription · 'all' = every logged-in customer
+define( 'FSA_V2_LIVE_FOR', 'subscribers' );
 // for 'list': usernames or emails, separated by commas
 define( 'FSA_V2_LIVE_USERS', '' );
 // the ₪79 additional domain: ID of a hidden virtual WooCommerce product. 0 = not offered yet (the button says "next stage")
@@ -26,6 +26,7 @@ function fsa_v2_live_for_user() {
 	if ( ! is_user_logged_in() ) return false;
 	if ( current_user_can( 'manage_options' ) || fsa_v2_is_tester() ) return true;
 	if ( 'all' === FSA_V2_LIVE_FOR ) return true;
+	if ( 'subscribers' === FSA_V2_LIVE_FOR ) { list( $plan ) = fsa_v2_plan_info( wp_get_current_user() ); return (bool) $plan; }
 	if ( 'list' === FSA_V2_LIVE_FOR ) {
 		$u = wp_get_current_user();
 		$list = array_filter( array_map( 'trim', explode( ',', strtolower( FSA_V2_LIVE_USERS ) ) ) );
