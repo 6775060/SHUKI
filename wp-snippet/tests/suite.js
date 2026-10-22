@@ -120,6 +120,16 @@ for(const w of [390,1280]){
  if(await p.locator('#fsa .otbl a[href*="/o/"]').count())bad(`${w} a link still leads to the old order page`);
  await go('orders');const ol=await p.locator('#fsa .otbl a[href]').evaluateAll(a=>a.map(x=>x.getAttribute('href')));if(!ol.length)bad(`${w} orders have no links`);
  // no purchased fonts: the empty state with its art and the way to the shop, inside the screen
+ // other plans, on pages built from the plain page with a different "plan" (and, for desktop, no web files)
+ {const fs=require('fs');const base=fs.readFileSync(S+'/page-plain.html','utf8');
+  const variant=async(name,fn)=>{fs.writeFileSync(S+'/page-'+name+'.html',fn(base));const vp=await b.newPage({viewport:{width:w,height:900}});const er=[];vp.on('pageerror',e=>er.push(e.message));await vp.goto('file://'+S+'/page-'+name+'.html');await vp.waitForTimeout(450);
+   const r=await vp.evaluate(()=>({tabs:document.querySelectorAll('#fsa .main .tabs button').length,th:[...document.querySelectorAll('#fsa .dl-tbl thead th')].map(x=>x.textContent.trim()),offers:[...document.querySelectorAll('#fsa .offer')].map(o=>o.querySelector('.of-name').textContent.trim()+'|'+o.querySelector('.of-cta').getAttribute('href')),ov:document.documentElement.scrollWidth-innerWidth}));
+   if(r.ov>1)bad(`${w} ${name}: page scrolls sideways by ${r.ov}px`);if(er.length)bad(`${w} ${name}: JS errors ${er}`);await vp.screenshot({path:`${S}/plan-${name}-${w}.png`,fullPage:true});await vp.close();return r};
+  const desk=await variant('desk',s=>s.replace('"plan":"web"','"plan":"desk"').replace(/"web":"https:[^"]*"/g,'"web":""'));
+  if(desk.tabs)bad(`${w} desktop plan still shows the domain tabs`);if(desk.th.includes('פורמט לאתרים'))bad(`${w} desktop plan still has a web column`);if(!desk.th.includes('פורמט לדסקטופ'))bad(`${w} desktop plan lost the desktop column`);
+  const ex=await variant('extra',s=>s.replace('"plan":"web"','"plan":"extra"'));if(ex.tabs!==2||!ex.th.includes('פורמט לאתרים'))bad(`${w} extra plan: tabs ${ex.tabs}, columns ${ex.th}`);
+  const np=await variant('none',s=>s.replace('"plan":"web"','"plan":""'));
+  if(np.offers.length!==3||!np.offers[0].startsWith('וובסטופ|https://example.com/web')||!(np.offers[1].startsWith('אקסטרה')&&np.offers[1].endsWith('|https://example.com/extra')))bad(`${w} no-subscription offers: ${np.offers}`)}
  // special arrangement: the quota shown includes the extra domains
  {const fs=require('fs');const src=fs.readFileSync(S+'/page-plain.html','utf8').replace('"bonus":0','"bonus":0,"extra":2');fs.writeFileSync(S+'/page-deal.html',src);
   const dp=await b.newPage({viewport:{width:w,height:800}});await dp.goto('file://'+S+'/page-deal.html');await dp.waitForTimeout(400);await dp.evaluate(()=>document.querySelector('#fsa [data-subtab="reg"]').click());await dp.waitForTimeout(400);

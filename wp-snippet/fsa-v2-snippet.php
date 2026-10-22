@@ -1245,6 +1245,29 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .toast{z-index:100001}
 :is(#fsa,#fsa-layer) .live-note{margin:0 4px 10px;font-size:12px;color:var(--muted)}
 :is(#fsa,#fsa-layer) .empty{padding:30px 0;color:var(--muted)}
+:is(#fsa,#fsa-layer) .dl-only-h{margin:36px 0 14px}
+:is(#fsa,#fsa-layer) .offers{display:flex;flex-direction:column;gap:14px;margin-top:26px}
+:is(#fsa,#fsa-layer) .offer{position:relative;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;align-items:center;gap:20px;padding:20px 28px 20px 40px;border-radius:14px;background:var(--softer);overflow:hidden}
+:is(#fsa,#fsa-layer) .offer::after{content:"";position:absolute;inset-inline-end:0;top:0;bottom:0;width:14px;background:var(--c-web)}
+:is(#fsa,#fsa-layer) .offer-web{background:linear-gradient(90deg,#EEF3FF,#ECF8F2)}
+:is(#fsa,#fsa-layer) .offer-extra{background:linear-gradient(90deg,#F1EDFF,#F6EEFF)}:is(#fsa,#fsa-layer) .offer-extra::after{background:var(--c-extra)}
+:is(#fsa,#fsa-layer) .offer-acad{background:linear-gradient(90deg,#FFF6EE,#FFFBE6)}:is(#fsa,#fsa-layer) .offer-acad::after{background:linear-gradient(135deg,#FFE27A,#F5A623)}
+:is(#fsa,#fsa-layer) .offer .of-id{display:flex;align-items:center;gap:14px;min-width:0}
+:is(#fsa,#fsa-layer) .offer .of-id>img{width:52px;height:52px;flex:none}
+:is(#fsa,#fsa-layer) .offer .of-name{font-size:19px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+:is(#fsa,#fsa-layer) .offer .of-top{font-size:12px;font-weight:700;color:var(--violet);background:#fff;border-radius:99px;padding:1px 10px}
+:is(#fsa,#fsa-layer) .offer .of-uses{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+:is(#fsa,#fsa-layer) .offer .of-uses span{font-size:13px;background:rgba(255,255,255,.75);border-radius:99px;padding:1px 10px;color:var(--ink)}
+:is(#fsa,#fsa-layer) .offer .of-price{display:flex;flex-direction:column;line-height:1.3}
+:is(#fsa,#fsa-layer) .offer .of-price b{font-size:22px;font-weight:700}
+:is(#fsa,#fsa-layer) .offer .of-price b.of-free{font-size:17px}
+:is(#fsa,#fsa-layer) .offer .of-price span{font-size:14px;color:var(--muted)}
+:is(#fsa,#fsa-layer) .offer .of-price small{font-size:13px;color:var(--muted);margin-top:2px}
+:is(#fsa,#fsa-layer) .offer .of-cta{border-radius:99px;height:44px;padding:0 26px;min-width:150px;text-decoration:none}
+:is(#fsa,#fsa-layer) .offer .of-cta.btn-line{background:#fff;border:1px solid var(--ink);color:var(--ink)}
+:is(#fsa,#fsa-layer) .of-more{display:inline-block;margin-top:18px;font-size:15px;color:var(--violet);text-decoration:underline;text-underline-offset:3px}
+@media (max-width:900px){:is(#fsa,#fsa-layer) .offer{grid-template-columns:minmax(0,1fr) auto;padding:18px 20px 18px 34px}:is(#fsa,#fsa-layer) .offer .of-cta{grid-column:1/-1;width:100%}}
+@media (max-width:420px){:is(#fsa,#fsa-layer) .offer{grid-template-columns:minmax(0,1fr)}}
 :is(#fsa,#fsa-layer) .lic-empty{display:flex;align-items:center;gap:40px;margin-top:28px;padding:32px 40px;background:#FAF6FE;border:1px solid #F1E8FB;border-radius:20px}
 :is(#fsa,#fsa-layer) .lic-empty .le-art{flex:none;width:260px;height:auto;display:block}
 :is(#fsa,#fsa-layer) .lic-empty .le-sp{transform-box:fill-box;transform-origin:center;animation:leTw 3.2s ease-in-out infinite}
@@ -1357,7 +1380,7 @@ const SUBS={
  app:{name:'רכישה בודדת',en:'App license',logo:'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNTEwLjcyIDUxMC43MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjEuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS4xIEJ1aWxkIDEzNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiB1cmwoI2xpbmVhci1ncmFkaWVudDEpOwogICAgICB9CgogICAgICAuc3QxIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICAgIHN0cm9rZTogdXJsKCNsaW5lYXItZ3JhZGllbnQpOwogICAgICAgIHN0cm9rZS13aWR0aDogOXB4OwogICAgICB9CiAgICA8L3N0eWxlPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJsaW5lYXItZ3JhZGllbnQiIHgxPSIzODMuMDYiIHkxPSI0NzUuNzEiIHgyPSIxMjcuNjYiIHkyPSIzMy4zNCIgZ3JhZGllbnRUcmFuc2Zvcm09InRyYW5zbGF0ZSgwIDUwOS44OSkgc2NhbGUoMSAtMSkiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmY5YThiIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2UzMTY2ZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0ibGluZWFyLWdyYWRpZW50MSIgeDE9IjM2Mi42OSIgeTE9IjE4OC42OSIgeDI9IjEzNi41MyIgeTI9IjM5OS44MyIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjlhOGIiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIuODUiIHN0b3AtY29sb3I9IiNlMzE2NmYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxjaXJjbGUgY2xhc3M9InN0MSIgY3g9IjI1NS4zNiIgY3k9IjI1NS4zNiIgcj0iMjUwLjg2Ii8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTM0MC44NCwyOTAuODFjMC00NC4xOCw1Ljk4LTEyMC4yMyw4LjA5LTE2MC4xNGwtNDYuMzUtMjEuMzMtMi4zMy0uMDUtNC43Miw5OC43OC0uOTkuMDZjLTIyLjg4LTMxLjk3LTQzLjQ1LTQyLjA3LTc1LjAxLTQyLjA3LTU3LjE5LDAtOTQuNjYsNTEuNjctOTQuNjYsMTE1LjYxczM5LjM1LDEwMy43OSw5MC44NiwxMDMuNzljMzQuODcsMCw1NC40NS0xNS41NSw3Ny44Ny00OS44OSwzLjYyLDE5LjczLDcuMzcsMzUuODQsMTEuMjUsNDcuNDVoNTEuMjhsLjExLTIuMDNjLTEwLjI3LTMwLjA4LTE1LjQtNTkuOC0xNS40LTkwLjE4Wk0yMjMuMjEsMzQzLjMzYy0yOS4zOCwwLTQ4LjQ2LTIyLjM3LTQ4LjQ2LTY2LDAtNDkuNjcsMjguMDgtNzIuNzEsNTIuMjgtNzMuNzQsNTAuMjItMi4xMiw2NC45NCw1OC44Nyw2NC43OSw3NS43OS0yOS44NCw0OS42My00OC40NCw2My45NS02OC42MSw2My45NVoiLz4KPC9zdmc+'}
 };
 /* domains registered under the SUBSCRIPTION (quota belongs to the plan, not to a font) */
-const PLAN={web:{n:3,label:'וובסטופ',desc:'מינוי לאתרים ולדסקטופ'},extra:{n:0,label:'אקסטרה',desc:'מינוי לאתרים לדסקטופ ולאפליקציה'},desk:{n:0,label:'דסקטופ',desc:'מינוי דסקטופ'},acad:{n:0,label:'אקדמיק',desc:'מינוי לסטודנטים'}};
+const PLAN={web:{n:3,label:'וובסטופ',desc:'מינוי לאתרים ולדסקטופ'},extra:{n:0,label:'אקסטרה',desc:'מינוי לאתרים לדסקטופ ולאפליקציה'},desk:{n:0,label:'דסקטופ',desc:'מינוי דסקטופ'},acad:{n:0,label:'אקדמיק',desc:'מינוי לסטודנטים'},barter:{n:0,label:'בארטר',desc:'מינוי לדסקטופ'}};
 /* older months = history (closed & kept, scrollable back through the years) */
 const OLDDOM=[['22.09.2026','סטודיו לוי','studio-levi.co.il','טאלנט'],['20.09.2026','חנות הבד','bad.co.il','אומץ'],['04.08.2026','קמפיין קיץ','summer-sale.co.il','דיסקברי'],['11.07.2026','גן ילדים שקד','shaked-kids.co.il','פריימריז, פורטו'],['02.05.2026','משרד עו״ד כהן','cohen-law.co.il','יזכור פרו'],['18.02.2026','מאפיית הכפר','hakfar.co.il','אומץ, טאלנט'],['09.12.2025','עמותת אור','or-org.org.il','פורטו'],['21.10.2025','סטודיו מור','mor-studio.co.il','דיסקברי, טאלנט'],['05.06.2025','כנס עיצוב 2025','design-conf.co.il','פריימריז'],['14.03.2025','קפה גינה','gina-cafe.co.il','אומץ'],['30.11.2024','חנות הספרים','books-il.co.il','יזכור פרו, פורטו'],['08.07.2024','מגזין אדריכלות','arch-mag.co.il','טאלנט']];
 const SUBDOM={web:[['03.10.2026','סטודיו דיין','studio-dayan.co.il','פורטו, טאלנט'],['14.10.2026','מגזין עגלה','agala.co.il','דיסקברי, פורטו'],...OLDDOM.map(r=>r.slice())],extra:[['03.10.2026','סטודיו דיין','studio-dayan.co.il','פורטו, טאלנט'],['14.10.2026','מגזין עגלה','agala.co.il','דיסקברי, פורטו'],['12.10.2026','אדריכלות בע״מ','fontshok.co.il','פורטו'],...OLDDOM.map(r=>r.slice())]};
@@ -1462,13 +1485,27 @@ V.subs=(tab)=>`
      <div><b>אמצעי תשלום</b><span class="num">${ea(FS.card||"—")}</span></div>
    </div></div></div>
  </div>
- <div class="tabs" role="tablist">
+ ${DOM_PLANS.includes(state.plan)?`<div class="tabs" role="tablist">
    <button role="tab" aria-selected="${tab==='dl'}" data-subtab="dl">פונטים להורדה</button>
    <button role="tab" aria-selected="${tab==='reg'}" data-subtab="reg">רישום דומיינים</button>
  </div>
- ${tab==='dl'?subsDownloads()+fontNote():subsDomains()}`;
+ ${tab==='dl'?subsDownloads()+fontNote():subsDomains()}`:`<h2 class="h2-sec dl-only-h">פונטים להורדה</h2>${subsDownloads()+fontNote()}`}`;
 
-const _subs=V.subs;V.subs=tab=>FS.plan?_subs(tab):`<div class="head-row"><div><h1 class="h1">המינוי שלי</h1><p class="sub">אין לך כרגע מינוי פעיל.</p></div></div><a class="btn btn-grad" href="https://fontshok.co.il/מחירון-רישיונות-ומנויים/">לתוכניות המינוי</a>`;
+/* no subscription yet: the plans on offer (barter and desktop are not offered here). Prices as on the pricing page */
+const OFFER=[
+ {k:'web',name:'וובסטופ',uses:['אתרים','דסקטופ'],price:'₪280',per:'לחודש',term:'התחייבות לשנתיים',cta:'להצטרפות',href:()=>FS.links&&FS.links.web},
+ {k:'extra',name:'אקסטרה',uses:['אתרים','דסקטופ','אפליקציה','שידור'],price:'₪550',per:'לחודש',term:'התחייבות לשנתיים',cta:'להצטרפות',href:()=>FS.links&&FS.links.extra,top:'הכי מקיף'},
+ {k:'acad',name:'אקדמיק',uses:['אתרים','דסקטופ'],price:'',per:'',term:'שנת לימודים אחת, לשימוש אקדמי',cta:'לבקשת מינוי',href:()=>FS.links&&FS.links.acad}
+];
+const PRICING='https://fontshok.co.il/מחירון-רישיונות-ומנויים/';
+const noPlan=()=>`<div class="head-row"><div><h1 class="h1">המינוי שלי</h1><p class="sub">עוד אין לך מינוי. במינוי מקבלים את כל הפונטים להורדה, עם רישיון שימוש חופשי לפי סוג המינוי.</p></div></div>
+ <div class="offers">${OFFER.map(o=>`<div class="offer offer-${o.k}">
+  <div class="of-id">${logo(o.k,'')}<div><div class="of-name">${o.name}${o.top?` <span class="of-top">${o.top}</span>`:''}</div><div class="of-uses">${o.uses.map(u=>`<span>${u}</span>`).join('')}</div></div></div>
+  <div class="of-price">${o.price?`<b class="num">${o.price}</b> <span>${o.per}</span>`:'<b class="of-free">מחיר מיוחד</b>'}<small>${o.term}</small></div>
+  <a class="btn ${o.k==='acad'?'btn-line':'btn-grad'} of-cta" href="${ea(o.href()||PRICING)}">${o.cta}</a>
+ </div>`).join('')}</div>
+ <a class="of-more" href="${PRICING}">כל הפרטים על המינויים והרישיונות</a>`;
+const _subs=V.subs;V.subs=tab=>FS.plan?_subs(tab):noPlan();
 /* font-update note: sits under the download table ("כל הפונטים לאתרים / לדסקטופ") */
 const fontNote=()=>state.noteHidden?'':`<div class="note x-new" data-new="חדש: עדכון פונט">
    <span class="note-ic">${ICON.spark}</span>
@@ -1523,10 +1560,10 @@ function weightPick(f,n,ws){
 function subsDownloads(){
 const dlA=(u,f,k,lbl)=>u?`<a class="dl" href="${ea(u)}" aria-label="הורדת ${ea(f)} ${k}" download>${ICON.dl}<span class="dl-k">${lbl}</span></a>`:'<span class="hint" style="margin:0">—</span>';
  if(!FAMILY.length)return `<p class="empty">אין כרגע פונטים להורדה במינוי.</p>`;
- const hasW=FAMILY.some(x=>x[1]>0);
- return `<div class="tbl-wrap lic-wrap"><table class="tbl dl-tbl${hasW?'':' no-w'}"><thead><tr><th>שם הפונט</th><th>${hasW?'משקלים':''}</th><th>פורמט לאתרים</th><th>פורמט לדסקטופ</th>${hasW?'<th>הורדה לפי משקל</th>':''}</tr></thead><tbody>
+ const hasW=FAMILY.some(x=>x[1]>0),web=FAMILY.some(x=>x[2]||(x[4]||[]).some(w=>w.web)); /* desktop-only plans (desktop, barter): no web column */
+ return `<div class="tbl-wrap lic-wrap"><table class="tbl dl-tbl${hasW?'':' no-w'}${web?'':' no-web'}"><thead><tr><th>שם הפונט</th><th>${hasW?'משקלים':''}</th>${web?'<th>פורמט לאתרים</th>':''}<th>פורמט לדסקטופ</th>${hasW?'<th>הורדה לפי משקל</th>':''}</tr></thead><tbody>
  ${FAMILY.map(([f,n,w,d,ws])=>`<tr><td>${ea(f)}</td><td class="num wcount">${n?n+' משקלים':''}</td>
- <td>${dlA(w,f,'לאתרים','אתרים')}</td>
+ ${web?`<td>${dlA(w,f,'לאתרים','אתרים')}</td>`:''}
  <td>${dlA(d,f,'לדסקטופ','דסקטופ')}</td>
  ${hasW?`<td class="wsel-td">${n?weightPick(f,n,ws):''}</td>`:''}</tr>`).join('')}
  </tbody></table></div>`;

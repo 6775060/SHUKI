@@ -6,7 +6,7 @@ Repository `6775060/shuki`, branch `claude/fontshok-personal-area-redesign-l4hf6
 - The new personal area runs on the live site at **/my-account/** for **every subscriber** (`FSA_V2_LIVE_FOR = 'subscribers'`), from the Code Snippets snippet **"FS · אזור אישי v2"**. Customers without a subscription keep the old area; anyone can switch back with "למעבר לאזור האישי הקודם" (`?fsa_old=1`).
 - Source of truth for the site: **`wp-snippet/fsa-v2-snippet.php`** (edit this file directly; the owner pastes the whole file into the snippet and saves).
 - Design source: `prototype/index.html` (published preview: https://claude.ai/artifact/EGyx9pYKP34mdrcTJNQSYh; phone preview: https://claude.ai/artifact/E396PnUhzS2zVH374vazeo).
-- Every change so far is listed in `docs/HANDOFF-snippet.md` (items 1–79).
+- Every change so far is listed in `docs/HANDOFF-snippet.md` (items 1–81).
 
 ## What is live and how it works
 - Data: subscription fonts (ACF `fonts-repeater`), real weights from each font's variable product (`pa_weight` × `pa_license`, per-weight downloads through `?fsa_wdl=`), purchased fonts from WooCommerce downloads, orders + Grow invoices.
