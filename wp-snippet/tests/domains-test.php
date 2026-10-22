@@ -8,6 +8,7 @@ function add_action( ...$a ) {} function add_filter( ...$a ) {} function add_sho
 function current_user_can( $c ) { return false; } function is_user_logged_in() { return true; } function wp_get_current_user() { return $GLOBALS['user']; } function get_current_user_id() { return $GLOBALS['user']->ID; }
 function check_ajax_referer() { return $GLOBALS['nonce_ok']; } function sanitize_key( $s ) { return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( $s ) ); }
 function sanitize_text_field( $s ) { return trim( strip_tags( (string) $s ) ); } function wp_unslash( $s ) { return $s; }
+$GLOBALS['meta'] = array(); function get_user_meta( $u, $k, $x = false ) { return $GLOBALS['meta'][ $u ][ $k ] ?? ''; }
 function current_time( $f ) { return 'Y' === $f ? $GLOBALS['now'][0] : $GLOBALS['now'][1]; }
 function get_field( $k, $o ) { return 'list_of_fonts_for_domain_registration' === $k ? 'פורטו, טאלנט, דיסקברי' : array(); }
 function wp_list_pluck( $l, $f ) { return array_map( function ( $x ) use ( $f ) { return is_array( $x ) ? $x[ $f ] : $x->$f; }, $l ); }
@@ -41,6 +42,9 @@ $t( 1 === $wpdb->rows[1]['domain_slot'] && 10 === $wpdb->rows[1]['month'], 'regi
 $t( ! $add( 'studio-a.co.il' )->ok, 'the same address twice in a month is refused' );
 $t( $add( 'b.co.il' )->ok && $add( 'c.co.il' )->ok, 'second and third domains' );
 $r = $add( 'd.co.il' ); $t( ! $r->ok && false !== strpos( $r->data['message'], 'ניצלת' ), 'webstop: the 4th domain this month is refused' );
+$GLOBALS['meta'][7]['fsa_v2_bonus_2026_10'] = 1; $t( $add( 'bought.co.il' )->ok, 'after buying the ₪79 add-on: a 4th domain fits this month' );
+$t( ! $add( 'e.co.il' )->ok, 'and a 5th does not' );
+$wpdb->rows = array_values( array_filter( $wpdb->rows, function ( $r ) { return 'bought.co.il' !== $r['domain_url']; } ) ); unset( $GLOBALS['meta'][7]['fsa_v2_bonus_2026_10'] );
 $t( ! $add( 'bad address' )->ok, 'invalid address refused' );
 $t( ! $add( 'e.co.il', 'פורטו, טאלנט, דיסקברי' )->ok, 'more than 2 fonts refused' );
 $t( ! $add( 'e.co.il', 'פונט אחר' )->ok, 'font outside the registration list refused' );
