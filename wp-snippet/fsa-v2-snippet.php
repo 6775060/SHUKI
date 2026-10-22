@@ -677,7 +677,7 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .tabs{display:flex;box-shadow:inset 0 -1.5px 0 #BDBDBD;margin-bottom:26px;overflow-x:auto;scrollbar-width:none}
 :is(#fsa,#fsa-layer) .tabs::-webkit-scrollbar{display:none}
 :is(#fsa,#fsa-layer) .fontpick{position:relative}
-:is(#fsa,#fsa-layer) .fp-btn{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--ink);height:44px;border:1px solid #ECE6F2;border-radius:99px;background:#fff;padding:0 18px;font-size:15px;transition:border-color .2s,box-shadow .2s}
+:is(#fsa,#fsa-layer) .fp-btn{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--ink);height:44px;border:1px solid #E3C8F5;border-radius:99px;background:#fff;padding:0 18px;font-size:15px;transition:border-color .2s,box-shadow .2s}
 :is(#fsa,#fsa-layer) .fp-btn:focus-visible{outline:2px solid var(--violet)}
 :is(#fsa,#fsa-layer) .fp-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 :is(#fsa,#fsa-layer) .fp-menu{position:absolute;top:100%;inset-inline:0;margin-top:4px;background:var(--card);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:8px;z-index:6;min-width:200px;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:top center;transition:opacity .25s var(--ease),transform .3s var(--ease),visibility 0s linear .3s}
@@ -835,7 +835,7 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .drawer .box{background:var(--bg);border-radius:10px;padding:24px 26px}
 :is(#fsa,#fsa-layer) .form-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:8px;align-items:end;margin-bottom:26px}
 :is(#fsa,#fsa-layer) .fld label{display:block;font-size:12px;margin-bottom:4px}
-:is(#fsa,#fsa-layer) .fld input,:is(#fsa,#fsa-layer) .fld select{width:100%;height:44px;border:1px solid #ECE6F2;border-radius:99px;background:#fff;padding:0 18px;font-size:15px;transition:border-color .2s,box-shadow .2s}
+:is(#fsa,#fsa-layer) .fld input,:is(#fsa,#fsa-layer) .fld select{width:100%;height:44px;border:1px solid #E3C8F5;border-radius:99px;background:#fff;padding:0 18px;font-size:15px;transition:border-color .2s,box-shadow .2s}
 :is(#fsa,#fsa-layer) .fld input::placeholder,:is(#fsa,#fsa-layer) .pf input::placeholder{color:#828F9D}
 /* every field the customer fills in looks like the domain-registration field: white, lilac hairline, pill; violet ring on focus */
 :is(#fsa,#fsa-layer) .fld input:focus,:is(#fsa,#fsa-layer) .fld select:focus,:is(#fsa,#fsa-layer) .pf input:not(.sw):focus,:is(#fsa,#fsa-layer) .ed:focus{outline:none;border-color:#B075FF;box-shadow:0 0 0 3px #EFE3FF}
@@ -853,7 +853,7 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .qopt .btn{margin-top:auto;height:34px}
 :is(#fsa,#fsa-layer) .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 28px}
 :is(#fsa,#fsa-layer) .pf label{display:block;font-size:16px;margin-bottom:4px}
-:is(#fsa,#fsa-layer) .pf input{width:100%;height:44px;border:1px solid #ECE6F2;border-radius:99px;background:#fff;padding:0 18px;font-size:15px;transition:border-color .2s,box-shadow .2s}
+:is(#fsa,#fsa-layer) .pf input{width:100%;height:44px;border:1px solid #E3C8F5;border-radius:99px;background:#fff;padding:0 18px;font-size:15px;transition:border-color .2s,box-shadow .2s}
 :is(#fsa,#fsa-layer) .hint{font-size:13px;margin-top:4px;color:var(--muted)}
 :is(#fsa,#fsa-layer) .prefs{display:grid;gap:4px;max-width:640px}
 :is(#fsa,#fsa-layer) .pref{display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--line)}
@@ -995,7 +995,7 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .ed-pair.stacked .ed{height:28px;flex:none}
 :is(#fsa,#fsa-layer) .ed-pair{display:flex;gap:8px}
 :is(#fsa,#fsa-layer) .ed-pair.stacked{flex-direction:column;gap:6px}
-:is(#fsa,#fsa-layer) .ed{height:30px;width:100%;font-weight:400;border:1px solid #ECE6F2;border-radius:99px;background:#fff;padding:0 12px;font-size:15px;min-width:0;flex:1;transition:border-color .2s,box-shadow .2s}
+:is(#fsa,#fsa-layer) .ed{height:30px;width:100%;font-weight:400;border:1px solid #E3C8F5;border-radius:99px;background:#fff;padding:0 12px;font-size:15px;min-width:0;flex:1;transition:border-color .2s,box-shadow .2s}
 :is(#fsa,#fsa-layer) .ed:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(91,63,255,.12)}
 :is(#fsa,#fsa-layer) .ed-fonts .fp-btn{height:30px;border:1px solid #DCD6F7}
 :is(#fsa,#fsa-layer) .lock-note{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:12px}
@@ -1072,11 +1072,11 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .reg-row .reg-host{position:relative}
 @media (min-width:761px) and (max-width:1100px){:is(#fsa,#fsa-layer) .reg-row{grid-template-columns:minmax(0,1fr) auto}:is(#fsa,#fsa-layer) .reg-row .reg-host{grid-column:1/-1}}
 :is(#fsa,#fsa-layer) .reg-row .reg-host>.icon{position:absolute;inset-inline-start:16px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:#9C59CF;pointer-events:none}
-:is(#fsa,#fsa-layer) .reg-row .reg-host input{height:44px;border:1px solid #ECE6F2;border-radius:99px;padding:0 46px 0 18px;background:#fff}
+:is(#fsa,#fsa-layer) .reg-row .reg-host input{height:44px;border:1px solid #E3C8F5;border-radius:99px;padding:0 46px 0 18px;background:#fff}
 :is(#fsa,#fsa-layer) .reg-row .reg-host input:not(:placeholder-shown){direction:ltr;text-align:right}
 :is(#fsa,#fsa-layer) .reg-row .reg-host input::placeholder{color:#828F9D}
 :is(#fsa,#fsa-layer) .reg-row .reg-host input:focus{outline:none;border-color:#B075FF;box-shadow:0 0 0 3px #EFE3FF}
-:is(#fsa,#fsa-layer) .reg-row .fp-btn{height:44px;border:1px solid #ECE6F2;border-radius:99px;padding:0 18px;background:#fff;color:#828F9D}
+:is(#fsa,#fsa-layer) .reg-row .fp-btn{height:44px;border:1px solid #E3C8F5;border-radius:99px;padding:0 18px;background:#fff;color:#828F9D}
 :is(#fsa,#fsa-layer) .reg-row .fp-btn:has(+ .fp-menu input:checked){color:var(--ink)}
 :is(#fsa,#fsa-layer) .reg-row .reg-add{height:42px;padding:0 24px;gap:8px}
 :is(#fsa,#fsa-layer) .reg-row .reg-add .icon{width:20px;height:20px}
