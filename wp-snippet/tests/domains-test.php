@@ -62,5 +62,7 @@ $ok = true; foreach ( array( 'e1', 'e2', 'e3', 'e4', 'e5' ) as $h ) $ok = $ok &&
 $GLOBALS['user']->roles = array( 'customer', 'member-desktop' ); $t( ! $add( 'z.co.il' )->ok, 'desktop plan: no domains' );
 $GLOBALS['user']->roles = array( 'customer' ); $t( ! $add( 'z.co.il' )->ok, 'no subscription: refused' );
 $GLOBALS['user']->roles = array( 'customer', 'member-webstop' ); $GLOBALS['nonce_ok'] = false; $t( ! $add( 'z.co.il' )->ok, 'bad nonce refused' );
-$GLOBALS['nonce_ok'] = true; $GLOBALS['user']->user_login = 'someone'; $t( ! $add( 'z.co.il' )->ok, 'not a preview viewer: refused (until the area opens to everyone)' );
+$GLOBALS['nonce_ok'] = true; $GLOBALS['user']->user_login = 'someone'; $GLOBALS['user']->ID = 8; $GLOBALS['user']->roles = array( 'customer', 'member-webstop' );
+$t( $add( 'z.co.il' )->ok, 'open to subscribers: any Webstop subscriber can register' );
+$GLOBALS['user']->roles = array( 'customer' ); $t( ! $add( 'zz.co.il' )->ok, 'a customer without a subscription cannot' );
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n"; exit( $fail ? 1 : 0 );

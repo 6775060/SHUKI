@@ -54,7 +54,9 @@ $GLOBALS['user']->roles = array( 'customer', 'member-desktop' ); parse_str( pars
 $dl( $qw ); $t( $GLOBALS['died'] && ! $GLOBALS['served'], 'desktop-only plan cannot download the site format' );
 $dl( $q ); $t( $GLOBALS['served'] && ! $GLOBALS['died'], 'desktop-only plan can download the desktop format' );
 $GLOBALS['user']->roles = array( 'customer' ); $dl( $q ); $t( $GLOBALS['died'] && ! $GLOBALS['served'], 'no subscription: refused' );
-$GLOBALS['user']->roles = array( 'customer', 'member-webstop' ); $GLOBALS['user']->user_login = 'someone'; $dl( $q ); $t( $GLOBALS['died'] && ! $GLOBALS['served'], 'non-preview user refused (stage 1)' );
+$GLOBALS['user']->roles = array( 'customer', 'member-webstop' ); $GLOBALS['user']->user_login = 'someone'; $dl( $q ); $t( $GLOBALS['served'] && ! $GLOBALS['died'], 'open to subscribers: any Webstop subscriber can download' );
+$GLOBALS['user']->roles = array( 'customer' ); $dl( $q ); $t( $GLOBALS['died'] && ! $GLOBALS['served'], 'a customer without a subscription is refused' );
+$GLOBALS['user']->roles = array( 'customer', 'member-webstop' );
 $GLOBALS['user']->user_login = 'claude-test';
 // purchased licence read from the variation
 $d = fsa_v2_data(); $l = $d['lic'][0];
