@@ -8,7 +8,7 @@ function add_action( ...$a ) {} function add_filter( ...$a ) {} function add_sho
 function current_user_can( $c ) { return false; } function is_user_logged_in() { return true; } function wp_get_current_user() { return $GLOBALS['user']; } function get_current_user_id() { return $GLOBALS['user']->ID; }
 function check_ajax_referer() { return $GLOBALS['nonce_ok']; } function sanitize_key( $s ) { return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $s ) ); }
 function sanitize_text_field( $s ) { return trim( strip_tags( (string) $s ) ); } function wp_unslash( $s ) { return $s; }
-function current_time( $f ) { return array( 'Y' => 2026, 'n' => 10, 'd.m.Y' => '22.10.2026' )[ $f ]; }
+function current_time( $f ) { return array( 'Y' => 2026, 'n' => 10, 'd.m.Y' => '22.10.2026', 'Y-m-d' => '2026-10-22' )[ $f ]; }
 function wp_list_pluck( $l, $f ) { return array_map( function ( $x ) use ( $f ) { return is_array( $x ) ? $x[ $f ] : $x->$f; }, $l ); }
 function wp_generate_password( $n ) { static $i = 0; return 'id' . ( ++$i ); }
 function get_user_meta( $u, $k, $s ) { return $GLOBALS['meta'][ $u ][ $k ] ?? ''; } function update_user_meta( $u, $k, $v ) { $GLOBALS['meta'][ $u ][ $k ] = $v; }

@@ -5,11 +5,12 @@ define( 'ABSPATH', '/' ); define( 'HOUR_IN_SECONDS', 3600 );
 $GLOBALS['user'] = (object) array( 'ID' => 7, 'user_login' => 'claude-test', 'roles' => array( 'customer', 'member-webstop' ) );
 $GLOBALS['nonce_ok'] = true; $GLOBALS['now'] = array( 2026, 10 );
 function add_action( ...$a ) {} function add_filter( ...$a ) {} function add_shortcode( ...$a ) {}
-function current_user_can( $c ) { return false; } function is_user_logged_in() { return true; } function wp_get_current_user() { return $GLOBALS['user']; } function get_current_user_id() { return $GLOBALS['user']->ID; }
+$GLOBALS['admin'] = false; function current_user_can( $c ) { return $GLOBALS['admin']; }
+function update_user_meta( $u, $k, $v ) { $GLOBALS['meta'][ $u ][ $k ] = $v; } function delete_user_meta( $u, $k ) { unset( $GLOBALS['meta'][ $u ][ $k ] ); } function is_user_logged_in() { return true; } function wp_get_current_user() { return $GLOBALS['user']; } function get_current_user_id() { return $GLOBALS['user']->ID; }
 function check_ajax_referer() { return $GLOBALS['nonce_ok']; } function sanitize_key( $s ) { return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( $s ) ); }
 function sanitize_text_field( $s ) { return trim( strip_tags( (string) $s ) ); } function wp_unslash( $s ) { return $s; }
 $GLOBALS['meta'] = array(); function get_user_meta( $u, $k, $x = false ) { return $GLOBALS['meta'][ $u ][ $k ] ?? ''; }
-function current_time( $f ) { return 'Y' === $f ? $GLOBALS['now'][0] : $GLOBALS['now'][1]; }
+function current_time( $f ) { return 'Y-m-d' === $f ? sprintf( '%d-%02d-15', $GLOBALS['now'][0], $GLOBALS['now'][1] ) : ( 'Y' === $f ? $GLOBALS['now'][0] : $GLOBALS['now'][1] ); }
 function get_field( $k, $o ) { return 'list_of_fonts_for_domain_registration' === $k ? 'פורטו, טאלנט, דיסקברי' : array(); }
 function wp_list_pluck( $l, $f ) { return array_map( function ( $x ) use ( $f ) { return is_array( $x ) ? $x[ $f ] : $x->$f; }, $l ); }
 class Done extends Exception { public $ok; public $data; function __construct( $ok, $d ) { $this->ok = $ok; $this->data = $d; } }
@@ -45,6 +46,18 @@ $r = $add( 'd.co.il' ); $t( ! $r->ok && false !== strpos( $r->data['message'], '
 $GLOBALS['meta'][7]['fsa_v2_bonus_2026_10'] = 1; $t( $add( 'bought.co.il' )->ok, 'after buying the ₪79 add-on: a 4th domain fits this month' );
 $t( ! $add( 'e.co.il' )->ok, 'and a 5th does not' );
 $wpdb->rows = array_values( array_filter( $wpdb->rows, function ( $r ) { return 'bought.co.il' !== $r['domain_url']; } ) ); unset( $GLOBALS['meta'][7]['fsa_v2_bonus_2026_10'] );
+// special arrangement (admin page): +2 a month, optionally until a date
+$_POST = array( 'fsa_deal_extra' => '2', 'fsa_deal_until' => '2026-10-31', 'fsa_deal_note' => 'קמפיין' ); fsa_v2_deal_save( 7 );
+$t( ! isset( $GLOBALS['meta'][7]['fsa_v2_deal_extra'] ), 'a customer cannot give themselves an arrangement' );
+$GLOBALS['admin'] = true; fsa_v2_deal_save( 7 ); $GLOBALS['admin'] = false;
+$t( 2 === $GLOBALS['meta'][7]['fsa_v2_deal_extra'] && '2026-10-31' === $GLOBALS['meta'][7]['fsa_v2_deal_until'], 'admin saves the arrangement' );
+$t( $add( 'deal1.co.il' )->ok && $add( 'deal2.co.il' )->ok, 'arrangement +2: a 4th and 5th domain fit this month' );
+$t( ! $add( 'deal3.co.il' )->ok, 'and a 6th does not' );
+$GLOBALS['meta'][7]['fsa_v2_deal_until'] = '2026-10-14'; $t( 0 === fsa_v2_deal_extra( 7 ), 'after the end date the arrangement stops' );
+$GLOBALS['meta'][7]['fsa_v2_deal_until'] = ''; $t( 2 === fsa_v2_deal_extra( 7 ), 'no end date: always on' );
+$_POST = array( 'fsa_deal_extra' => '0', 'fsa_deal_until' => 'nonsense', 'fsa_deal_note' => '' ); $GLOBALS['admin'] = true; fsa_v2_deal_save( 7 ); $GLOBALS['admin'] = false;
+$t( ! isset( $GLOBALS['meta'][7]['fsa_v2_deal_extra'] ) && 0 === fsa_v2_deal_extra( 7 ), 'setting 0 removes the arrangement' );
+$wpdb->rows = array_values( array_filter( $wpdb->rows, function ( $r ) { return 0 !== strpos( $r['domain_url'], 'deal' ); } ) );
 $t( ! $add( 'bad address' )->ok, 'invalid address refused' );
 $t( ! $add( 'e.co.il', 'פורטו, טאלנט, דיסקברי' )->ok, 'more than 2 fonts refused' );
 $t( ! $add( 'e.co.il', 'פונט אחר' )->ok, 'font outside the registration list refused' );

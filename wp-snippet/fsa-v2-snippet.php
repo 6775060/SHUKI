@@ -217,7 +217,7 @@ function fsa_v2_dom_ajax() {
 	list( $plan ) = fsa_v2_plan_info( wp_get_current_user() );
 	$limit = fsa_v2_domain_limit( $plan );
 	if ( $limit < 0 ) $err( 'המינוי שלך לא כולל רישום דומיינים.' );
-	if ( $limit ) $limit += fsa_v2_bonus_sub( $uid, (int) current_time( 'Y' ), (int) current_time( 'n' ) );
+	if ( $limit ) $limit += fsa_v2_bonus_sub( $uid, (int) current_time( 'Y' ), (int) current_time( 'n' ) ) + fsa_v2_deal_extra( $uid );
 	$op = isset( $_POST['op'] ) ? sanitize_key( $_POST['op'] ) : '';
 	$y = (int) current_time( 'Y' ); $m = (int) current_time( 'n' );
 	$id = isset( $_POST['id'] ) ? (int) $_POST['id'] : 0;
@@ -261,6 +261,13 @@ function fsa_v2_dom_ajax() {
 
 // 2f. extra allowances bought with the ₪79 add-on (user meta): this month's subscription slots, and extra sites per licence
 function fsa_v2_bonus_sub( $uid, $y, $m ) { return (int) get_user_meta( $uid, "fsa_v2_bonus_{$y}_{$m}", true ); }
+// a special arrangement set by the owner on the user's admin page: extra domains every month, optionally until a date (inclusive)
+function fsa_v2_deal_extra( $uid ) {
+	$n = (int) get_user_meta( $uid, 'fsa_v2_deal_extra', true );
+	$until = (string) get_user_meta( $uid, 'fsa_v2_deal_until', true );
+	if ( $n <= 0 || ( $until && $until < current_time( 'Y-m-d' ) ) ) return 0;
+	return $n;
+}
 function fsa_v2_lic_bonus( $uid ) { $b = get_user_meta( $uid, 'fsa_v2_lic_bonus', true ); return is_array( $b ) ? $b : array(); }
 function fsa_v2_lic_sites_all( $uid ) { $s = get_user_meta( $uid, 'fsa_v2_lic_sites', true ); return is_array( $s ) ? $s : array(); }
 function fsa_v2_addon_product() {
@@ -527,7 +534,7 @@ function fsa_v2_data() {
 	$shop = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/' );
 	return array(
 		'domains' => fsa_v2_domains( $uid ), 'domainFonts' => fsa_v2_domain_fonts(),
-		'bonus' => fsa_v2_bonus_sub( $uid, (int) current_time( 'Y' ), (int) current_time( 'n' ) ), 'addon' => (bool) fsa_v2_addon_product(),
+		'bonus' => fsa_v2_bonus_sub( $uid, (int) current_time( 'Y' ), (int) current_time( 'n' ) ), 'extra' => fsa_v2_deal_extra( $uid ), 'addon' => (bool) fsa_v2_addon_product(),
 		'domAjax' => admin_url( 'admin-ajax.php' ), 'domNonce' => wp_create_nonce( 'fsa_v2_dom' ),
 		'mode' => isset( $GLOBALS['fsa_v2_mode'] ) ? $GLOBALS['fsa_v2_mode'] : 'preview', 'oldUrl' => add_query_arg( 'fsa_old', '1', function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ) ),
 		'plan' => $plan, 'planStart' => $start, 'nextPay' => '', 'card' => '',
@@ -542,6 +549,52 @@ function fsa_v2_data() {
 			'web' => get_permalink( 12652 ), 'extra' => get_permalink( 14162 ), 'desk' => $shop,
 		),
 	);
+}
+
+// 2g. "פונטשוק · הסדר מיוחד" on the user's admin page (admins only): extra subscription domains every month
+add_action( 'show_user_profile', 'fsa_v2_deal_fields' );
+add_action( 'edit_user_profile', 'fsa_v2_deal_fields' );
+function fsa_v2_deal_fields( $u ) {
+	if ( ! current_user_can( 'manage_options' ) ) return;
+	$n = (int) get_user_meta( $u->ID, 'fsa_v2_deal_extra', true );
+	$until = (string) get_user_meta( $u->ID, 'fsa_v2_deal_until', true );
+	$note = (string) get_user_meta( $u->ID, 'fsa_v2_deal_note', true );
+	list( $plan ) = fsa_v2_plan_info( $u );
+	$base = fsa_v2_domain_limit( $plan );
+	$on = fsa_v2_deal_extra( $u->ID );
+	if ( $base > 0 ) {
+		$sum = $base . ' מהמינוי' . ( $on ? ' + ' . $on . ' הסדר' : '' ) . ' = ' . ( $base + $on ) . ' דומיינים בחודש';
+		if ( $n > 0 && ! $on ) $sum .= ' (ההסדר הסתיים)';
+	} else {
+		$sum = 0 === $base ? 'מינוי אקסטרה: ללא הגבלה, ההסדר לא משנה.' : 'למשתמש אין מינוי וובסטופ כרגע, ההסדר יחול כשיהיה.';
+	}
+	?>
+	<h2 id="fsa-deal">פונטשוק · הסדר מיוחד</h2>
+	<table class="form-table" role="presentation">
+		<tr><th><label for="fsa_deal_extra">דומיינים נוספים בכל חודש</label></th>
+			<td><input type="number" min="0" max="50" step="1" id="fsa_deal_extra" name="fsa_deal_extra" value="<?php echo esc_attr( $n ); ?>" class="small-text">
+			<p class="description">מתווסף למכסת המינוי (וובסטופ: 3 בחודש). 0 = בלי הסדר.</p></td></tr>
+		<tr><th><label for="fsa_deal_until">בתוקף עד</label></th>
+			<td><input type="date" id="fsa_deal_until" name="fsa_deal_until" value="<?php echo esc_attr( $until ); ?>">
+			<p class="description">לא חובה. אחרי התאריך הלקוח חוזר למכסה הרגילה. ריק = בלי הגבלת זמן.</p></td></tr>
+		<tr><th><label for="fsa_deal_note">הערה פנימית</label></th>
+			<td><input type="text" id="fsa_deal_note" name="fsa_deal_note" value="<?php echo esc_attr( $note ); ?>" class="regular-text">
+			<p class="description">נראית רק כאן, לא ללקוח.</p></td></tr>
+		<tr><th>מכסה החודש</th><td><strong><?php echo esc_html( $sum ); ?></strong></td></tr>
+	</table>
+	<?php
+}
+add_action( 'personal_options_update', 'fsa_v2_deal_save' );
+add_action( 'edit_user_profile_update', 'fsa_v2_deal_save' );
+function fsa_v2_deal_save( $uid ) {
+	if ( ! current_user_can( 'manage_options' ) || ! current_user_can( 'edit_user', $uid ) || ! isset( $_POST['fsa_deal_extra'] ) ) return;
+	$n = max( 0, min( 50, (int) $_POST['fsa_deal_extra'] ) );
+	$until = isset( $_POST['fsa_deal_until'] ) ? sanitize_text_field( wp_unslash( $_POST['fsa_deal_until'] ) ) : '';
+	if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $until ) ) $until = '';
+	$note = isset( $_POST['fsa_deal_note'] ) ? sanitize_text_field( wp_unslash( $_POST['fsa_deal_note'] ) ) : '';
+	foreach ( array( 'fsa_v2_deal_extra' => $n, 'fsa_v2_deal_until' => $until, 'fsa_v2_deal_note' => $note ) as $k => $v ) {
+		if ( $v ) update_user_meta( $uid, $k, $v ); else delete_user_meta( $uid, $k );
+	}
 }
 
 // 3. the shortcode
@@ -1309,7 +1362,7 @@ const PLAN={web:{n:3,label:'וובסטופ',desc:'מינוי לאתרים ולד
 const OLDDOM=[['22.09.2026','סטודיו לוי','studio-levi.co.il','טאלנט'],['20.09.2026','חנות הבד','bad.co.il','אומץ'],['04.08.2026','קמפיין קיץ','summer-sale.co.il','דיסקברי'],['11.07.2026','גן ילדים שקד','shaked-kids.co.il','פריימריז, פורטו'],['02.05.2026','משרד עו״ד כהן','cohen-law.co.il','יזכור פרו'],['18.02.2026','מאפיית הכפר','hakfar.co.il','אומץ, טאלנט'],['09.12.2025','עמותת אור','or-org.org.il','פורטו'],['21.10.2025','סטודיו מור','mor-studio.co.il','דיסקברי, טאלנט'],['05.06.2025','כנס עיצוב 2025','design-conf.co.il','פריימריז'],['14.03.2025','קפה גינה','gina-cafe.co.il','אומץ'],['30.11.2024','חנות הספרים','books-il.co.il','יזכור פרו, פורטו'],['08.07.2024','מגזין אדריכלות','arch-mag.co.il','טאלנט']];
 const SUBDOM={web:[['03.10.2026','סטודיו דיין','studio-dayan.co.il','פורטו, טאלנט'],['14.10.2026','מגזין עגלה','agala.co.il','דיסקברי, פורטו'],...OLDDOM.map(r=>r.slice())],extra:[['03.10.2026','סטודיו דיין','studio-dayan.co.il','פורטו, טאלנט'],['14.10.2026','מגזין עגלה','agala.co.il','דיסקברי, פורטו'],['12.10.2026','אדריכלות בע״מ','fontshok.co.il','פורטו'],...OLDDOM.map(r=>r.slice())]};
 const MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
-let BONUS=0;
+let BONUS=0,EXTRA=0;
 /* registration cycle: domains registered in the current cycle (1.10–31.10.2026) can still be edited; older ones are locked */
 const _n=new Date();const CYCLE={start:new Date(_n.getFullYear(),_n.getMonth(),1),end:new Date(_n.getFullYear(),_n.getMonth()+1,1),label:MONTHS[_n.getMonth()]};
 /* next quota renewal, from the registration cycle (Stage 2: quota.resets from the API) */
@@ -1380,7 +1433,7 @@ Object.keys(SUBDOM).forEach(k=>SUBDOM[k]=[]);HISTORY.length=0;
 SUBDOM[FS.plan||'web']=(FS.domains||[]).map(r=>r.slice());
 const DOMF=(FS.domainFonts&&FS.domainFonts.length)?FS.domainFonts:FAMILY.map(f=>f[0]);
 const DOM_PLANS=['web','extra'];
-BONUS=FS.bonus||0;
+BONUS=FS.bonus||0;EXTRA=FS.extra||0;
 /* a site on a purchased licence: [date, name, address, id]; id '' = registered at checkout, fixed */
 const licFixed=(i,j)=>{const s=(LIC[i]&&LIC[i].sites[j])||[];return s.length>3&&!s[3]};
 function postApi(action,d){const b=new URLSearchParams(Object.assign({action,nonce:FS.domNonce||''},d));
@@ -1426,12 +1479,12 @@ const fontNote=()=>state.noteHidden?'':`<div class="note x-new" data-new="חדש
 
 function subsDomains(){
  if(!DOM_PLANS.includes(state.plan))return `<p class="empty">המינוי שלך לא כולל רישום דומיינים לאתרים.</p>`;
- const p=PLAN[state.plan],list=SUBDOM[state.plan]||[],lim=p.n?p.n+BONUS:0,used=list.filter(s=>canEdit(s[0])).length,full=lim&&used>=lim;
+ const p=PLAN[state.plan],list=SUBDOM[state.plan]||[],lim=p.n?p.n+EXTRA+BONUS:0,used=list.filter(s=>canEdit(s[0])).length,full=lim&&used>=lim;
  const demo=``;const _demoOff=`<div class="demo x-new" data-new="לתצוגה בלבד"><span>תצוגה לפי מינוי:</span>${['web','extra'].map(k=>`<button class="${state.plan===k?'on':''}" data-plan="${k}">${PLAN[k].label}</button>`).join('')}</div>`;
  return `${demo}
  <div class="dom-head">
    <div><b style="font-size:18px">דומיינים במינוי ${p.label}</b>
-   <div class="hint" style="margin:2px 0 0">${lim?`ניתן לרשום ${p.n} דומיינים בכל חודש${BONUS?` + ${BONUS} נוספים שנרכשו`:''}. מתחדש ב־${nextReset()}.`:'רישום דומיינים ללא הגבלה, כל עוד המינוי פעיל.'}</div></div>
+   <div class="hint" style="margin:2px 0 0">${lim?`ניתן לרשום ${p.n+EXTRA} דומיינים בכל חודש${BONUS?` + ${BONUS} נוספים שנרכשו`:''}. מתחדש ב־${nextReset()}.`:'רישום דומיינים ללא הגבלה, כל עוד המינוי פעיל.'}</div></div>
    ${lim?`<div class="usage"><span class="num"><b>${used}</b> מתוך ${lim} החודש</span><span class="track"><i style="width:${Math.min(100,used/lim*100)}%;background:${full?'var(--bad)':used/lim>=.66?'var(--warn)':'var(--ok)'}"></i></span></div>`:'<span class="chip">ללא הגבלה</span>'}
  </div>
  <div class="box dom-box sub-reg ${state.regOpen?'reg-on reg-done':''}">
@@ -1452,7 +1505,7 @@ function subsDomains(){
 }
 function quotaFullPlan(){
  return `<div class="quota-line">
-  <div class="msg"><b>ניצלת את ${PLAN[state.plan].n+BONUS} הדומיינים של החודש</b><span>מתחדש ב־${nextReset()}.${FS.addon?' צריך עוד עכשיו?':''}</span></div>
+  <div class="msg"><b>ניצלת את ${PLAN[state.plan].n+EXTRA+BONUS} הדומיינים של החודש</b><span>מתחדש ב־${nextReset()}.${FS.addon?' צריך עוד עכשיו?':''}</span></div>
   ${FS.addon?'<button class="btn btn-grad" data-planaddon="1">דומיין נוסף · ₪79</button>':''}
   <a class="linkbtn" href="https://fontshok.co.il/מחירון-רישיונות-ומנויים/">או שדרוג לאקסטרה</a>
  </div>`;

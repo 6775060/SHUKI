@@ -120,6 +120,10 @@ for(const w of [390,1280]){
  if(await p.locator('#fsa .otbl a[href*="/o/"]').count())bad(`${w} a link still leads to the old order page`);
  await go('orders');const ol=await p.locator('#fsa .otbl a[href]').evaluateAll(a=>a.map(x=>x.getAttribute('href')));if(!ol.length)bad(`${w} orders have no links`);
  // no purchased fonts: the empty state with its art and the way to the shop, inside the screen
+ // special arrangement: the quota shown includes the extra domains
+ {const fs=require('fs');const src=fs.readFileSync(S+'/page-plain.html','utf8').replace('"bonus":0','"bonus":0,"extra":2');fs.writeFileSync(S+'/page-deal.html',src);
+  const dp=await b.newPage({viewport:{width:w,height:800}});await dp.goto('file://'+S+'/page-deal.html');await dp.waitForTimeout(400);await dp.evaluate(()=>document.querySelector('#fsa [data-subtab="reg"]').click());await dp.waitForTimeout(400);
+  const tx=await dp.evaluate(()=>document.querySelector('#fsa .main').innerText);if(!tx.includes('ניתן לרשום 5 דומיינים בכל חודש')||!/1 מתוך 5/.test(tx))bad(`${w} arrangement quota not shown (${(tx.match(/ניתן לרשום[^.]*|\d מתוך \d/g)||[]).join(' | ')})`);await dp.close()}
  const fs=require('fs');const src=fs.readFileSync(S+'/page-theme.html','utf8');const cut=src.replace(/"lic":\[.*?\],"orders"/s,'"lic":[],"orders"');if(cut===src)bad(`${w} could not empty the purchases for the empty-state check`);fs.writeFileSync(S+'/page-empty.html',cut);
  const ep=await b.newPage({viewport:{width:w,height:800}});const eerr=[];ep.on('pageerror',e=>eerr.push(e.message));await ep.goto('file://'+S+'/page-empty.html');await ep.waitForTimeout(400);
  await ep.evaluate(()=>document.querySelector('#fsa .side button[data-view="lic"]').click());await ep.waitForTimeout(500);
