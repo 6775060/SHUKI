@@ -140,6 +140,14 @@ for(const w of [390,1280]){
  const le=await ep.evaluate(()=>{const e=document.querySelector('#fsa .lic-empty');if(!e)return null;const r=e.getBoundingClientRect(),a=e.querySelector('.le-art').getBoundingClientRect(),c=e.querySelector('.le-cta');return {l:r.left,r:r.right,art:a.width,href:c&&c.getAttribute('href'),grad:c&&getComputedStyle(c).backgroundImage.includes('gradient'),ov:document.documentElement.scrollWidth-innerWidth}});
  if(!le)bad(`${w} no empty state when nothing was bought`);else{if(le.l<0||le.r>w+1||le.ov>1)bad(`${w} empty state leaves the screen`);if(le.art<150)bad(`${w} empty state art too small (${le.art})`);if(le.href!=='https://example.com/shop')bad(`${w} empty state CTA goes to ${le.href}`);if(!le.grad)bad(`${w} empty state CTA lost its gradient`)}
  if(eerr.length)bad(`${w} empty state JS errors: ${eerr}`);await ep.screenshot({path:`${S}/lic-empty-${w}.png`,fullPage:true});await ep.close();
+ // logout: the goodbye window first; "stay" closes it, "leave" goes to the logout link
+ {const url0=p.url();await p.evaluate(()=>document.querySelector('#logout').click());await p.waitForTimeout(500);
+  const by=await p.evaluate(()=>{const m=document.querySelector('#byeModal');const s=m.querySelector('.sheet').getBoundingClientRect();return {open:!m.hidden,li:m.querySelectorAll('.bye-list li').length,txt:m.innerText,inv:s.top>=-1&&s.bottom<=innerHeight+1&&s.left>=-1&&s.right<=innerWidth+1,foc:document.activeElement&&document.activeElement.dataset.bye}});
+  if(!by.open)bad(`${w} logout does not open the goodbye window`);else{if(by.li<2)bad(`${w} goodbye window has ${by.li} facts`);if(!by.inv)bad(`${w} goodbye window is off screen`);if(by.foc!=='stay')bad(`${w} goodbye window does not focus "stay"`);if(!/3 משפחות פונטים/.test(by.txt))bad(`${w} goodbye window font count: ${by.txt.slice(0,120)}`)}
+  if(p.url()!==url0)bad(`${w} logout left the page before confirming`);
+  await p.screenshot({path:`${S}/bye-${w}.png`});
+  await p.click('#byeModal [data-bye="stay"]');await p.waitForTimeout(450);if(!(await p.evaluate(()=>document.querySelector('#byeModal').hidden)))bad(`${w} "stay" does not close the window`);
+  await p.evaluate(()=>document.querySelector('#logout').click());await p.waitForTimeout(400);await p.keyboard.press('Escape');await p.waitForTimeout(450);if(!(await p.evaluate(()=>document.querySelector('#byeModal').hidden)))bad(`${w} Escape does not close the window`);}
  for(const v of ['plain','theme'])if(pages[v].errs.length)bad(`${w} ${v} JS errors: ${pages[v].errs}`);
 }
 console.log(fails.length?'FAIL\n'+fails.join('\n'):'ALL PASSED');await b.close()})();

@@ -52,11 +52,27 @@ function fsa_v2_wants_old() {
 function fsa_v2_takes_account_page() {
 	if ( ! function_exists( 'is_account_page' ) || ! is_account_page() || is_wc_endpoint_url() ) return false;
 	// only /my-account/ itself: sub-pages added by plugins (like the old /my-account/domains/) are not WooCommerce endpoints, so compare the path
-	$path = function ( $u ) { return untrailingslashit( rawurldecode( (string) wp_parse_url( $u, PHP_URL_PATH ) ) ); };
+	$path = function ( $u ) { return strtolower( untrailingslashit( rawurldecode( (string) wp_parse_url( $u, PHP_URL_PATH ) ) ) ); };
 	$here = $path( isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '' );
 	if ( function_exists( 'wc_get_page_permalink' ) && $here !== $path( wc_get_page_permalink( 'myaccount' ) ) ) return false;
 	return fsa_v2_live_for_user() && ! fsa_v2_wants_old();
 }
+// admins: /my-account/?fsa_why=1 shows why the new area is or is not shown here (read-only)
+add_action( 'template_redirect', function () {
+	if ( empty( $_GET['fsa_why'] ) || ! current_user_can( 'manage_options' ) ) return;
+	$path = function ( $u ) { return strtolower( untrailingslashit( rawurldecode( (string) wp_parse_url( $u, PHP_URL_PATH ) ) ) ); };
+	$r = array(
+		'snippet' => 'FS v2 · ' . FSA_V2_LIVE_FOR,
+		'is_account_page' => function_exists( 'is_account_page' ) ? is_account_page() : 'no woocommerce',
+		'is_endpoint' => function_exists( 'is_wc_endpoint_url' ) ? is_wc_endpoint_url() : null,
+		'path_here' => $path( isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '' ),
+		'path_account' => function_exists( 'wc_get_page_permalink' ) ? $path( wc_get_page_permalink( 'myaccount' ) ) : null,
+		'live_for_you' => fsa_v2_live_for_user(),
+		'old_area_cookie' => ! empty( $_COOKIE['fsa_old'] ),
+		'takes_page' => fsa_v2_takes_account_page(),
+	);
+	wp_die( '<pre dir="ltr" style="font:14px monospace">' . esc_html( wp_json_encode( $r, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT ) ) . '</pre><p>Copy this and send it.</p>', 'FS check', array( 'response' => 200 ) );
+}, 1 );
 add_action( 'template_redirect', function () {
 	if ( ! fsa_v2_takes_account_page() ) return;
 	$GLOBALS['fsa_v2_mode'] = 'live';
@@ -1302,6 +1318,24 @@ add_shortcode( 'fs_account_v2', function () {
 @media (max-width:900px){:is(#fsa,#fsa-layer) .offer{grid-template-columns:minmax(0,1fr) auto;padding:18px 20px 18px 34px}:is(#fsa,#fsa-layer) .offer .of-cta{grid-column:1/-1;width:100%}}
 @media (max-width:560px){:is(#fsa,#fsa-layer) .offer .of-br{display:none}:is(#fsa,#fsa-layer) .offer .of-id{align-items:flex-start;gap:10px}:is(#fsa,#fsa-layer) .offer .of-id>div{flex:1;min-width:0}:is(#fsa,#fsa-layer) .offer .of-id>img{width:40px;height:40px}}
 @media (max-width:420px){:is(#fsa,#fsa-layer) .offer{grid-template-columns:minmax(0,1fr)}}
+:is(#fsa,#fsa-layer) .bye-sheet{max-width:440px;overflow:hidden;border-radius:22px;text-align:center}
+:is(#fsa,#fsa-layer) .bye-art{display:flex;justify-content:center;gap:8px;padding:30px 20px 22px;background:linear-gradient(135deg,#EFE8FF,#FDE7F6)}
+:is(#fsa,#fsa-layer) .bye-t{width:48px;height:56px;display:grid;place-items:center;background:#fff;border-radius:12px;font-size:30px;font-weight:700;line-height:1;color:var(--violet);box-shadow:0 3px 0 #E3D3FA,0 8px 18px rgba(91,63,255,.12);transform:rotate(calc((var(--i) - 1.5) * 4deg));animation:byeBob 2.6s ease-in-out infinite;animation-delay:calc(var(--i) * .18s)}
+:is(#fsa,#fsa-layer) .bye-t:last-child{background:var(--grad);color:var(--ink)}
+@keyframes byeBob{0%,100%{translate:0 0}50%{translate:0 -6px}}
+:is(#fsa,#fsa-layer) .bye-in{padding:22px 28px 26px}
+:is(#fsa,#fsa-layer) .bye-in h2{font-size:24px;font-weight:700;margin:0}
+:is(#fsa,#fsa-layer) .bye-sub{color:var(--muted);margin:4px 0 16px}
+:is(#fsa,#fsa-layer) .bye-list{list-style:none;margin:0 0 22px;padding:0;display:grid;gap:8px;text-align:start}
+:is(#fsa,#fsa-layer) .bye-list li{background:var(--softer);border-radius:12px;padding:10px 14px 10px 14px;font-size:15px;line-height:1.4;position:relative;padding-inline-start:34px}
+:is(#fsa,#fsa-layer) .bye-list li::before{content:"";position:absolute;inset-inline-start:14px;top:16px;width:8px;height:8px;border-radius:50%;background:var(--violet-text)}
+:is(#fsa,#fsa-layer) .bye-list b{font-weight:700}
+:is(#fsa,#fsa-layer) .bye-acts{display:flex;flex-direction:column;align-items:center;gap:10px}
+:is(#fsa,#fsa-layer) .bye-acts .btn-grad{width:100%;height:46px;border-radius:99px;font-size:16px}
+:is(#fsa,#fsa-layer) .bye-go{all:unset;cursor:pointer;font-size:15px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;padding:6px 10px;border-radius:8px}
+:is(#fsa,#fsa-layer) .bye-go:hover{color:var(--ink)}
+:is(#fsa,#fsa-layer) .bye-go:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+@media (max-width:420px){:is(#fsa,#fsa-layer) .bye-t{width:42px;height:50px;font-size:26px}:is(#fsa,#fsa-layer) .bye-in{padding:20px 18px 22px}}
 :is(#fsa,#fsa-layer) .lic-empty{display:flex;align-items:center;gap:40px;margin-top:28px;padding:32px 40px;background:#FAF6FE;border:1px solid #F1E8FB;border-radius:20px}
 :is(#fsa,#fsa-layer) .lic-empty .le-art{flex:none;width:260px;height:auto;display:block}
 :is(#fsa,#fsa-layer) .lic-empty .le-sp{transform-box:fill-box;transform-origin:center;animation:leTw 3.2s ease-in-out infinite}
@@ -1362,6 +1396,9 @@ FSACSS;
   </div>
 </main></div>
 <div id="fsa-layer">
+<div class="modal bye" id="byeModal" hidden role="dialog" aria-modal="true" aria-labelledby="byeTitle">
+  <div class="sheet bye-sheet" id="byeBody"></div>
+</div>
 <div class="modal" id="certModal" hidden role="dialog" aria-modal="true" aria-label="תעודת רישיון">
   <div class="sheet">
     <div class="sheet-bar"><b>תעודת רישיון</b><div style="display:flex;gap:8px"><button class="btn btn-grad" style="height:34px" id="certPdf">הורדת PDF</button><button class="ibtn" id="certClose" aria-label="סגירה"><i data-ic="close"></i></button></div></div>
@@ -1885,6 +1922,25 @@ cart.addEventListener('click',e=>{if(e.target===cart)closeCart()});
 function backTo(sel,msg){setTimeout(()=>{const f=$(sel);if(f){f.scrollIntoView({behavior:'smooth',block:'center'});f.focus({preventScroll:true})}toast(msg)},60)}
 const modal=$('#certModal');
 function showModal(){modal.hidden=false;void modal.offsetWidth;setTimeout(()=>modal.classList.add('show'),16);$('#certClose').focus()}
+/* logout: a short "what you're leaving behind" window, from the customer's own data. Staying is the default; leaving is one clear click */
+const bye=$('#byeModal');
+function byeFacts(){
+ const f=[],p=FS.plan&&PLAN[FS.plan];
+ if(p&&FAMILY.length)f.push(`<b>${FAMILY.length} משפחות פונטים</b> במינוי ${p.label} מחכות להורדה`);
+ if(p&&DOM_PLANS.includes(FS.plan)){const lim=p.n?p.n+EXTRA+BONUS:0,used=(SUBDOM[FS.plan]||[]).filter(x=>canEdit(x[0])).length,left=Math.max(lim-used,0);
+  f.push(!lim?'רישום דומיינים <b>ללא הגבלה</b>, כל עוד המינוי פעיל':left?`נשארו לך <b>${left===1?'דומיין אחד':left+' דומיינים'}</b> לרשום החודש. הם לא עוברים לחודש הבא`:`ניצלת את הדומיינים של ${CYCLE.label}. המכסה מתחדשת ב־${nextReset()}`)}
+ if(LIC.length){const n=licGroups().length;f.push(`<b>${n===1?'פונט אחד':n+' פונטים'}</b> שקנית, עם הקבצים והתעודות שלהם`)}
+ if(!p)f.push('עוד אין לך מינוי. במינוי מקבלים את כל הפונטים להורדה');
+ return f.slice(0,3)}
+function openBye(){
+ const tiles=['ב','י','י','?'];
+ $('#byeBody').innerHTML=`<div class="bye-art" aria-hidden="true">${tiles.map((c,i)=>`<span class="bye-t" style="--i:${i}">${c}</span>`).join('')}</div>
+  <div class="bye-in"><h2 id="byeTitle">כבר יוצאים?</h2><p class="bye-sub">האותיות שלך נשארות כאן ומחכות.</p>
+  <ul class="bye-list">${byeFacts().map(x=>`<li>${x}</li>`).join('')}</ul>
+  <div class="bye-acts"><button class="btn btn-grad" data-bye="stay">נשארים עוד קצת</button><button class="bye-go" data-bye="go">להתנתק</button></div></div>`;
+ bye.hidden=false;void bye.offsetWidth;bye.classList.add('show');$('#byeBody [data-bye="stay"]').focus()}
+function closeBye(){if(bye.hidden)return;bye.classList.remove('show');setTimeout(()=>{bye.hidden=true},350);const l=$('#logout');if(l)l.focus()}
+bye.addEventListener('click',e=>{if(e.target===bye)closeBye()});
 function hideModal(){if(modal.hidden)return;modal.classList.remove('show');setTimeout(()=>{modal.hidden=true},350)}
 /* several licences of one font as one: all weights, all licence types, the first purchase date */
 function licMerge(ids){const L=ids.map(i=>LIC[i]),u=a=>[...new Set(a.filter(Boolean))];
@@ -1908,7 +1964,7 @@ function openCert(spec){
 }
 $('#certClose').onclick=hideModal;
 modal.addEventListener('click',e=>{if(e.target.id==='certModal')hideModal()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){hideModal();closeMenus();closeCart()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){hideModal();closeMenus();closeCart();closeBye()}});
 document.addEventListener('click',e=>{
  const t=e.target.closest('button,a');if(!t||!t.closest('#fsa,#fsa-layer'))return;
  if((t.dataset.addon||t.dataset.planaddon)&&!FS.addon){e.preventDefault();soon();return}
@@ -1942,7 +1998,9 @@ document.addEventListener('click',e=>{
  if(t.dataset.sddel){const s=SUBDOM[state.plan][+t.dataset.sddel];if(!s||!confirm(`להסיר את ${s[2]}?`))return;t.disabled=true;
   domApi('del',{id:s[4]}).then(()=>{render();toast(`${s[2]} הוסר והמקום במכסה התפנה`)}).catch(x=>{t.disabled=false;toast(x.message)});return}
  if(t.dataset.go2){state.sub.subs='reg';goPage(t.dataset.go2);return}
- if(t.id==='logout'){location.href=FS.links.logout;return}
+ if(t.id==='logout'){openBye();return}
+ if(t.dataset.bye==='stay'){closeBye();return}
+ if(t.dataset.bye==='go'){location.href=FS.links.logout;return}
  if(t.dataset.t){e.preventDefault();soon()}
 });
 document.addEventListener('submit',e=>{
