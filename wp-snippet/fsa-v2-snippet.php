@@ -1243,7 +1243,7 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .empty{padding:30px 0;color:var(--muted)}
 :is(#fsa,#fsa-layer) .dl-only-h{margin:36px 0 14px}
 :is(#fsa,#fsa-layer) .offers{display:grid;grid-auto-rows:1fr;gap:14px;margin-top:26px}
-:is(#fsa,#fsa-layer) .offer{position:relative;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;align-items:center;gap:20px;padding:20px 28px 20px 40px;border-radius:14px;background:var(--softer);overflow:hidden}
+:is(#fsa,#fsa-layer) .offer{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:20px;padding:20px 28px 20px 40px;border-radius:14px;background:var(--softer);overflow:hidden}
 :is(#fsa,#fsa-layer) .offer::after{content:"";position:absolute;inset-inline-end:0;top:0;bottom:0;width:14px;background:var(--c-web)}
 :is(#fsa,#fsa-layer) .offer-web{background:linear-gradient(90deg,#EEF3FF,#ECF8F2)}
 :is(#fsa,#fsa-layer) .offer-extra{background:linear-gradient(90deg,#F1EDFF,#F6EEFF)}:is(#fsa,#fsa-layer) .offer-extra::after{background:var(--c-extra)}
@@ -1253,17 +1253,54 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .offer .of-id>img{width:52px;height:52px;flex:none}
 :is(#fsa,#fsa-layer) .offer .of-name{font-size:19px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 :is(#fsa,#fsa-layer) .offer .of-top{font-size:12px;font-weight:700;color:var(--violet);background:#fff;border-radius:99px;padding:1px 10px}
-:is(#fsa,#fsa-layer) .offer .of-uses{display:grid;grid-template-columns:repeat(3,max-content);gap:6px;margin-top:8px}
+:is(#fsa,#fsa-layer) .offer .of-uses{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+:is(#fsa,#fsa-layer) .offer .of-br{flex-basis:100%;height:0}
 :is(#fsa,#fsa-layer) .offer .of-uses span{white-space:nowrap;font-size:13px;background:rgba(255,255,255,.75);border-radius:99px;padding:1px 10px;color:var(--ink)}
-:is(#fsa,#fsa-layer) .offer .of-price{display:flex;flex-direction:column;line-height:1.3}
+:is(#fsa,#fsa-layer) .offer .of-price{display:flex;flex-direction:column;line-height:1.3;white-space:nowrap;min-width:150px}
 :is(#fsa,#fsa-layer) .offer .of-price b{font-size:22px;font-weight:700}
 :is(#fsa,#fsa-layer) .offer .of-price span{font-size:14px;color:var(--muted)}
 :is(#fsa,#fsa-layer) .offer .of-price small{font-size:13px;color:var(--muted);margin-top:2px}
 :is(#fsa,#fsa-layer) .offer .of-cta{border-radius:99px;height:44px;padding:0 26px;min-width:150px;text-decoration:none}
 :is(#fsa,#fsa-layer) .offer .of-cta.btn-line{background:#fff;border:1px solid var(--ink);color:var(--ink)}
+:is(#fsa,#fsa-layer) .cmp{margin-top:56px}
+:is(#fsa,#fsa-layer) .cmp h2{font-size:24px;font-weight:700;margin:0;padding-bottom:16px;border-bottom:1px solid var(--ink)}
+:is(#fsa,#fsa-layer) .cmp table{width:100%;border-collapse:collapse;font-size:14px;position:relative;z-index:1;table-layout:fixed}
+:is(#fsa,#fsa-layer) .cmp th{font-size:19px;font-weight:700;padding:30px 10px 22px;text-align:center;white-space:nowrap;width:20%;background:none;border:0;color:var(--ink)}
+:is(#fsa,#fsa-layer) .cmp th:first-child{width:auto}
+:is(#fsa,#fsa-layer) .cmp th img{width:auto;height:20px;vertical-align:-4px;margin-inline-start:6px;display:inline}
+:is(#fsa,#fsa-layer) .cmp th:first-child,:is(#fsa,#fsa-layer) .cmp td:first-child{text-align:start}
+:is(#fsa,#fsa-layer) .cmp td{padding:14px 10px;text-align:center;font-size:14px;color:var(--ink);border:0;background:none}
+:is(#fsa,#fsa-layer) .cmp td:first-child b{font-weight:700}
+:is(#fsa,#fsa-layer) .cmp tr.grp td{font-weight:700;font-size:16px;padding:34px 10px 12px}
+:is(#fsa,#fsa-layer) .cmp tr.grp td:first-child,:is(#fsa,#fsa-layer) .cmp tbody tr:not(.grp) td:first-child{padding-inline-start:0}
+:is(#fsa,#fsa-layer) .cmp tbody tr.grp:not(:first-child) td{border-top:1px solid #555}
+:is(#fsa,#fsa-layer) .cmp tr.grp + tr td{padding-top:18px}
+:is(#fsa,#fsa-layer) .cmp tr:has(+ tr.grp) td{padding-bottom:26px}
+:is(#fsa,#fsa-layer) .cmp-in{position:relative;overflow:visible}
+:is(#fsa,#fsa-layer) .cmp .web-col{position:absolute;top:0;bottom:0;left:20%;width:20%;background:#FAFAFA;border-radius:0 0 999px 999px;z-index:0}
+:is(#fsa,#fsa-layer) .cmp tr.cmp-end td{height:30px;padding:0}
+:is(#fsa,#fsa-layer) .cmp .yes,:is(#fsa,#fsa-layer) .cmp .no{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:50%;vertical-align:middle}
+:is(#fsa,#fsa-layer) .cmp .yes{background:#EBDDF9;color:var(--ink)}
+:is(#fsa,#fsa-layer) .cmp .no{background:#D9D1D1;color:#fff}
+:is(#fsa,#fsa-layer) .cmp .yes svg,:is(#fsa,#fsa-layer) .cmp .no svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+:is(#fsa,#fsa-layer) .cmp .cpill{display:inline-block;background:#F3E3F8;border-radius:99px;padding:4px 11px;font-size:13px;font-weight:500;white-space:nowrap}
+@media (max-width:760px){
+:is(#fsa,#fsa-layer) .cmp table,:is(#fsa,#fsa-layer) .cmp thead,:is(#fsa,#fsa-layer) .cmp tbody{display:block}
+:is(#fsa,#fsa-layer) .cmp tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+:is(#fsa,#fsa-layer) .cmp th:first-child{display:none}
+:is(#fsa,#fsa-layer) .cmp th{width:auto;font-size:15px;padding:16px 4px 10px;white-space:normal}
+:is(#fsa,#fsa-layer) .cmp th img{height:15px}
+:is(#fsa,#fsa-layer) .cmp td{padding:8px 4px}
+:is(#fsa,#fsa-layer) .cmp td:first-child{grid-column:1/-1;padding:14px 0 6px!important;font-size:14px}
+:is(#fsa,#fsa-layer) .cmp tr.grp td:not(:first-child),:is(#fsa,#fsa-layer) .cmp tr.cmp-end td:not(:first-child){display:none}
+:is(#fsa,#fsa-layer) .cmp tr.grp td:first-child{padding-top:24px!important}
+:is(#fsa,#fsa-layer) .cmp tr:has(+ tr.grp) td:not(:first-child){padding-bottom:20px}
+:is(#fsa,#fsa-layer) .cmp .cpill{font-size:12px;padding:3px 8px;white-space:normal;line-height:1.3}
+:is(#fsa,#fsa-layer) .cmp table{table-layout:auto}
+:is(#fsa,#fsa-layer) .cmp .web-col{left:33.333%;width:33.334%}}
 :is(#fsa,#fsa-layer) .of-more{display:inline-block;margin-top:18px;font-size:15px;color:var(--violet);text-decoration:underline;text-underline-offset:3px}
 @media (max-width:900px){:is(#fsa,#fsa-layer) .offer{grid-template-columns:minmax(0,1fr) auto;padding:18px 20px 18px 34px}:is(#fsa,#fsa-layer) .offer .of-cta{grid-column:1/-1;width:100%}}
-@media (max-width:560px){:is(#fsa,#fsa-layer) .offer .of-uses{display:flex;flex-wrap:wrap}:is(#fsa,#fsa-layer) .offer .of-id{align-items:flex-start;gap:10px}:is(#fsa,#fsa-layer) .offer .of-id>div{flex:1;min-width:0}:is(#fsa,#fsa-layer) .offer .of-id>img{width:40px;height:40px}}
+@media (max-width:560px){:is(#fsa,#fsa-layer) .offer .of-br{display:none}:is(#fsa,#fsa-layer) .offer .of-id{align-items:flex-start;gap:10px}:is(#fsa,#fsa-layer) .offer .of-id>div{flex:1;min-width:0}:is(#fsa,#fsa-layer) .offer .of-id>img{width:40px;height:40px}}
 @media (max-width:420px){:is(#fsa,#fsa-layer) .offer{grid-template-columns:minmax(0,1fr)}}
 :is(#fsa,#fsa-layer) .lic-empty{display:flex;align-items:center;gap:40px;margin-top:28px;padding:32px 40px;background:#FAF6FE;border:1px solid #F1E8FB;border-radius:20px}
 :is(#fsa,#fsa-layer) .lic-empty .le-art{flex:none;width:260px;height:auto;display:block}
@@ -1489,19 +1526,39 @@ V.subs=(tab)=>`
  ${tab==='dl'?subsDownloads()+fontNote():subsDomains()}`:`<h2 class="h2-sec dl-only-h">פונטים להורדה</h2>${subsDownloads()+fontNote()}`}`;
 
 /* no subscription yet: the plans on offer, as on the pricing page (academic is offered only after a request form, so it is not listed).
-   Prices: the pricing page (before VAT). Desktop has no public price: its button leads to the pricing page */
+   Prices: the pricing page (before VAT). Desktop ₪179 (owner, 22.10.2026); its button leads to the pricing page until there is a purchase link (links.deskSub) */
 const OFFER=[
  {k:'web',name:'וובסטופ',line:'תכנית מורחבת לאתרים ולדסקטופ',uses:['דסקטופ','פלט ותנועה','UI/UX','אתרים · 3 דומיינים בחודש'],price:'₪320',cta:'להצטרפות',href:()=>FS.links&&FS.links.web,top:'תוכנית מומלצת'},
  {k:'extra',name:'אקסטרה',line:'תכנית חופשית ללא הגבלה',uses:['דסקטופ','פלט ותנועה','UI/UX','אתרים חופשי','אפליקציות חופשי','תשדיר'],price:'₪680',cta:'להצטרפות',href:()=>FS.links&&FS.links.extra},
- {k:'desk',name:'דסקטופ',line:'מינוי לעבודה בתוכנות במחשב',uses:['דסקטופ','פלט ותנועה','UI/UX'],price:'',cta:'לפרטים',href:()=>FS.links&&FS.links.deskSub}
+ {k:'desk',name:'דסקטופ',line:'מינוי לעבודה בתוכנות במחשב',uses:['דסקטופ','פלט ותנועה','UI/UX'],price:'₪179',cta:'להצטרפות',href:()=>FS.links&&FS.links.deskSub}
 ];
 const PRICING='https://fontshok.co.il/מחירון-רישיונות-ומנויים/';
+/* comparison, from the pricing page ("השוואת המינוי שלנו"); columns desktop · Webstop · Extra (Webstop in the middle, highlighted) */
+const CMP_COLS=['desk','web','extra'];
+const CMP=[
+ ['grp','עיצוב גרפי, סושיאל ווידאו'],
+ ['עיצוב תוצרי דסקטופ','אדובי, אופיס, פיגמה',1,1,1],
+ ['עיצוב תוצרי פלט','מצגות, פוסטים, עיצובים לדיגיטל',1,1,1],
+ ['עיצוב תוצרי תשדיר','וידאו, כתוביות, שידור טלוויזיוני',0,0,1],
+ ['grp','תנועה וחוויית משתמש'],
+ ['עיצוב תוצרי תנועה','סרטונים, אנימציות, לוגו חי',1,1,1],
+ ['עיצוב תוצרי UI/UX','פיגמה (Figma), אקס־די (Xd) לתכנון ממשק',1,1,1],
+ ['grp','מערכות ומוצרים דיגיטליים'],
+ ['עיצוב תוצרי אינטרנט','הגבלת דומיינים וכניסות חודשיות',0,'שלושה דומיינים בחודש','דומיינים ללא הגבלה'],
+ ['עיצוב תוצרי אפליקציה','הגבלת אפליקציות, הורדות, משתמשים',0,0,'אפליקציות ללא הגבלה']
+];
+const SYM={extra:'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNzIuMTEgMjYyLjEiPgogIDxwYXRoIGQ9Ik0yNDcuMDcsMjExLjU0bC0uMDcsMS4wOGMtMTcuOCwxNi4zOC0zNS44OSwyOC41LTU0LjI5LDM2LjM2LTIwLjQ3LDguNzQtMzcuMDEsMTMuMTItNjIsMTMuMTItMzQuMDYsMC02Ni40Ni0xNC4xMy05MC4xMS0zNi42NEMxMy4xOSwxOTkuMzYuODQsMTY2LjQ5LjAyLDEyMS4xMi0uNjYsODMuMjIsMTQuOTEsNTMuMiwzOS40LDMwLjk0LDU5Ljg4LDEyLjMzLDgzLjksMi4xMiwxMTEuNDkuMzFjMzAuMzgtMi4wMSw1Ni44LDUuNzcsNzkuMjYsMjMuMzIsMTguNDUsMTQuNDEsMzEuODMsMzMuMDIsNDAuMTgsNTUuOGwtMS4yMSwxLjY0TDQ5Ljc2LDE4Mi4xMWwtMTUuNS0zNy4wNSwxMzUuNzktNzYuNThjLTQuMjctOC41LTEwLjk5LTE1LjI4LTIwLjE2LTIwLjM1LTEwLjEyLTUuNTktMjEuNDYtNy45Ni0zNC4wNC03LjEzLTE3LjAzLDEuMTQtMzIsNy41NS00NC45MSwxOS4yNS0xNS4zOCwxMy45My0yMy4yMywzMi4zMS0yMy41Niw1NS4xMi0uMzcsMjYuNDYsNS42MSw0OC44NywxNy45Myw2Ny4yMSwxNC40OSwyMS41NSwzOC41MSwzMy41OCw2NS45NCwzNC41OSwxNi42My42MiwyOS43NS0zLjUsNDUuNDYtMTAuODUsMTEuOTMtNS41OCwyNS43OS0xNC43MSw0MS41OC0yNy40MWgxLjA5bDI3LjY4LDMyLjYyWiIvPgogIDxwYXRoIGQ9Ik0zNzIuMTEsMjU5LjM4bC0uMTUsMi4xOGgtNjMuMDdsLTEyMS4wOC0xMzguOTcuMTYtMi4zMywzOS44Mi0yMS42NCwzNS44MiwzOS45YzI2LjEyLTI4LjQ2LDQ4Ljk4LTYwLjkzLDY0LjMyLTg5LjMxbDQyLjIzLDEwLjk3LjQsMi4xN3MtMjguNTcsNDguNzktNTguNDEsODQuMTNjLTUuMzEsNi4yOS0xMy4wMSwxNC44Ni0yMC42NiwyMy4wOWw4MC42Miw4OS44MVoiLz4KPC9zdmc+',web:'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMzYuMTIgMjY4LjgiPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuY2xzLTEgewogICAgICAgIGZpbGw6ICMwMTAxMDE7CiAgICAgIH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTMzNi4xMiwxMjMuOTRsLTE3LjY2LDM2LjMyLTEuMDIuNTEtMjUuMDktMjMuNTUtLjUxLjUxYy0uMDMsNi43NS0uNzUsMTIuMTktMS4yNiwxNi0xMi43MSw5NC4xMS01OC40LDExNS4wNy0xMDIuMTcsMTE1LjA3LTIwLjQ4LDAtMzQuODEtMTIuMjktNDcuNjEtNDMuNTJoLS41MmMtMTguNDMsMzEuMjMtNDEuNDcsNDMuMDEtNjguNiw0My4wMS00Ni42LDAtNTMuNzYtNDAuMzctNTMuNzYtNjkuMDQsMC00My4wOCw3LjM4LTc0Ljc2LDI1LjE0LTE0My4wOSwwLTYuNjYtMy4wNy0xMC43NS05LjczLTEwLjc1LTYuMTQsMC0xMy4zMSwzLjA3LTE4LjQzLDYuMTRsLTIuNTYtMS41NEwwLDEzLjMxbDEuNTMtMi41NkMxNy40LDUuMTIsMzMuMjgsMCw1MC42OCwwYzE4Ljk1LDAsMzkuNDMsOC4xOSwzOS40MywzNi44NywwLDIzLjA0LTI0LjMsODkuNjMtMjQuNDIsMTQ2LjE3LS4wNSwyNS42LDEzLDM2LjUzLDMwLjA1LDMzLjAzLDM3LjM4LTcuNjgsNDEuNDctNjYuNjQsNDEuNjItOTQuOC4xLTE5LjExLS4wNy0yNy40Ny0uNjYtMzEuNzRsMS41NC0xLjU0LDQ1LjA1LTQuMDIsMS41NCwyLjA1Yy41MSw1LjEyLDEuMDIsMTIuMjksMS4wMiwyMC40OCwwLDQyLjQ5LTQuNjEsNjcuMDctNC42MSw4Ny4wNCwwLDE0Ljg1LDYuMjUsMjQuMiwyNC4wNywyMi41MywzMC44Mi0yLjksNDUuNzItNjEuMDMsNDMuMTYtMTQyLjQ3LDAtMjIuNDQtMi43OC01OC40LTMuNzQtNjcuMDRsMi41Ni0yLjA1TDI5MS4zMi40N2wyLjU2LDMuMDdjNC4xLDY3LjU4LDE1LjEsOTUuODMsNDEuNzMsMTE4LjM1bC41MSwyLjA1WiIvPgo8L3N2Zz4=',desk:'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjEzMiAxMTggMjQ2IDI3MCI+CiAgPGcgZmlsbD0iIzAxMDEwMSI+CiAgICA8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMzAwYTg2IDgyIDAgMSAwIDE3MiAwYTg2IDgyIDAgMSAwLTE3MiAwWk0xOTAgMzAwYTM2IDQ2IDAgMSAwIDcyIDBhMzYgNDYgMCAxIDAtNzIgMFoiLz4KICAgIDxwYXRoIGQ9Ik0yNzAgMTQ2bDU2LTI0djE5NmMwIDI2IDEyIDM2IDM4IDMybDEwIDM0Yy01MiAxNi0xMDQgMi0xMDQtNThaIi8+CiAgPC9nPgo8L3N2Zz4=',acad:'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyODQuMjMgMjY1LjcxIj4KICA8ZGVmcz4KICAgIDxzdHlsZT4KICAgICAgLmNscy0xIHsKICAgICAgICBmaWxsOiAjMDEwMTAxOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0yODQuMjMsMTI3Ljk4YzAsMTExLjExLTcyLjcsMTM3LjczLTEyMy45LDEzNy43My0yMi42MSwwLTQ3LjY3LTUuNDItNjguNDMtMjAuNjItLjY4LS41LTEuNjItLjQzLTIuMjIuMTYtNy42Myw3LjU1LTE0Ljg0LDEzLjgtMjIuMDQsMTkuNTctLjMuMjQtLjY4LjM4LTEuMDcuMzhIMS43MWMtLjk0LDAtMS43MS0uNzYtMS43MS0xLjcxaDBjMC0uNTQuMjYtMS4wNC42OC0xLjM3LDY5LjIxLTUxLjk5LDEwOS4yMy05NS4xNSwxMDkuMjMtMTM2Ljk5LDAtMjQuMDUtMTEuNjItMzQuMDgtMjUuNDQtMzQuMDgtMjEuMzEsMC0yOS4zNCwxNS4xMi0yOS4zNCwzMi4zMiwwLDE0LjQxLDUuODgsMjkuNTIsMjEuMjksNDkuMjEuMjMuMy4zNy42Ny4zNywxLjA1di44M2MwLC40MS0uMTUuOC0uNDEsMS4xMWwtMjMuNiwyNy40MmMtLjI3LjMxLS42NC41MS0xLjA0LjU3bC0uODIuMTJjLS41MS4wOC0xLjA0LS4wOC0xLjQyLS40My0yMS4wMS0xOS4zMS0zNi45My00NC40NS0zNi45My03OC45LDAtNDguNzksMzYuMS03My4yNyw3MS45MS03My4yNyw0OS42NiwwLDczLjE0LDMwLjc4LDczLjE0LDc2LjAzLDAsMjguMTYtMTcuMTIsNTcuNjQtMzYuNjUsODEuNDgtLjYxLjc0LS40OCwxLjgzLjI3LDIuNDMsMTAuMDUsNy45NCwyNy45NiwxMS42Nyw0Mi4xNiwxMS42Nyw1Ny4zNCwwLDcxLjE3LTU0Ljc4LDcxLjE3LTk0LjcyLDAtNTcuOC0zMi4zNS04MS4xLTY4Ljk0LTg0LjUzLTQuOTgtLjQ3LTkuOTktLjQ1LTE0Ljk4LS4xMmwtOS4wNC42MWMtLjQ5LjAzLS45Ny0uMTUtMS4zMi0uNWwtMS0xYy0uMzItLjMyLS41LS43NS0uNS0xLjIxVjMuNzRjMC0uNDUuMTgtLjg5LjUtMS4yMWwxLjExLTEuMTFjLjI5LS4yOS42Ni0uNDYsMS4wNi0uNDlsMi44MS0uMjRjNy4wOC0uNiwyMi43OS0xLjAzLDI5Ljg1LS4zMiw4NC4zNyw4LjQzLDExMC4xMSw3OS41LDExMC4xMSwxMjcuNjFaIi8+Cjwvc3ZnPg=='};
+const cmpCell=v=>v===1?`<span class="yes" aria-label="כלול"><svg viewBox="0 0 24 24"><path d="M7.5 12.5l3 3 6-6.5"/></svg></span>`:v===0?`<span class="no" aria-label="לא כלול"><svg viewBox="0 0 24 24"><path d="M8.5 8.5l7 7m0-7l-7 7"/></svg></span>`:`<span class="cpill">${v}</span>`;
 const noPlan=()=>`<div class="head-row"><div><h1 class="h1">המינוי שלי</h1><p class="sub">עוד אין לך מינוי. במינוי מקבלים את כל הפונטים להורדה, עם רישיון שימוש לפי סוג המינוי.</p></div></div>
  <div class="offers">${OFFER.map(o=>`<div class="offer offer-${o.k}">
-  <div class="of-id">${logo(o.k,'')}<div><div class="of-name">${o.name}${o.top?` <span class="of-top">${o.top}</span>`:''}</div><div class="of-line">${o.line}</div><div class="of-uses">${o.uses.map(u=>`<span>${u}</span>`).join('')}</div></div></div>
+  <div class="of-id">${logo(o.k,'')}<div><div class="of-name">${o.name}${o.top?` <span class="of-top">${o.top}</span>`:''}</div><div class="of-line">${o.line}</div><div class="of-uses">${o.uses.map((u,i)=>`${i===3?'<i class="of-br"></i>':''}<span>${u}</span>`).join('')}</div></div></div>
   <div class="of-price">${o.price?`<b class="num">${o.price}</b><small>לחודש, לא כולל מע״מ</small>`:'<small>המחיר בעמוד המינויים</small>'}</div>
   <a class="btn ${o.price?'btn-grad':'btn-line'} of-cta" href="${ea(o.href()||PRICING)}">${o.cta}</a>
  </div>`).join('')}</div>
+ <section class="cmp" id="cmp"><h2>השוואת המינויים</h2><div class="tbl-wrap cmp-in"><i class="web-col" aria-hidden="true"></i><table>
+  <thead><tr><th></th>${CMP_COLS.map(k=>`<th>${PLAN[k].label} <img class="cmp-sym" src="${SYM[k]}" alt=""></th>`).join('')}</tr></thead>
+  <tbody>${CMP.map(r=>r[0]==='grp'?`<tr class="grp"><td>${r[1]}</td><td></td><td></td><td></td></tr>`:`<tr><td><b>${r[0]}</b> - ${r[1]}</td>${[2,3,4].map(i=>`<td>${cmpCell(r[i])}</td>`).join('')}</tr>`).join('')}<tr class="cmp-end"><td></td><td></td><td></td><td></td></tr></tbody>
+ </table></div></section>
  <a class="of-more" href="${PRICING}">כל הפרטים על המינויים והרישיונות</a>`;
 const _subs=V.subs;V.subs=tab=>FS.plan?_subs(tab):noPlan();
 /* font-update note: sits under the download table ("כל הפונטים לאתרים / לדסקטופ") */
