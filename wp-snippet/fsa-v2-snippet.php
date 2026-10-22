@@ -100,7 +100,8 @@ function fsa_v2_plan_info( $u ) {
 	elseif ( in_array( 'member-webstop', $roles, true ) )   $plan = 'web';
 	elseif ( in_array( 'member-academic', $roles, true ) )  $plan = 'acad';
 	elseif ( in_array( 'member-desktop', $roles, true ) )   $plan = 'desk';
-	$desktop_only = in_array( 'member-desktop', $roles, true ) && ! in_array( 'member-webstop', $roles, true ) && ! in_array( 'member-extra', $roles, true );
+	elseif ( in_array( 'member-barter', $roles, true ) )    $plan = 'barter'; // given by arrangement, like desktop, not for sale
+	$desktop_only = ( in_array( 'member-desktop', $roles, true ) || in_array( 'member-barter', $roles, true ) ) && ! in_array( 'member-webstop', $roles, true ) && ! in_array( 'member-extra', $roles, true );
 	return array( $plan, $desktop_only );
 }
 
@@ -438,6 +439,7 @@ function fsa_v2_data() {
 	elseif ( in_array( 'member-webstop', $roles, true ) )   $plan = 'web';
 	elseif ( in_array( 'member-academic', $roles, true ) )  $plan = 'acad';
 	elseif ( in_array( 'member-desktop', $roles, true ) )   $plan = 'desk';
+	elseif ( in_array( 'member-barter', $roles, true ) )    $plan = 'barter'; // given by arrangement, like desktop, not for sale
 
 	$start = '';
 	$raw = get_user_meta( $uid, 'membership-date', true ); // d/m/Y (snippet #8)
@@ -449,7 +451,7 @@ function fsa_v2_data() {
 	// subscription fonts (ACF option repeater, same rules as snippet #7)
 	$fonts = array();
 	if ( $plan && function_exists( 'get_field' ) ) {
-		$desktop_only = in_array( 'member-desktop', $roles, true ) && ! in_array( 'member-webstop', $roles, true ) && ! in_array( 'member-extra', $roles, true );
+		$desktop_only = ( in_array( 'member-desktop', $roles, true ) || in_array( 'member-barter', $roles, true ) ) && ! in_array( 'member-webstop', $roles, true ) && ! in_array( 'member-extra', $roles, true );
 		foreach ( (array) get_field( 'fonts-repeater', 'option' ) as $row ) {
 			if ( empty( $row['font-name'] ) ) continue;
 			$fonts[] = array(
@@ -1246,7 +1248,7 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .live-note{margin:0 4px 10px;font-size:12px;color:var(--muted)}
 :is(#fsa,#fsa-layer) .empty{padding:30px 0;color:var(--muted)}
 :is(#fsa,#fsa-layer) .dl-only-h{margin:36px 0 14px}
-:is(#fsa,#fsa-layer) .offers{display:flex;flex-direction:column;gap:14px;margin-top:26px}
+:is(#fsa,#fsa-layer) .offers{display:grid;grid-auto-rows:1fr;gap:14px;margin-top:26px}
 :is(#fsa,#fsa-layer) .offer{position:relative;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;align-items:center;gap:20px;padding:20px 28px 20px 40px;border-radius:14px;background:var(--softer);overflow:hidden}
 :is(#fsa,#fsa-layer) .offer::after{content:"";position:absolute;inset-inline-end:0;top:0;bottom:0;width:14px;background:var(--c-web)}
 :is(#fsa,#fsa-layer) .offer-web{background:linear-gradient(90deg,#EEF3FF,#ECF8F2)}
@@ -1257,8 +1259,8 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .offer .of-id>img{width:52px;height:52px;flex:none}
 :is(#fsa,#fsa-layer) .offer .of-name{font-size:19px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 :is(#fsa,#fsa-layer) .offer .of-top{font-size:12px;font-weight:700;color:var(--violet);background:#fff;border-radius:99px;padding:1px 10px}
-:is(#fsa,#fsa-layer) .offer .of-uses{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-:is(#fsa,#fsa-layer) .offer .of-uses span{font-size:13px;background:rgba(255,255,255,.75);border-radius:99px;padding:1px 10px;color:var(--ink)}
+:is(#fsa,#fsa-layer) .offer .of-uses{display:grid;grid-template-columns:repeat(3,max-content);gap:6px;margin-top:8px}
+:is(#fsa,#fsa-layer) .offer .of-uses span{white-space:nowrap;font-size:13px;background:rgba(255,255,255,.75);border-radius:99px;padding:1px 10px;color:var(--ink)}
 :is(#fsa,#fsa-layer) .offer .of-price{display:flex;flex-direction:column;line-height:1.3}
 :is(#fsa,#fsa-layer) .offer .of-price b{font-size:22px;font-weight:700}
 :is(#fsa,#fsa-layer) .offer .of-price span{font-size:14px;color:var(--muted)}
@@ -1267,6 +1269,7 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .offer .of-cta.btn-line{background:#fff;border:1px solid var(--ink);color:var(--ink)}
 :is(#fsa,#fsa-layer) .of-more{display:inline-block;margin-top:18px;font-size:15px;color:var(--violet);text-decoration:underline;text-underline-offset:3px}
 @media (max-width:900px){:is(#fsa,#fsa-layer) .offer{grid-template-columns:minmax(0,1fr) auto;padding:18px 20px 18px 34px}:is(#fsa,#fsa-layer) .offer .of-cta{grid-column:1/-1;width:100%}}
+@media (max-width:560px){:is(#fsa,#fsa-layer) .offer .of-uses{display:flex;flex-wrap:wrap}:is(#fsa,#fsa-layer) .offer .of-id{align-items:flex-start;gap:10px}:is(#fsa,#fsa-layer) .offer .of-id>div{flex:1;min-width:0}:is(#fsa,#fsa-layer) .offer .of-id>img{width:40px;height:40px}}
 @media (max-width:420px){:is(#fsa,#fsa-layer) .offer{grid-template-columns:minmax(0,1fr)}}
 :is(#fsa,#fsa-layer) .lic-empty{display:flex;align-items:center;gap:40px;margin-top:28px;padding:32px 40px;background:#FAF6FE;border:1px solid #F1E8FB;border-radius:20px}
 :is(#fsa,#fsa-layer) .lic-empty .le-art{flex:none;width:260px;height:auto;display:block}
@@ -1495,8 +1498,8 @@ V.subs=(tab)=>`
    Prices: the pricing page (before VAT). Desktop has no public price: its button leads to the pricing page */
 const OFFER=[
  {k:'web',name:'וובסטופ',line:'תכנית מורחבת לאתרים ולדסקטופ',uses:['דסקטופ','פלט ותנועה','UI/UX','אתרים · 3 דומיינים בחודש'],price:'₪320',cta:'להצטרפות',href:()=>FS.links&&FS.links.web,top:'תוכנית מומלצת'},
- {k:'extra',name:'אקסטרה',line:'תכנית חופשית ללא הגבלה',uses:['דסקטופ','פלט ותנועה','UI/UX','אתרים ללא הגבלה','אפליקציות','תשדיר'],price:'₪680',cta:'להצטרפות',href:()=>FS.links&&FS.links.extra},
- {k:'desk',name:'דסקטופ',line:'מינוי לעבודה בתוכנות במחשב',uses:['דסקטופ','פלט ותנועה'],price:'',cta:'לפרטים',href:()=>FS.links&&FS.links.deskSub}
+ {k:'extra',name:'אקסטרה',line:'תכנית חופשית ללא הגבלה',uses:['דסקטופ','פלט ותנועה','UI/UX','אתרים חופשי','אפליקציות חופשי','תשדיר'],price:'₪680',cta:'להצטרפות',href:()=>FS.links&&FS.links.extra},
+ {k:'desk',name:'דסקטופ',line:'מינוי לעבודה בתוכנות במחשב',uses:['דסקטופ','פלט ותנועה','UI/UX'],price:'',cta:'לפרטים',href:()=>FS.links&&FS.links.deskSub}
 ];
 const PRICING='https://fontshok.co.il/מחירון-רישיונות-ומנויים/';
 const noPlan=()=>`<div class="head-row"><div><h1 class="h1">המינוי שלי</h1><p class="sub">עוד אין לך מינוי. במינוי מקבלים את כל הפונטים להורדה, עם רישיון שימוש לפי סוג המינוי.</p></div></div>
