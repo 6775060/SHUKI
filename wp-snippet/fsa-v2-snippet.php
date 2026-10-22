@@ -12,7 +12,7 @@ define( 'FSA_V2_TESTER', 'claude-test' );
 
 // ── rollout of the new area at /my-account/ ──────────────────────────────
 // 'admins' = admins + the test account only · 'list' = also the users below · 'subscribers' = everyone with an active subscription · 'all' = every logged-in customer
-define( 'FSA_V2_LIVE_FOR', 'subscribers' );
+define( 'FSA_V2_LIVE_FOR', 'all' );
 // for 'list': usernames or emails, separated by commas
 define( 'FSA_V2_LIVE_USERS', '' );
 // the ₪79 additional domain: ID of a hidden virtual WooCommerce product. 0 = not offered yet (the button says "next stage")
@@ -568,23 +568,17 @@ function fsa_v2_deal_fields( $u ) {
 		$sum = $base . ' מהמינוי' . ( $on ? ' + ' . $on . ' הסדר' : '' ) . ' = ' . ( $base + $on ) . ' דומיינים בחודש';
 		if ( $n > 0 && ! $on ) $sum .= ' (ההסדר הסתיים)';
 	} else {
-		$sum = 0 === $base ? 'מינוי אקסטרה: ללא הגבלה, ההסדר לא משנה.' : 'למשתמש אין מינוי וובסטופ כרגע, ההסדר יחול כשיהיה.';
+		$sum = 0 === $base ? 'מינוי אקסטרה: ללא הגבלה, ההסדר לא משנה.' : 'למשתמש אין כרגע מינוי עם דומיינים (וובסטופ או בארטר). ההסדר יחול כשיהיה.';
 	}
-	?>
-	<h2 id="fsa-deal">פונטשוק · הסדר מיוחד</h2>
-	<table class="form-table" role="presentation">
-		<tr><th><label for="fsa_deal_extra">דומיינים נוספים בכל חודש</label></th>
-			<td><input type="number" min="0" max="50" step="1" id="fsa_deal_extra" name="fsa_deal_extra" value="<?php echo esc_attr( $n ); ?>" class="small-text">
-			<p class="description">מתווסף למכסת המינוי (וובסטופ: 3 בחודש). 0 = בלי הסדר.</p></td></tr>
-		<tr><th><label for="fsa_deal_until">בתוקף עד</label></th>
-			<td><input type="date" id="fsa_deal_until" name="fsa_deal_until" value="<?php echo esc_attr( $until ); ?>">
-			<p class="description">לא חובה. אחרי התאריך הלקוח חוזר למכסה הרגילה. ריק = בלי הגבלת זמן.</p></td></tr>
-		<tr><th><label for="fsa_deal_note">הערה פנימית</label></th>
-			<td><input type="text" id="fsa_deal_note" name="fsa_deal_note" value="<?php echo esc_attr( $note ); ?>" class="regular-text">
-			<p class="description">נראית רק כאן, לא ללקוח.</p></td></tr>
-		<tr><th>מכסה החודש</th><td><strong><?php echo esc_html( $sum ); ?></strong></td></tr>
-	</table>
-	<?php
+	$row = function ( $label, $for, $field, $desc ) {
+		return '<tr><th>' . ( $for ? '<label for="' . $for . '">' . $label . '</label>' : $label ) . '</th><td>' . $field . ( $desc ? '<p class="description">' . $desc . '</p>' : '' ) . '</td></tr>';
+	};
+	echo '<h2 id="fsa-deal">פונטשוק · הסדר מיוחד</h2><table class="form-table" role="presentation">'
+		. $row( 'דומיינים נוספים בכל חודש', 'fsa_deal_extra', '<input type="number" min="0" max="50" step="1" id="fsa_deal_extra" name="fsa_deal_extra" value="' . esc_attr( $n ) . '" class="small-text">', 'מתווסף למכסת המינוי (וובסטופ ובארטר: 3 בחודש). 0 = בלי הסדר.' )
+		. $row( 'בתוקף עד', 'fsa_deal_until', '<input type="date" id="fsa_deal_until" name="fsa_deal_until" value="' . esc_attr( $until ) . '">', 'לא חובה. אחרי התאריך הלקוח חוזר למכסה הרגילה. ריק = בלי הגבלת זמן.' )
+		. $row( 'הערה פנימית', 'fsa_deal_note', '<input type="text" id="fsa_deal_note" name="fsa_deal_note" value="' . esc_attr( $note ) . '" class="regular-text">', 'נראית רק כאן, לא ללקוח.' )
+		. $row( 'מכסה החודש', '', '<strong>' . esc_html( $sum ) . '</strong>', '' )
+		. '</table>';
 }
 add_action( 'personal_options_update', 'fsa_v2_deal_save' );
 add_action( 'edit_user_profile_update', 'fsa_v2_deal_save' );

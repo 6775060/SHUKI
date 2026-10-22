@@ -3,7 +3,7 @@
 Repository `6775060/shuki`, branch `claude/fontshok-personal-area-redesign-l4hf60`. Talk to the owner in Hebrew.
 
 ## Where things stand (22.10.2026)
-- The new personal area runs on the live site at **/my-account/** for **every subscriber** (`FSA_V2_LIVE_FOR = 'subscribers'`: roles member-webstop, member-extra, member-academic, member-desktop, member-barter), from the Code Snippets snippet **"FS · אזור אישי v2"**. Customers without a subscription keep the old area; anyone can switch back with "למעבר לאזור האישי הקודם" (`?fsa_old=1`).
+- The new personal area runs on the live site at **/my-account/** for **every subscriber** (`FSA_V2_LIVE_FOR = 'subscribers'`: roles member-webstop, member-extra, member-academic, member-desktop, member-barter), from the Code Snippets snippet **"FS · אזור אישי v2"**. Customers without a subscription see the plan offers; anyone can switch back with "למעבר לאזור האישי הקודם" (`?fsa_old=1`).
 - Source of truth for the site: **`wp-snippet/fsa-v2-snippet.php`** (edit this file directly; the owner pastes the whole file into the snippet and saves).
 - Design source: `prototype/index.html` (published preview: https://claude.ai/artifact/EGyx9pYKP34mdrcTJNQSYh; phone preview: https://claude.ai/artifact/E396PnUhzS2zVH374vazeo).
 - Every change so far is listed in `docs/HANDOFF-snippet.md` (items 1–81).
