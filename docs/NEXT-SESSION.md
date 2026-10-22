@@ -24,16 +24,14 @@ Run `sh wp-snippet/tests/all.sh` (needs php, node + Playwright; in the cloud: `C
 ## Checking the live site yourself
 Needs `fontshok.co.il` in the environment's allowed network domains and the owner's test account **`claude-test`** (a plain customer with a Webstop role). Ask the owner for its password in the chat; never write it to a file or commit it.
 
-## Open with the owner (22.10.2026, build 86 live)
-1. The ₪79 product (22751) must be **hidden** in the catalogue (bought from the shop directly it grants nothing).
-2. Check the ₪79 add-on end to end on the site (real order, payment, the extra domain appears; refund takes it back).
-3. Three site-wide script errors (purchase popup, header greeting, feedback button) and "Choices is not defined" on the old account pages: fixes in `wp-snippet/site-fixes/README-he.md`, not yet applied.
-4. Desktop subscription purchase link (the "בלי מינוי" Desktop button goes to the pricing page; set `links.deskSub`).
-5. The pricing page says "לא כולל מע״מ" next to ₪320 / ₪680, but every price shown is VAT included (owner); the store lists Extra at ₪700. Owner to align.
-6. The old "Domains" tab (Easy Font Table) still caps Webstop at 3, so customers with a special arrangement get their full number only in the new area.
-7. Precision passes on the design ("דיוקים").
-8. When the work is finished: delete the `claude-test` user; consider deactivating the unused Stage 2 plugin.
-9. After every paste: purge the site cache and check "גרסה N" (admins) on /my-account/.
+## Open with the owner (22.10.2026, build 87)
+1. Desktop subscription product: put its ID in `FSA_V2_PLAN_PRODUCTS['desk']` (price and link then come from the product).
+2. Strategy chat (prices, licences, terms): `docs/BRIEF-strategy-licensing.md` lists the contradictions (prices vs VAT, academic domains, desktop wording, barter certificate, end of subscription). Apply its "עדכון לאזור האישי" lists here.
+3. "Choices is not defined" on the old account pages (only for customers who chose the previous area): needs a logged-in look.
+4. Live check as `claude-test` (password from the owner, never stored): profile save, order deep link, old pages redirect, goodbye window, add-on up to the payment page (do not pay).
+5. Precision passes on the design ("דיוקים") when the owner has them.
+6. When the work is finished: delete the `claude-test` user; consider deactivating the unused Stage 2 plugin.
+7. After every paste: purge the site cache and check "גרסה N" (admins) on /my-account/.
 
 ## Rules
 - Do not change payment settings or the live pricing page without the owner.

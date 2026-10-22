@@ -13,6 +13,8 @@ for(const w of [390,1280]){
   await p.addInitScript(()=>{window.print=()=>{window.__printed=(window.__printed||0)+1}});
   await p.route('https://site.test/pay/**',r=>r.fulfill({contentType:'text/html',body:'<p>pay</p>'}));
   await p.route('**/admin-ajax.php',async r=>{const q=new URLSearchParams(r.request().postData()||'');const op=q.get('op');let ok=true,msg='';
+   if(q.get('action')==='fsa_v2_profile'){const tab=q.get('tab');if(tab==='pwd')return r.fulfill({contentType:'application/json',body:JSON.stringify(q.get('current')==='Secret123'?{success:true,data:{reload:true}}:{success:false,data:{message:'הסיסמה הנוכחית לא נכונה.'}})});
+    return r.fulfill({contentType:'application/json',body:JSON.stringify({success:true,data:{user:{first:q.get('first')||'שוקי',last:q.get('last')||'',email:q.get('email')||'a@b.c',company:q.get('company')||'',phone:q.get('phone')||'',vat:q.get('vat')||''}}})})}
    if(q.get('action')==='fsa_v2_addon'){return r.fulfill({contentType:'application/json',body:JSON.stringify({success:true,data:{url:'https://site.test/pay/'+q.get('kind')+'/'+q.get('key')}})})}
    if(q.get('action')==='fsa_v2_lic'){const L=DB.lic[q.get('key')]=DB.lic[q.get('key')]||[];
     if(op==='add'){if(L.length>=3)return r.fulfill({contentType:'application/json',body:JSON.stringify({success:false,data:{message:'כל האתרים של הרישיון רשומים.'}})});L.push(['22.10.2026',q.get('name'),q.get('host'),'n'+L.length])}
@@ -123,12 +125,13 @@ for(const w of [390,1280]){
  // other plans, on pages built from the plain page with a different "plan" (and, for desktop, no web files)
  {const fs=require('fs');const base=fs.readFileSync(S+'/page-plain.html','utf8');
   const variant=async(name,fn)=>{fs.writeFileSync(S+'/page-'+name+'.html',fn(base));const vp=await b.newPage({viewport:{width:w,height:900}});const er=[];vp.on('pageerror',e=>er.push(e.message));await vp.goto('file://'+S+'/page-'+name+'.html');await vp.waitForTimeout(450);
-   const r=await vp.evaluate(()=>({tabs:document.querySelectorAll('#fsa .main .tabs button').length,th:[...document.querySelectorAll('#fsa .dl-tbl thead th')].map(x=>x.textContent.trim()),offers:[...document.querySelectorAll('#fsa .offer')].map(o=>o.querySelector('.of-name').textContent.trim()+'|'+o.querySelector('.of-cta').getAttribute('href')),ov:document.documentElement.scrollWidth-innerWidth}));
+   const r=await vp.evaluate(()=>({tabs:document.querySelectorAll('#fsa .main .tabs button').length,th:[...document.querySelectorAll('#fsa .dl-tbl thead th')].map(x=>x.textContent.trim()),offers:[...document.querySelectorAll('#fsa .offer')].map(o=>o.querySelector('.of-name').textContent.trim()+'|'+o.querySelector('.of-cta').getAttribute('href')),prices:[...document.querySelectorAll('#fsa .offer .of-price b')].map(x=>x.textContent.trim()),ov:document.documentElement.scrollWidth-innerWidth}));
    if(r.ov>1)bad(`${w} ${name}: page scrolls sideways by ${r.ov}px`);if(er.length)bad(`${w} ${name}: JS errors ${er}`);await vp.screenshot({path:`${S}/plan-${name}-${w}.png`,fullPage:true});await vp.close();return r};
   const desk=await variant('desk',s=>s.replace('"plan":"web"','"plan":"desk"').replace(/"web":"https:[^"]*"/g,'"web":""'));
   if(desk.tabs)bad(`${w} desktop plan still shows the domain tabs`);if(desk.th.includes('פורמט לאתרים'))bad(`${w} desktop plan still has a web column`);if(!desk.th.includes('פורמט לדסקטופ'))bad(`${w} desktop plan lost the desktop column`);
   const ex=await variant('extra',s=>s.replace('"plan":"web"','"plan":"extra"'));if(ex.tabs!==2||!ex.th.includes('פורמט לאתרים'))bad(`${w} extra plan: tabs ${ex.tabs}, columns ${ex.th}`);
-  const np=await variant('none',s=>s.replace('"plan":"web"','"plan":""'));
+  const np=await variant('none',s=>s.replace('"plan":"web"','"plan":"","offers":{"web":{"price":378,"url":"https://example.com/web"}}'));
+  if(!np.prices||np.prices[0]!=='₪378'||np.prices[1]!=='₪680'||np.prices[2]!=='₪179')bad(`${w} offer prices (store price first, then the written ones): ${np.prices}`);
   const ok=(i,n,h)=>np.offers[i]&&np.offers[i].startsWith(n)&&np.offers[i].endsWith('|'+h);if(np.offers.length!==3||!ok(0,'וובסטופ','https://example.com/web')||!ok(1,'אקסטרה','https://example.com/extra')||!np.offers[2].startsWith('דסקטופ'))bad(`${w} no-subscription offers: ${np.offers}`)}
  // special arrangement: the quota shown includes the extra domains
  {const fs=require('fs');const src=fs.readFileSync(S+'/page-plain.html','utf8').replace('"bonus":0','"bonus":0,"extra":2');fs.writeFileSync(S+'/page-deal.html',src);
@@ -140,6 +143,10 @@ for(const w of [390,1280]){
  const le=await ep.evaluate(()=>{const e=document.querySelector('#fsa .lic-empty');if(!e)return null;const r=e.getBoundingClientRect(),a=e.querySelector('.le-art').getBoundingClientRect(),c=e.querySelector('.le-cta');return {l:r.left,r:r.right,art:a.width,href:c&&c.getAttribute('href'),grad:c&&getComputedStyle(c).backgroundImage.includes('gradient'),ov:document.documentElement.scrollWidth-innerWidth}});
  if(!le)bad(`${w} no empty state when nothing was bought`);else{if(le.l<0||le.r>w+1||le.ov>1)bad(`${w} empty state leaves the screen`);if(le.art<150)bad(`${w} empty state art too small (${le.art})`);if(le.href!=='https://example.com/shop')bad(`${w} empty state CTA goes to ${le.href}`);if(!le.grad)bad(`${w} empty state CTA lost its gradient`)}
  if(eerr.length)bad(`${w} empty state JS errors: ${eerr}`);await ep.screenshot({path:`${S}/lic-empty-${w}.png`,fullPage:true});await ep.close();
+ // profile: details save through the server, a wrong password is reported, the old address field is gone
+ {await go('profile');await p.fill('#p2','כהן');await p.click('#pform .form-actions .btn');const tt=await toastNow();if(!/נשמרו/.test(tt))bad(`${w} profile save: toast "${tt}"`);
+  await p.evaluate(()=>document.querySelector('#fsa [data-subtab="biz"]').click());await p.waitForTimeout(350);if(await p.locator('#b4').count())bad(`${w} invoice tab still has the unused address field`);
+  await p.evaluate(()=>document.querySelector('#fsa [data-subtab="pwd"]').click());await p.waitForTimeout(350);await p.fill('#w1','wrong');await p.fill('#w2','NewPass123');await p.click('#pform .form-actions .btn');const pt=await toastNow();if(!/לא נכונה/.test(pt))bad(`${w} wrong password: toast "${pt}"`)}
  // logout: the goodbye window first; "stay" closes it, "leave" goes to the logout link
  {const url0=p.url();await p.evaluate(()=>document.querySelector('#logout').click());await p.waitForTimeout(500);
   const by=await p.evaluate(()=>{const m=document.querySelector('#byeModal');const s=m.querySelector('.sheet').getBoundingClientRect();return {open:!m.hidden,li:m.querySelectorAll('.bye-list li').length,txt:m.innerText,inv:s.top>=-1&&s.bottom<=innerHeight+1&&s.left>=-1&&s.right<=innerWidth+1,foc:document.activeElement&&document.activeElement.dataset.bye}});

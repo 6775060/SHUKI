@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '86' );
+define( 'FSA_V2_BUILD', '87' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -17,6 +17,10 @@ define( 'FSA_V2_TESTER', 'claude-test' );
 define( 'FSA_V2_LIVE_FOR', 'all' );
 // for 'list': usernames or emails, separated by commas
 define( 'FSA_V2_LIVE_USERS', '' );
+// guard three site-wide scripts (purchase window, header greeting, feedback button) that throw on pages without their element. false = leave the pages untouched
+define( 'FSA_V2_FIX_SITE_JS', true );
+// subscription products, for "בלי מינוי" (price and join link come from the product). Desktop: 0 until its product ID is set
+define( 'FSA_V2_PLAN_PRODUCTS', array( 'web' => 12652, 'extra' => 14162, 'desk' => 0 ) );
 // the ₪79 additional domain: ID of a hidden virtual WooCommerce product. 0 = not offered yet (the button says "next stage")
 define( 'FSA_V2_ADDON_PRODUCT', 22751 );
 // ─────────────────────────────────────────────────────────────────────────
@@ -59,6 +63,32 @@ function fsa_v2_takes_account_page() {
 	if ( function_exists( 'wc_get_page_permalink' ) && $here !== $path( wc_get_page_permalink( 'myaccount' ) ) ) return false;
 	return fsa_v2_live_for_user() && ! fsa_v2_wants_old();
 }
+// the old account sub-pages lead into the new area too (orders, one order, account details, addresses, downloads, the old Domains tab).
+// Payment methods, password reset and logout stay as they are; whoever chose the previous area keeps all of it.
+function fsa_v2_old_page_target() {
+	if ( ! function_exists( 'is_account_page' ) || ! is_account_page() || ! fsa_v2_live_for_user() || fsa_v2_wants_old() ) return '';
+	if ( function_exists( 'is_wc_endpoint_url' ) ) {
+		if ( is_wc_endpoint_url( 'view-order' ) ) { $id = absint( get_query_var( 'view-order' ) ); return $id ? 'order-' . $id : 'orders'; }
+		foreach ( array( 'orders' => 'orders', 'edit-account' => 'profile', 'edit-address' => 'profile', 'downloads' => 'lic' ) as $ep => $view ) {
+			if ( is_wc_endpoint_url( $ep ) ) return $view;
+		}
+	}
+	$path = function ( $u ) { return strtolower( untrailingslashit( rawurldecode( (string) wp_parse_url( $u, PHP_URL_PATH ) ) ) ); };
+	$here = $path( isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '' );
+	if ( function_exists( 'wc_get_page_permalink' ) && $here === $path( wc_get_page_permalink( 'myaccount' ) ) . '/domains' ) return 'dom';
+	return '';
+}
+add_action( 'template_redirect', function () {
+	$v = fsa_v2_old_page_target();
+	if ( ! $v ) return;
+	wp_safe_redirect( wc_get_page_permalink( 'myaccount' ) . '#' . $v );
+	exit;
+}, 15 );
+// in the previous area: a way back to the new one
+add_action( 'woocommerce_before_account_navigation', function () {
+	if ( ! fsa_v2_live_for_user() || ! fsa_v2_wants_old() ) return;
+	echo '<div class="fsa-back" style="margin:0 0 18px;padding:12px 16px;border-radius:12px;background:#FAF6FE;border:1px solid #F1E8FB;font-size:15px">זה האזור האישי הקודם. <a href="' . esc_url( add_query_arg( 'fsa_old', '0', wc_get_page_permalink( 'myaccount' ) ) ) . '" style="color:#5B3FFF;font-weight:700">למעבר לאזור האישי החדש</a></div>';
+} );
 // admins: /my-account/?fsa_why=1 shows why the new area is or is not shown here (read-only)
 add_action( 'template_redirect', function () {
 	if ( empty( $_GET['fsa_why'] ) || ! current_user_can( 'manage_options' ) ) return;
@@ -289,6 +319,25 @@ function fsa_v2_deal_extra( $uid ) {
 }
 function fsa_v2_lic_bonus( $uid ) { $b = get_user_meta( $uid, 'fsa_v2_lic_bonus', true ); return is_array( $b ) ? $b : array(); }
 function fsa_v2_lic_sites_all( $uid ) { $s = get_user_meta( $uid, 'fsa_v2_lic_sites', true ); return is_array( $s ) ? $s : array(); }
+// price (as the shop shows it, VAT included) and link of each subscription product; a plan without a published product is left out
+function fsa_v2_plan_offers() {
+	$out = array();
+	if ( ! function_exists( 'wc_get_product' ) ) return $out;
+	foreach ( FSA_V2_PLAN_PRODUCTS as $k => $id ) {
+		$p = $id ? wc_get_product( $id ) : null;
+		if ( ! $p ) continue;
+		$price = function_exists( 'wc_get_price_to_display' ) ? (float) wc_get_price_to_display( $p ) : (float) $p->get_price();
+		$out[ $k ] = array( 'price' => $price > 0 ? round( $price, 2 ) : 0, 'url' => get_permalink( $id ) );
+	}
+	return $out;
+}
+// the add-on's price as the shop shows it (VAT included), so the buttons and the cart match the payment page
+function fsa_v2_addon_price() {
+	$p = fsa_v2_addon_product();
+	if ( ! $p ) return 79;
+	$v = function_exists( 'wc_get_price_to_display' ) ? wc_get_price_to_display( $p ) : ( method_exists( $p, 'get_price' ) ? $p->get_price() : 0 );
+	return $v > 0 ? round( (float) $v, 2 ) : 79;
+}
 function fsa_v2_addon_product() {
 	return ( FSA_V2_ADDON_PRODUCT && function_exists( 'wc_get_product' ) ) ? wc_get_product( FSA_V2_ADDON_PRODUCT ) : null;
 }
@@ -367,9 +416,17 @@ function fsa_v2_addon_ajax() {
 	$key  = isset( $_POST['key'] ) ? (string) (int) $_POST['key'] : '';
 	if ( 'sub' === $kind ) {
 		list( $plan ) = fsa_v2_plan_info( wp_get_current_user() );
-		if ( 'web' !== $plan ) $err( 'הרחבת מכסה זמינה למינוי וובסטופ.' );
+		if ( fsa_v2_domain_limit( $plan ) <= 0 ) $err( 'הרחבת מכסה זמינה למינוי וובסטופ.' );
 	} elseif ( ! fsa_v2_user_web_lic( $uid, $key ) ) {
 		$err( 'הרישיון הזה לא כולל רישום אתרים.' );
+	}
+	// one unpaid order per need: a second click (or coming back from the payment page) reuses yesterday's pending order instead of piling up new ones
+	if ( function_exists( 'wc_get_orders' ) ) {
+		foreach ( (array) wc_get_orders( array( 'customer_id' => $uid, 'status' => array( 'pending' ), 'limit' => 10, 'orderby' => 'date', 'order' => 'DESC', 'date_created' => '>' . ( time() - DAY_IN_SECONDS ) ) ) as $o ) {
+			if ( ! $o->get_meta( '_fsa_v2_addon' ) ) continue;
+			$l = fsa_v2_addon_lines( $o )[0] ?? null;
+			if ( $l && $l['kind'] === $kind && ( 'sub' === $kind || $l['key'] === $key ) ) wp_send_json_success( array( 'url' => $o->get_checkout_payment_url() ) );
+		}
 	}
 	$order = wc_create_order( array( 'customer_id' => $uid ) );
 	$item  = $order->add_product( $product, 1 );
@@ -379,6 +436,11 @@ function fsa_v2_addon_ajax() {
 	$order->set_billing_email( $u->user_email );
 	$order->set_billing_first_name( (string) $u->first_name );
 	$order->set_billing_last_name( (string) $u->last_name );
+	// the rest of the billing details the customer already has, so the payment page and the invoice are complete
+	foreach ( array( 'phone', 'company', 'address_1', 'city', 'postcode', 'country' ) as $f ) {
+		$v = (string) get_user_meta( $uid, 'billing_' . $f, true );
+		if ( '' !== $v && is_callable( array( $order, 'set_billing_' . $f ) ) ) $order->{'set_billing_' . $f}( $v );
+	}
 	$order->update_meta_data( '_fsa_v2_addon', 1 );
 	$order->calculate_totals();
 	$order->save();
@@ -550,24 +612,67 @@ function fsa_v2_data() {
 		}
 	}
 
-	$addr = trim( implode( ', ', array_filter( array( get_user_meta( $uid, 'billing_address_1', true ), get_user_meta( $uid, 'billing_city', true ) ) ) ) );
 	$shop = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/' );
 	return array(
 		'domains' => fsa_v2_domains( $uid ), 'domainFonts' => fsa_v2_domain_fonts(),
-		'bonus' => fsa_v2_bonus_sub( $uid, (int) current_time( 'Y' ), (int) current_time( 'n' ) ), 'extra' => fsa_v2_deal_extra( $uid ), 'addon' => (bool) fsa_v2_addon_product(),
+		'bonus' => fsa_v2_bonus_sub( $uid, (int) current_time( 'Y' ), (int) current_time( 'n' ) ), 'extra' => fsa_v2_deal_extra( $uid ), 'addon' => (bool) fsa_v2_addon_product(), 'addonPrice' => fsa_v2_addon_price(), 'offers' => fsa_v2_plan_offers(),
 		'domAjax' => admin_url( 'admin-ajax.php' ), 'domNonce' => wp_create_nonce( 'fsa_v2_dom' ),
 		'build' => current_user_can( 'manage_options' ) ? FSA_V2_BUILD : '', 'mode' => isset( $GLOBALS['fsa_v2_mode'] ) ? $GLOBALS['fsa_v2_mode'] : 'preview', 'oldUrl' => add_query_arg( 'fsa_old', '1', function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ) ),
 		'plan' => $plan, 'planStart' => $start, 'nextPay' => '', 'card' => '',
 		'fonts' => $fonts, 'lic' => $lic, 'orders' => $orders,
-		'user' => array(
-			'id' => $uid, 'first' => $u->first_name ? $u->first_name : $u->display_name, 'last' => $u->last_name, 'email' => $u->user_email,
-			'company' => get_user_meta( $uid, 'billing_company', true ), 'phone' => get_user_meta( $uid, 'billing_phone', true ),
-			'vat' => '', 'address' => $addr,
-		),
+		'user' => fsa_v2_user_fields( $u ),
 		'links' => array(
 			'logout' => function_exists( 'wc_logout_url' ) ? wc_logout_url( home_url() ) : wp_logout_url( home_url() ),
 			'web' => get_permalink( 12652 ), 'extra' => get_permalink( 14162 ), 'desk' => $shop,
 		),
+	);
+}
+
+// 2j. profile: personal details, invoice details and password, saved to the same fields the checkout uses
+add_action( 'wp_ajax_fsa_v2_profile', 'fsa_v2_profile_ajax' );
+function fsa_v2_profile_ajax() {
+	$err = function ( $m ) { wp_send_json_error( array( 'message' => $m ) ); };
+	if ( ! fsa_v2_can_view() || ! check_ajax_referer( 'fsa_v2_dom', 'nonce', false ) ) $err( 'פג תוקף העמוד. רעננו ונסו שוב.' );
+	$uid = get_current_user_id();
+	$in  = function ( $k ) { return isset( $_POST[ $k ] ) ? sanitize_text_field( wp_unslash( $_POST[ $k ] ) ) : ''; };
+	$tab = $in( 'tab' );
+	if ( 'me' === $tab ) {
+		$first = $in( 'first' ); $last = $in( 'last' ); $email = sanitize_email( $in( 'email' ) ); $phone = $in( 'phone' ); $company = $in( 'company' );
+		if ( '' === $first || '' === $last ) $err( 'צריך למלא שם פרטי ושם משפחה.' );
+		if ( ! is_email( $email ) ) $err( 'כתובת האימייל לא תקינה.' );
+		$owner = email_exists( $email );
+		if ( $owner && (int) $owner !== $uid ) $err( 'כתובת האימייל הזו כבר רשומה בחשבון אחר.' );
+		if ( '' !== $phone && ! preg_match( '/^[0-9+\-\s()]{7,20}$/', $phone ) ) $err( 'מספר הטלפון לא תקין.' );
+		$r = wp_update_user( array( 'ID' => $uid, 'first_name' => $first, 'last_name' => $last, 'user_email' => $email ) );
+		if ( is_wp_error( $r ) ) $err( 'השמירה נכשלה. נסו שוב.' );
+		foreach ( array( 'billing_first_name' => $first, 'billing_last_name' => $last, 'billing_email' => $email, 'billing_phone' => $phone, 'billing_company' => $company ) as $k => $v ) update_user_meta( $uid, $k, $v );
+	} elseif ( 'biz' === $tab ) {
+		$vat = $in( 'vat' );
+		if ( '' !== $vat && ! preg_match( '/^[0-9]{5,12}$/', $vat ) ) $err( 'מספר ת.ז / ח.פ צריך להכיל ספרות בלבד.' );
+		update_user_meta( $uid, 'billing_company', $in( 'company' ) );
+		update_user_meta( $uid, 'billing_id_or_company_number', $vat );
+	} elseif ( 'pwd' === $tab ) {
+		$cur = isset( $_POST['current'] ) ? (string) wp_unslash( $_POST['current'] ) : ''; $new = isset( $_POST['new'] ) ? (string) wp_unslash( $_POST['new'] ) : '';
+		$u = get_userdata( $uid );
+		if ( ! $u || ! wp_check_password( $cur, $u->user_pass, $uid ) ) $err( 'הסיסמה הנוכחית לא נכונה.' );
+		if ( strlen( $new ) < 8 || ! preg_match( '/[0-9]/', $new ) || ! preg_match( '/[^0-9\s]/u', $new ) ) $err( 'הסיסמה החדשה צריכה לפחות 8 תווים, עם אותיות ומספרים.' );
+		if ( $new === $cur ) $err( 'הסיסמה החדשה זהה לנוכחית.' );
+		$r = wp_update_user( array( 'ID' => $uid, 'user_pass' => $new ) ); // keeps this browser logged in
+		if ( is_wp_error( $r ) ) $err( 'העדכון נכשל. נסו שוב.' );
+		wp_send_json_success( array( 'reload' => true ) );
+	} else {
+		$err( 'פעולה לא מוכרת.' );
+	}
+	wp_send_json_success( array( 'user' => fsa_v2_user_fields( get_userdata( $uid ) ) ) );
+}
+
+// the customer's details as the area shows them (profile, certificates)
+function fsa_v2_user_fields( $u ) {
+	$uid = $u->ID;
+	return array(
+		'id' => $uid, 'first' => $u->first_name ? $u->first_name : $u->display_name, 'last' => $u->last_name, 'email' => $u->user_email,
+		'company' => get_user_meta( $uid, 'billing_company', true ), 'phone' => get_user_meta( $uid, 'billing_phone', true ),
+		'vat' => (string) get_user_meta( $uid, 'billing_id_or_company_number', true ),
 	);
 }
 
@@ -609,6 +714,33 @@ function fsa_v2_deal_save( $uid ) {
 	foreach ( array( 'fsa_v2_deal_extra' => $n, 'fsa_v2_deal_until' => $until, 'fsa_v2_deal_note' => $note ) as $k => $v ) {
 		if ( $v ) update_user_meta( $uid, $k, $v ); else delete_user_meta( $uid, $k );
 	}
+}
+
+// 2i. site-wide script guards. Three inline scripts of the theme run on every page and throw where their element is missing
+// (purchase window outside font pages, the header greeting, the feedback button). The page HTML is patched on the way out,
+// only where the exact original text is found; anything else is left as it is. Switch: FSA_V2_FIX_SITE_JS.
+add_action( 'template_redirect', function () {
+	if ( ! FSA_V2_FIX_SITE_JS || is_admin() || wp_doing_ajax() || is_feed() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) return;
+	if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'GET' !== $_SERVER['REQUEST_METHOD'] ) return;
+	if ( isset( $_GET['fsa_wdl'] ) || isset( $_GET['download_file'] ) ) return; // file downloads are not pages
+	ob_start( 'fsa_v2_fix_site_js' );
+}, 0 );
+function fsa_v2_fix_site_js( $html ) {
+	if ( ! is_string( $html ) || false === stripos( $html, '<script' ) ) return $html;
+	// 1. purchase window: the whole script only where the window exists (as fix-1-purchase.js)
+	$out = preg_replace_callback( '#(<script\b[^>]*>)(\s*//\s*open purchase popup.*?)(</script>)#s', function ( $m ) {
+		return $m[1] . "\nif (document.querySelector(\".r-font-purchase\")) { /* FS guard: font pages only */" . $m[2] . "\n}\n" . $m[3];
+	}, $html, 1 );
+	if ( is_string( $out ) ) $html = $out;
+	// 2. header greeting: stop when the account button is not on the page
+	$g = "const spanElement = document.querySelector('#go_to_account .elementor-button-text');";
+	if ( false !== strpos( $html, 'function updateGreeting' ) && false === strpos( $html, $g . ' if (!spanElement) return;' ) ) {
+		$pos = strpos( $html, $g );
+		if ( false !== $pos ) $html = substr_replace( $html, $g . ' if (!spanElement) return;', $pos, strlen( $g ) );
+	}
+	// 3. feedback button: only when it exists
+	$html = str_replace( 'document.querySelector(".r-feedback-btn").addEventListener(', '(document.querySelector(".r-feedback-btn")||document.createElement("i")).addEventListener(', $html );
+	return $html;
 }
 
 // 3. the shortcode
@@ -1458,7 +1590,7 @@ const PLAN={web:{n:3,label:'וובסטופ',desc:'מינוי לאתרים ולד
 const OLDDOM=[['22.09.2026','סטודיו לוי','studio-levi.co.il','טאלנט'],['20.09.2026','חנות הבד','bad.co.il','אומץ'],['04.08.2026','קמפיין קיץ','summer-sale.co.il','דיסקברי'],['11.07.2026','גן ילדים שקד','shaked-kids.co.il','פריימריז, פורטו'],['02.05.2026','משרד עו״ד כהן','cohen-law.co.il','יזכור פרו'],['18.02.2026','מאפיית הכפר','hakfar.co.il','אומץ, טאלנט'],['09.12.2025','עמותת אור','or-org.org.il','פורטו'],['21.10.2025','סטודיו מור','mor-studio.co.il','דיסקברי, טאלנט'],['05.06.2025','כנס עיצוב 2025','design-conf.co.il','פריימריז'],['14.03.2025','קפה גינה','gina-cafe.co.il','אומץ'],['30.11.2024','חנות הספרים','books-il.co.il','יזכור פרו, פורטו'],['08.07.2024','מגזין אדריכלות','arch-mag.co.il','טאלנט']];
 const SUBDOM={web:[['03.10.2026','סטודיו דיין','studio-dayan.co.il','פורטו, טאלנט'],['14.10.2026','מגזין עגלה','agala.co.il','דיסקברי, פורטו'],...OLDDOM.map(r=>r.slice())],extra:[['03.10.2026','סטודיו דיין','studio-dayan.co.il','פורטו, טאלנט'],['14.10.2026','מגזין עגלה','agala.co.il','דיסקברי, פורטו'],['12.10.2026','אדריכלות בע״מ','fontshok.co.il','פורטו'],...OLDDOM.map(r=>r.slice())]};
 const MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
-let BONUS=0,EXTRA=0;
+let BONUS=0,EXTRA=0,ADDON_P=79;
 /* registration cycle: domains registered in the current cycle (1.10–31.10.2026) can still be edited; older ones are locked */
 const _n=new Date();const CYCLE={start:new Date(_n.getFullYear(),_n.getMonth(),1),end:new Date(_n.getFullYear(),_n.getMonth()+1,1),label:MONTHS[_n.getMonth()]};
 /* next quota renewal, from the registration cycle (Stage 2: quota.resets from the API) */
@@ -1529,7 +1661,7 @@ Object.keys(SUBDOM).forEach(k=>SUBDOM[k]=[]);HISTORY.length=0;
 SUBDOM[FS.plan||'web']=(FS.domains||[]).map(r=>r.slice());
 const DOMF=(FS.domainFonts&&FS.domainFonts.length)?FS.domainFonts:FAMILY.map(f=>f[0]);
 const DOM_PLANS=['web','extra','barter'];
-BONUS=FS.bonus||0;EXTRA=FS.extra||0;
+BONUS=FS.bonus||0;EXTRA=FS.extra||0;ADDON_P=+FS.addonPrice||79;
 /* a site on a purchased licence: [date, name, address, id]; id '' = registered at checkout, fixed */
 const licFixed=(i,j)=>{const s=(LIC[i]&&LIC[i].sites[j])||[];return s.length>3&&!s[3]};
 function postApi(action,d){const b=new URLSearchParams(Object.assign({action,nonce:FS.domNonce||''},d));
@@ -1572,6 +1704,9 @@ const OFFER=[
  {k:'desk',name:'דסקטופ',line:'מינוי לעבודה בתוכנות במחשב',uses:['דסקטופ','פלט ותנועה','UI/UX'],price:'₪179',cta:'להצטרפות',href:()=>FS.links&&FS.links.deskSub}
 ];
 const PRICING='https://fontshok.co.il/מחירון-רישיונות-ומנויים/';
+/* the store wins: price and link of the plan's product when the site sends them, else the values written above */
+const offerPrice=o=>{const s=FS.offers&&FS.offers[o.k];const v=s&&s.price?s.price:+String(o.price).replace(/[^\d.]/g,'');return v?v.toLocaleString('he-IL',{maximumFractionDigits:2}):''};
+const offerHref=o=>{const s=FS.offers&&FS.offers[o.k];return (s&&s.url)||o.href()||PRICING};
 /* comparison, from the pricing page ("השוואת המינוי שלנו"); columns desktop · Webstop · Extra (Webstop in the middle, highlighted) */
 const CMP_COLS=['desk','web','extra'];
 const CMP=[
@@ -1591,8 +1726,8 @@ const cmpCell=v=>v===1?`<span class="yes" aria-label="כלול"><svg viewBox="0 
 const noPlan=()=>`<div class="head-row"><div><h1 class="h1">המינוי שלי</h1><p class="sub">עוד אין לך מינוי. במינוי מקבלים את כל הפונטים להורדה, עם רישיון שימוש לפי סוג המינוי.</p></div></div>
  <div class="offers">${OFFER.map(o=>`<div class="offer offer-${o.k}">
   <div class="of-id">${logo(o.k,'')}<div><div class="of-name">${o.name}${o.top?` <span class="of-top">${o.top}</span>`:''}</div><div class="of-line">${o.line}</div><div class="of-uses">${o.uses.map((u,i)=>`${i===3?'<i class="of-br"></i>':''}<span>${u}</span>`).join('')}</div></div></div>
-  <div class="of-price">${o.price?`<b class="num">${o.price}</b><small>לחודש, כולל מע״מ</small>`:'<small>המחיר בעמוד המינויים</small>'}</div>
-  <a class="btn ${o.price?'btn-grad':'btn-line'} of-cta" href="${ea(o.href()||PRICING)}">${o.cta}</a>
+  <div class="of-price">${offerPrice(o)?`<b class="num">₪${offerPrice(o)}</b><small>לחודש, כולל מע״מ</small>`:'<small>המחיר בעמוד המינויים</small>'}</div>
+  <a class="btn ${offerPrice(o)?'btn-grad':'btn-line'} of-cta" href="${ea(offerHref(o))}">${o.cta}</a>
  </div>`).join('')}</div>
  <section class="cmp" id="cmp"><h2>השוואת המינויים</h2><div class="tbl-wrap cmp-in"><i class="web-col" aria-hidden="true"></i><table>
   <thead><tr><th></th>${CMP_COLS.map(k=>`<th>${PLAN[k].label} <img class="cmp-sym" src="${SYM[k]}" alt=""></th>`).join('')}</tr></thead>
@@ -1637,7 +1772,7 @@ function subsDomains(){
 function quotaFullPlan(){
  return `<div class="quota-line">
   <div class="msg"><b>ניצלת את ${PLAN[state.plan].n+EXTRA+BONUS} הדומיינים של החודש</b><span>מתחדש ב־${nextReset()}.${FS.addon?' צריך עוד עכשיו?':''}</span></div>
-  ${FS.addon?'<button class="btn btn-grad" data-planaddon="1">דומיין נוסף · ₪79</button>':''}
+  ${FS.addon?`<button class="btn btn-grad" data-planaddon="1">דומיין נוסף · ₪${ADDON_P}</button>`:''}
   <a class="linkbtn" href="https://fontshok.co.il/מחירון-רישיונות-ומנויים/">או שדרוג לאקסטרה</a>
  </div>`;
 }
@@ -1762,7 +1897,7 @@ function licDrawer(i,cols,full){const l=LIC[i];
 function quotaFull(l){
  return `<div class="quota-line">
   <div class="msg"><b>כל ${l.n} האתרים של הרישיון רשומים</b>${FS.addon?'<span>צריך עוד אתר? אפשר להוסיף אחד בתשלום חד־פעמי.</span>':'<span>אפשר להסיר אתר כדי לפנות מקום.</span>'}</div>
-  ${FS.addon?`<button class="btn btn-grad" data-addon="${LIC.indexOf(l)}">הוספת אתר · ₪79</button>`:''}
+  ${FS.addon?`<button class="btn btn-grad" data-addon="${LIC.indexOf(l)}">הוספת אתר · ₪${ADDON_P}</button>`:''}
   <a class="linkbtn" href="https://fontshok.co.il/מחירון-רישיונות-ומנויים/">או מינוי וובסטופ</a>
  </div>`;
 }
@@ -1820,7 +1955,7 @@ V.profile=(tab)=>`
   <button role="tab" aria-selected="${tab==='me'}" data-subtab="me">פרטים אישיים</button>
   <button role="tab" aria-selected="${tab==='biz'}" data-subtab="biz">פרטי חשבונית</button>
   <button role="tab" aria-selected="${tab==='pwd'}" data-subtab="pwd">עדכון סיסמה</button>
-  <button role="tab" aria-selected="${tab==='prefs'}" data-subtab="prefs" class="x-new" data-new="ממתין לנתונים מהאתר">העדפות</button>
+  ${FS.mode==='live'?'':`<button role="tab" aria-selected="${tab==='prefs'}" data-subtab="prefs" class="x-new" data-new="ממתין לנתונים מהאתר">העדפות</button>`}
  </div>
  <form class="pf" id="pform">
  ${tab==='me'?`<div class="grid3">
@@ -1830,9 +1965,8 @@ V.profile=(tab)=>`
    <div><label for="p3">שם עסקי</label><input id="p3" value="${ea(FS.user.company)}" autocomplete="organization"><div class="hint">יופיע בתעודות הרישיון</div></div>
    <div><label for="p5">טלפון</label><input id="p5" class="num" value="${ea(FS.user.phone)}" autocomplete="tel" inputmode="tel"></div>
  </div>`:tab==='biz'?`<div class="grid3">
-   <div><label for="b1">שם לחשבונית</label><input id="b1" value="${ea(FS.user.company)}"></div>
-   <div><label for="b2">ח.פ / ע.מ</label><input id="b2" class="num" value="${ea(FS.user.vat)}" inputmode="numeric"></div>
-   <div><label for="b4">כתובת</label><input id="b4" value="${ea(FS.user.address)}" autocomplete="street-address"></div>
+   <div><label for="b1">שם החברה לחשבונית</label><input id="b1" value="${ea(FS.user.company)}" autocomplete="organization"></div>
+   <div><label for="b2">ת.ז / ח.פ</label><input id="b2" class="num" value="${ea(FS.user.vat)}" inputmode="numeric"></div>
  </div><p class="hint" style="margin-top:14px">הפרטים יופיעו בחשבוניות הבאות.</p>`:tab==='pwd'?`<div class="grid3">
    <div><label for="w1">סיסמה נוכחית</label><input id="w1" type="password" autocomplete="current-password"></div>
    <div><label for="w2">סיסמה חדשה</label><input id="w2" type="password" autocomplete="new-password"><div class="hint">לפחות 8 תווים, כולל אותיות ומספרים</div></div>
@@ -1848,7 +1982,7 @@ function cert(l,site){
  return `<div class="cert">
   <div class="cert-head"><h2>${site?'רישיון פונט לדומיין':'רישיון שימוש בפונט'}</h2>${l.sub==='buy'?'':`<img src="${s.logo}" alt="מינוי ${s.name}">`}</div>
   <div class="cert-body">
-   <div class="cert-row"><div class="who"><span style="color:var(--muted)">רושם הרישיון</span><b>${ea((FS.user.first||"")+" "+(FS.user.last||""))}</b>${ea(FS.user.email)}</div><div style="text-align:left">מונפק על ידי פונטשוק בע״מ<br>מספר תעודה <span class="num" dir="ltr">${ea(l.certNo||'—')}</span></div></div>
+   <div class="cert-row"><div class="who"><span style="color:var(--muted)">רושם הרישיון</span><b>${ea((FS.user.first||"")+" "+(FS.user.last||""))}</b>${FS.user.company?`${ea(FS.user.company)}<br>`:''}${ea(FS.user.email)}</div><div style="text-align:left">מונפק על ידי פונטשוק בע״מ<br>מספר תעודה <span class="num" dir="ltr">${ea(l.certNo||'—')}</span></div></div>
    <p style="margin:0">בהתאם להסכם הרישוי ותנאי השימוש של פונטשוק בע״מ, מאושר בזאת כי הפונט הרשום להלן מותר לשימוש ${site?'בתחומי עיצוב ממשק והטמעה באתר הרשום בלבד, תחת הדומיין שלהלן:':`בתחומים הכלולים ברישיון ${l.t}:`}</p>
    <dl>${site?`<dt>שם האתר:</dt><dd>${site[1]}</dd><dt>כתובת הדומיין:</dt><dd><bdi dir="ltr">${site[2]}</bdi></dd>`:''}<dt>רישיון לפונט:</dt><dd>${ea(l.f)}${l.w?(String(l.w).includes(',')?` · משקלים: ${ea(l.w)}`:` ${ea(l.w)}`):''}</dd><dt>תאריך רישום:</dt><dd class="num">${site?site[0]:ea(l.d||'—')}</dd><dt>מינוי:</dt><dd>${s.name} (${s.en})</dd><dt>סוג רישיון:</dt><dd>${l.t}</dd></dl>
    <p style="margin:0">${CERT_TEXT[l.sub](l)}</p>
@@ -1861,7 +1995,9 @@ function cert(l,site){
 let state={view:'subs',plan:'web',sub:{subs:'dl',lic:'list',profile:'me'},open:{lic:-1,orders:-1}};
 try{const s=JSON.parse(localStorage.getItem('fsa-v2')||'null');if(s&&V[s.view])state=Object.assign(state,s)}catch(e){}
 state.open={lic:-1,orders:-1};
-{const hv=location.hash.slice(1);if(V[hv])state.view=hv;if(hv==='subdom'){state.view='subs';state.sub.subs='reg'}}state.plan=FS.plan||'web';state.noteHidden=1;
+{const hv=location.hash.slice(1);if(V[hv])state.view=hv;if(hv==='subdom'){state.view='subs';state.sub.subs='reg'}
+ /* #order-123 (from the old "view order" links and the order e-mails): the orders list with that order open */
+ const om=/^order-(\d+)$/.exec(hv);if(om){state.view='orders';const i=ORDERS.findIndex(o=>String(o.id)===om[1]);state.open.orders=i}}state.plan=FS.plan||'web';state.noteHidden=1;
 /* back from paying for an add-on on the live site (WooCommerce return URL): reopen the matching registration form */
 {const q=new URLSearchParams(location.search);if(q.get('fs_addon')==='paid'){const lic=q.get('kind')==='lic';
  if(lic){const li=LIC.findIndex(x=>String(x.key)===q.get('licence'));state.view='lic';state.open.lic=li<0?0:li}else{state.view='subs';state.sub.subs='reg'}
@@ -1924,6 +2060,15 @@ cart.addEventListener('click',e=>{if(e.target===cart)closeCart()});
 function backTo(sel,msg){setTimeout(()=>{const f=$(sel);if(f){f.scrollIntoView({behavior:'smooth',block:'center'});f.focus({preventScroll:true})}toast(msg)},60)}
 const modal=$('#certModal');
 function showModal(){modal.hidden=false;void modal.offsetWidth;setTimeout(()=>modal.classList.add('show'),16);$('#certClose').focus()}
+/* profile: save the open tab; the fields keep what was typed when the server refuses */
+function saveProfile(f){const tab=state.sub.profile,v=id=>{const e=$('#'+id);return e?e.value.trim():''};
+ if(tab==='prefs'){soon();return}
+ const d=tab==='me'?{first:v('p1'),last:v('p2'),email:v('p4'),company:v('p3'),phone:v('p5')}:tab==='biz'?{company:v('b1'),vat:v('b2')}:{current:$('#w1').value,new:$('#w2').value};
+ if(tab==='pwd'&&(!d.current||!d.new)){toast('צריך למלא את שתי הסיסמאות');return}
+ const btn=f.querySelector('.form-actions .btn');btn.disabled=true;
+ postApi('fsa_v2_profile',Object.assign({tab},d)).then(r=>{btn.disabled=false;
+  if(r.reload){toast('הסיסמה עודכנה');$('#w1').value='';$('#w2').value='';setTimeout(()=>location.reload(),1400);return}
+  if(r.user)Object.assign(FS.user,r.user);toast('הפרטים נשמרו')}).catch(x=>{btn.disabled=false;toast(x.message)})}
 /* logout: a short "what you're leaving behind" window, from the customer's own data. Staying is the default; leaving is one clear click */
 const bye=$('#byeModal');
 function byeFacts(){
@@ -1986,7 +2131,7 @@ document.addEventListener('click',e=>{
   if(!confirm(`להסיר את ${s[2]}?`))return;t.disabled=true;licApi(i,'del',{id:s[3]}).then(()=>{render();toast(`${s[2]} הוסר והמקום ברישיון התפנה`)}).catch(x=>{t.disabled=false;toast(x.message)});return}
  if(t.id==='cartPay'){payCart();return}
  if(t.id==='cartBack'||t.id==='cartClose'){closeCart();return}
- if(t.dataset.addon){const i=+t.dataset.addon,l=LIC[i];openCart({kind:'lic',key:l.key,name:`אתר נוסף · ${l.f} ${l.w}`,desc:'מקום נוסף ברישיון הוובפונט, לצמיתות',price:79,
+ if(t.dataset.addon){const i=+t.dataset.addon,l=LIC[i];openCart({kind:'lic',key:l.key,name:`אתר נוסף · ${l.f} ${l.w}`,desc:'מקום נוסף ברישיון הוובפונט, לצמיתות',price:ADDON_P,
    okText:`ברישיון של ${l.f} יש עכשיו ${l.n+1} אתרים.`,backText:'חזרה לרישום האתר',
    grant:()=>{l.n+=1},back:()=>{state.view='lic';state.open.lic=i;render({opening:true});backTo('#su'+i,'אפשר לרשום את האתר הנוסף')}});return}
  if(t.dataset.hidenote){const n=$('.note');n.style.transition='opacity .3s var(--ease),transform .3s var(--ease)';n.style.opacity=0;n.style.transform='translateY(-4px)';setTimeout(()=>{state.noteHidden=1;render()},300);return}
@@ -1994,7 +2139,7 @@ document.addEventListener('click',e=>{
  if(t.dataset.edcancel){state.editKey=null;render();return}
  if(t.dataset.edsave){saveEdit(t.closest('tr'));return}
  if(t.dataset.plan){state.plan=t.dataset.plan;render({page:true});return}
- if(t.dataset.planaddon){openCart({kind:'sub',name:`דומיין נוסף · מינוי ${PLAN[state.plan].label}`,desc:`רישום אחד נוסף לחודש ${CYCLE.label}`,price:79,
+ if(t.dataset.planaddon){openCart({kind:'sub',name:`דומיין נוסף · מינוי ${PLAN[state.plan].label}`,desc:`רישום אחד נוסף לחודש ${CYCLE.label}`,price:ADDON_P,
    okText:`נוסף רישום אחד למכסת ${CYCLE.label}.`,backText:'חזרה לרישום הדומיין',
    grant:()=>{BONUS+=1},back:()=>{state.view='subs';state.sub.subs='reg';render();backTo('#sd2','אפשר לרשום את הדומיין הנוסף')}});return}
  if(t.dataset.sddel){const s=SUBDOM[state.plan][+t.dataset.sddel];if(!s||!confirm(`להסיר את ${s[2]}?`))return;t.disabled=true;
@@ -2006,7 +2151,7 @@ document.addEventListener('click',e=>{
  if(t.dataset.t){e.preventDefault();soon()}
 });
 document.addEventListener('submit',e=>{
- const f=e.target;if(!f.closest('#fsa,#fsa-layer'))return;e.preventDefault();if(f.id==='pform'){soon();return}
+ const f=e.target;if(!f.closest('#fsa,#fsa-layer'))return;e.preventDefault();if(f.id==='pform'){saveProfile(f);return}
  if(f.dataset.subadd){
   const host=cleanHost($('#sd2').value),picked=[...f.querySelectorAll('.fp-menu input:checked')].map(i=>i.value),err=$('#sdErr');
   const msg=!host||!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)?'צריך להזין כתובת אתר תקינה, למשל studio.co.il':!picked.length?'צריך לבחור לפחות פונט אחד':'';
