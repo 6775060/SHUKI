@@ -1526,7 +1526,7 @@ V.subs=(tab)=>`
  ${tab==='dl'?subsDownloads()+fontNote():subsDomains()}`:`<h2 class="h2-sec dl-only-h">פונטים להורדה</h2>${subsDownloads()+fontNote()}`}`;
 
 /* no subscription yet: the plans on offer, as on the pricing page (academic is offered only after a request form, so it is not listed).
-   Prices: the pricing page (before VAT). Desktop ₪179 (owner, 22.10.2026); its button leads to the pricing page until there is a purchase link (links.deskSub) */
+   Prices: as shown on the site, VAT included. Desktop ₪179 (owner, 22.10.2026); its button leads to the pricing page until there is a purchase link (links.deskSub) */
 const OFFER=[
  {k:'web',name:'וובסטופ',line:'תכנית מורחבת לאתרים ולדסקטופ',uses:['דסקטופ','פלט ותנועה','UI/UX','אתרים · 3 דומיינים בחודש'],price:'₪320',cta:'להצטרפות',href:()=>FS.links&&FS.links.web,top:'תוכנית מומלצת'},
  {k:'extra',name:'אקסטרה',line:'תכנית חופשית ללא הגבלה',uses:['דסקטופ','פלט ותנועה','UI/UX','אתרים חופשי','אפליקציות חופשי','תשדיר'],price:'₪680',cta:'להצטרפות',href:()=>FS.links&&FS.links.extra},
@@ -1552,7 +1552,7 @@ const cmpCell=v=>v===1?`<span class="yes" aria-label="כלול"><svg viewBox="0 
 const noPlan=()=>`<div class="head-row"><div><h1 class="h1">המינוי שלי</h1><p class="sub">עוד אין לך מינוי. במינוי מקבלים את כל הפונטים להורדה, עם רישיון שימוש לפי סוג המינוי.</p></div></div>
  <div class="offers">${OFFER.map(o=>`<div class="offer offer-${o.k}">
   <div class="of-id">${logo(o.k,'')}<div><div class="of-name">${o.name}${o.top?` <span class="of-top">${o.top}</span>`:''}</div><div class="of-line">${o.line}</div><div class="of-uses">${o.uses.map((u,i)=>`${i===3?'<i class="of-br"></i>':''}<span>${u}</span>`).join('')}</div></div></div>
-  <div class="of-price">${o.price?`<b class="num">${o.price}</b><small>לחודש, לא כולל מע״מ</small>`:'<small>המחיר בעמוד המינויים</small>'}</div>
+  <div class="of-price">${o.price?`<b class="num">${o.price}</b><small>לחודש, כולל מע״מ</small>`:'<small>המחיר בעמוד המינויים</small>'}</div>
   <a class="btn ${o.price?'btn-grad':'btn-line'} of-cta" href="${ea(o.href()||PRICING)}">${o.cta}</a>
  </div>`).join('')}</div>
  <section class="cmp" id="cmp"><h2>השוואת המינויים</h2><div class="tbl-wrap cmp-in"><i class="web-col" aria-hidden="true"></i><table>
