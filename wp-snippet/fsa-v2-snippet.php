@@ -47,7 +47,12 @@ function fsa_v2_wants_old() {
 }
 // the account dashboard (/my-account/ itself, not orders, password etc.) shows the new area to whoever it is live for
 function fsa_v2_takes_account_page() {
-	return function_exists( 'is_account_page' ) && is_account_page() && ! is_wc_endpoint_url() && fsa_v2_live_for_user() && ! fsa_v2_wants_old();
+	if ( ! function_exists( 'is_account_page' ) || ! is_account_page() || is_wc_endpoint_url() ) return false;
+	// only /my-account/ itself: sub-pages added by plugins (like the old /my-account/domains/) are not WooCommerce endpoints, so compare the path
+	$path = function ( $u ) { return untrailingslashit( rawurldecode( (string) wp_parse_url( $u, PHP_URL_PATH ) ) ); };
+	$here = $path( isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '' );
+	if ( function_exists( 'wc_get_page_permalink' ) && $here !== $path( wc_get_page_permalink( 'myaccount' ) ) ) return false;
+	return fsa_v2_live_for_user() && ! fsa_v2_wants_old();
 }
 add_action( 'template_redirect', function () {
 	if ( ! fsa_v2_takes_account_page() ) return;
@@ -1018,6 +1023,7 @@ html body.fsa-v2{overflow-x:clip}
 :is(#fsa,#fsa-layer) .pop-menu a{display:block;width:100%;padding:9px 12px;border-radius:6px;font-size:15px;cursor:pointer;white-space:nowrap;text-align:start}
 :is(#fsa,#fsa-layer) .pop-menu a:hover,:is(#fsa,#fsa-layer) .pop-menu a:focus-visible{background:var(--soft)}
 #fsa-layer{width:auto;height:0;margin:0;padding:0;background:none;position:static}
+:is(#fsa,#fsa-layer) .tbl tbody tr td.hint{font-weight:400;font-size:15px;color:var(--muted)}
 :is(#fsa,#fsa-layer) .pop.up .pop-menu{top:auto;bottom:calc(100% + 6px)}
 :is(#fsa,#fsa-layer) .wsel-menu .wrow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:6px 6px 6px 4px;border-radius:6px}
 :is(#fsa,#fsa-layer) .wsel-menu .wrow+.wrow{border-top:1px solid #F0F0F0}

@@ -14,6 +14,9 @@ function add_action( ...$a ) {} function add_filter( ...$a ) {} function add_sho
 function is_user_logged_in() { return (bool) $GLOBALS["u"]; } function wp_get_current_user() { return $GLOBALS["u"]; }
 function current_user_can( $c ) { return ! empty( $GLOBALS["admin"] ); } function is_account_page() { return true; }
 function is_wc_endpoint_url() { return ! empty( $GLOBALS["ep"] ); } function is_ssl() { return true; }
+function untrailingslashit( $s ) { return rtrim( $s, "/" ); } function wp_parse_url( $u, $c = -1 ) { return parse_url( $u, $c ); } function wp_unslash( $s ) { return $s; }
+function wc_get_page_permalink( $p ) { return "https://fontshok.co.il/my-account/"; }
+if ( ! isset( $_SERVER["REQUEST_URI"] ) ) $_SERVER["REQUEST_URI"] = "/my-account/";
 ' . $src . '
 echo fsa_v2_takes_account_page() ? "NEW" : "OLD";';
 	$f = tempnam( sys_get_temp_dir(), 'fsa' ); file_put_contents( $f, $stub );
@@ -32,6 +35,8 @@ $cases = array(
 	array( 'OLD', 'all', '', $cust, '$_COOKIE["fsa_old"]="1";', 'a customer who chose the previous area keeps it' ),
 	array( 'OLD', 'all', '', $cust, '$_GET["fsa_old"]="1";', '?fsa_old=1 switches to the previous area' ),
 	array( 'NEW', 'all', '', $cust, '$_COOKIE["fsa_old"]="1";$_GET["fsa_old"]="0";', '?fsa_old=0 switches back to the new one' ),
+	array( 'OLD', 'all', '', $cust, '$_SERVER["REQUEST_URI"]="/my-account/domains/";', 'a plugin\'s own sub-page (the old Domains tab) stays as it is' ),
+	array( 'NEW', 'all', '', $cust, '$_SERVER["REQUEST_URI"]="/my-account/?utm_source=mail";', '/my-account/ with a query string still gets the new area' ),
 );
 foreach ( $cases as $c ) { $got = $run( $c[1], $c[2], $c[3], $c[4] ); $t( $c[0] === $got, $c[5], $got ); }
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n"; exit( $fail ? 1 : 0 );
