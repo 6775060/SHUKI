@@ -7,6 +7,8 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
+// build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
+define( 'FSA_V2_BUILD', '86' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -554,7 +556,7 @@ function fsa_v2_data() {
 		'domains' => fsa_v2_domains( $uid ), 'domainFonts' => fsa_v2_domain_fonts(),
 		'bonus' => fsa_v2_bonus_sub( $uid, (int) current_time( 'Y' ), (int) current_time( 'n' ) ), 'extra' => fsa_v2_deal_extra( $uid ), 'addon' => (bool) fsa_v2_addon_product(),
 		'domAjax' => admin_url( 'admin-ajax.php' ), 'domNonce' => wp_create_nonce( 'fsa_v2_dom' ),
-		'mode' => isset( $GLOBALS['fsa_v2_mode'] ) ? $GLOBALS['fsa_v2_mode'] : 'preview', 'oldUrl' => add_query_arg( 'fsa_old', '1', function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ) ),
+		'build' => current_user_can( 'manage_options' ) ? FSA_V2_BUILD : '', 'mode' => isset( $GLOBALS['fsa_v2_mode'] ) ? $GLOBALS['fsa_v2_mode'] : 'preview', 'oldUrl' => add_query_arg( 'fsa_old', '1', function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ) ),
 		'plan' => $plan, 'planStart' => $start, 'nextPay' => '', 'card' => '',
 		'fonts' => $fonts, 'lic' => $lic, 'orders' => $orders,
 		'user' => array(
@@ -2050,7 +2052,7 @@ document.addEventListener('input',e=>{if(e.target.dataset.namefor){const n=docum
 document.addEventListener('input',e=>{if(e.target.id==='sd2')$('#sdErr').hidden=true});
 document.addEventListener('input',e=>{if(e.target.id==='oq'){const q=e.target.value.trim().replace('#','');document.querySelectorAll('#otb tr[data-oid]').forEach(r=>r.hidden=q&&!r.dataset.oid.includes(q))}});
 $('#fsaName').textContent=FS.user.first||'';
-if(FS.mode==='live'){const n=$('#fsaNote');if(n)n.innerHTML=`<a href="${ea(FS.oldUrl)}">למעבר לאזור האישי הקודם</a>`}
+if(FS.mode==='live'){const n=$('#fsaNote');if(n)n.innerHTML=`<a href="${ea(FS.oldUrl)}">למעבר לאזור האישי הקודם</a>${FS.build?` <span class="fsa-build">· גרסה ${ea(FS.build)}</span>`:''}`}
 const h=new Date().getHours();$('#greet').textContent=h<5?'לילה טוב':h<12?'בוקר טוב':h<17?'צהריים טובים':h<21?'ערב טוב':'לילה טוב';
 document.querySelectorAll('i[data-ic]').forEach(e=>{const w=document.createElement('span');w.className='ic-wrap '+(e.className||'');if(e.title)w.title=e.title;w.innerHTML=ICON[e.dataset.ic];e.replaceWith(w)});
 render({page:true});
