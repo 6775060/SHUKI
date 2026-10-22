@@ -129,7 +129,7 @@ for(const w of [390,1280]){
   if(desk.tabs)bad(`${w} desktop plan still shows the domain tabs`);if(desk.th.includes('פורמט לאתרים'))bad(`${w} desktop plan still has a web column`);if(!desk.th.includes('פורמט לדסקטופ'))bad(`${w} desktop plan lost the desktop column`);
   const ex=await variant('extra',s=>s.replace('"plan":"web"','"plan":"extra"'));if(ex.tabs!==2||!ex.th.includes('פורמט לאתרים'))bad(`${w} extra plan: tabs ${ex.tabs}, columns ${ex.th}`);
   const np=await variant('none',s=>s.replace('"plan":"web"','"plan":""'));
-  if(np.offers.length!==3||!np.offers[0].startsWith('וובסטופ|https://example.com/web')||!(np.offers[1].startsWith('אקסטרה')&&np.offers[1].endsWith('|https://example.com/extra')))bad(`${w} no-subscription offers: ${np.offers}`)}
+  const ok=(i,n,h)=>np.offers[i]&&np.offers[i].startsWith(n)&&np.offers[i].endsWith('|'+h);if(np.offers.length!==3||!ok(0,'וובסטופ','https://example.com/web')||!ok(1,'אקסטרה','https://example.com/extra')||!np.offers[2].startsWith('דסקטופ'))bad(`${w} no-subscription offers: ${np.offers}`)}
  // special arrangement: the quota shown includes the extra domains
  {const fs=require('fs');const src=fs.readFileSync(S+'/page-plain.html','utf8').replace('"bonus":0','"bonus":0,"extra":2');fs.writeFileSync(S+'/page-deal.html',src);
   const dp=await b.newPage({viewport:{width:w,height:800}});await dp.goto('file://'+S+'/page-deal.html');await dp.waitForTimeout(400);await dp.evaluate(()=>document.querySelector('#fsa [data-subtab="reg"]').click());await dp.waitForTimeout(400);

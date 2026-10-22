@@ -1251,7 +1251,8 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .offer::after{content:"";position:absolute;inset-inline-end:0;top:0;bottom:0;width:14px;background:var(--c-web)}
 :is(#fsa,#fsa-layer) .offer-web{background:linear-gradient(90deg,#EEF3FF,#ECF8F2)}
 :is(#fsa,#fsa-layer) .offer-extra{background:linear-gradient(90deg,#F1EDFF,#F6EEFF)}:is(#fsa,#fsa-layer) .offer-extra::after{background:var(--c-extra)}
-:is(#fsa,#fsa-layer) .offer-acad{background:linear-gradient(90deg,#FFF6EE,#FFFBE6)}:is(#fsa,#fsa-layer) .offer-acad::after{background:linear-gradient(135deg,#FFE27A,#F5A623)}
+:is(#fsa,#fsa-layer) .offer-desk{background:linear-gradient(90deg,#FFF0F3,#FFF5EF)}:is(#fsa,#fsa-layer) .offer-desk::after{background:var(--c-desk)}
+:is(#fsa,#fsa-layer) .offer .of-line{font-size:14px;color:var(--muted);margin-top:1px}
 :is(#fsa,#fsa-layer) .offer .of-id{display:flex;align-items:center;gap:14px;min-width:0}
 :is(#fsa,#fsa-layer) .offer .of-id>img{width:52px;height:52px;flex:none}
 :is(#fsa,#fsa-layer) .offer .of-name{font-size:19px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -1260,7 +1261,6 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .offer .of-uses span{font-size:13px;background:rgba(255,255,255,.75);border-radius:99px;padding:1px 10px;color:var(--ink)}
 :is(#fsa,#fsa-layer) .offer .of-price{display:flex;flex-direction:column;line-height:1.3}
 :is(#fsa,#fsa-layer) .offer .of-price b{font-size:22px;font-weight:700}
-:is(#fsa,#fsa-layer) .offer .of-price b.of-free{font-size:17px}
 :is(#fsa,#fsa-layer) .offer .of-price span{font-size:14px;color:var(--muted)}
 :is(#fsa,#fsa-layer) .offer .of-price small{font-size:13px;color:var(--muted);margin-top:2px}
 :is(#fsa,#fsa-layer) .offer .of-cta{border-radius:99px;height:44px;padding:0 26px;min-width:150px;text-decoration:none}
@@ -1491,18 +1491,19 @@ V.subs=(tab)=>`
  </div>
  ${tab==='dl'?subsDownloads()+fontNote():subsDomains()}`:`<h2 class="h2-sec dl-only-h">פונטים להורדה</h2>${subsDownloads()+fontNote()}`}`;
 
-/* no subscription yet: the plans on offer (barter and desktop are not offered here). Prices as on the pricing page */
+/* no subscription yet: the plans on offer, as on the pricing page (academic is offered only after a request form, so it is not listed).
+   Prices: the pricing page (before VAT). Desktop has no public price: its button leads to the pricing page */
 const OFFER=[
- {k:'web',name:'וובסטופ',uses:['אתרים','דסקטופ'],price:'₪280',per:'לחודש',term:'התחייבות לשנתיים',cta:'להצטרפות',href:()=>FS.links&&FS.links.web},
- {k:'extra',name:'אקסטרה',uses:['אתרים','דסקטופ','אפליקציה','שידור'],price:'₪550',per:'לחודש',term:'התחייבות לשנתיים',cta:'להצטרפות',href:()=>FS.links&&FS.links.extra,top:'הכי מקיף'},
- {k:'acad',name:'אקדמיק',uses:['אתרים','דסקטופ'],price:'',per:'',term:'שנת לימודים אחת, לשימוש אקדמי',cta:'לבקשת מינוי',href:()=>FS.links&&FS.links.acad}
+ {k:'web',name:'וובסטופ',line:'תכנית מורחבת לאתרים ולדסקטופ',uses:['דסקטופ','פלט ותנועה','UI/UX','אתרים · 3 דומיינים בחודש'],price:'₪320',cta:'להצטרפות',href:()=>FS.links&&FS.links.web,top:'תוכנית מומלצת'},
+ {k:'extra',name:'אקסטרה',line:'תכנית חופשית ללא הגבלה',uses:['דסקטופ','פלט ותנועה','UI/UX','אתרים ללא הגבלה','אפליקציות','תשדיר'],price:'₪680',cta:'להצטרפות',href:()=>FS.links&&FS.links.extra},
+ {k:'desk',name:'דסקטופ',line:'מינוי לעבודה בתוכנות במחשב',uses:['דסקטופ','פלט ותנועה'],price:'',cta:'לפרטים',href:()=>FS.links&&FS.links.deskSub}
 ];
 const PRICING='https://fontshok.co.il/מחירון-רישיונות-ומנויים/';
-const noPlan=()=>`<div class="head-row"><div><h1 class="h1">המינוי שלי</h1><p class="sub">עוד אין לך מינוי. במינוי מקבלים את כל הפונטים להורדה, עם רישיון שימוש חופשי לפי סוג המינוי.</p></div></div>
+const noPlan=()=>`<div class="head-row"><div><h1 class="h1">המינוי שלי</h1><p class="sub">עוד אין לך מינוי. במינוי מקבלים את כל הפונטים להורדה, עם רישיון שימוש לפי סוג המינוי.</p></div></div>
  <div class="offers">${OFFER.map(o=>`<div class="offer offer-${o.k}">
-  <div class="of-id">${logo(o.k,'')}<div><div class="of-name">${o.name}${o.top?` <span class="of-top">${o.top}</span>`:''}</div><div class="of-uses">${o.uses.map(u=>`<span>${u}</span>`).join('')}</div></div></div>
-  <div class="of-price">${o.price?`<b class="num">${o.price}</b> <span>${o.per}</span>`:'<b class="of-free">מחיר מיוחד</b>'}<small>${o.term}</small></div>
-  <a class="btn ${o.k==='acad'?'btn-line':'btn-grad'} of-cta" href="${ea(o.href()||PRICING)}">${o.cta}</a>
+  <div class="of-id">${logo(o.k,'')}<div><div class="of-name">${o.name}${o.top?` <span class="of-top">${o.top}</span>`:''}</div><div class="of-line">${o.line}</div><div class="of-uses">${o.uses.map(u=>`<span>${u}</span>`).join('')}</div></div></div>
+  <div class="of-price">${o.price?`<b class="num">${o.price}</b><small>לחודש, לא כולל מע״מ</small>`:'<small>המחיר בעמוד המינויים</small>'}</div>
+  <a class="btn ${o.price?'btn-grad':'btn-line'} of-cta" href="${ea(o.href()||PRICING)}">${o.cta}</a>
  </div>`).join('')}</div>
  <a class="of-more" href="${PRICING}">כל הפרטים על המינויים והרישיונות</a>`;
 const _subs=V.subs;V.subs=tab=>FS.plan?_subs(tab):noPlan();
