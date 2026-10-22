@@ -100,8 +100,8 @@ function fsa_v2_plan_info( $u ) {
 	elseif ( in_array( 'member-webstop', $roles, true ) )   $plan = 'web';
 	elseif ( in_array( 'member-academic', $roles, true ) )  $plan = 'acad';
 	elseif ( in_array( 'member-desktop', $roles, true ) )   $plan = 'desk';
-	elseif ( in_array( 'member-barter', $roles, true ) )    $plan = 'barter'; // given by arrangement, like desktop, not for sale
-	$desktop_only = ( in_array( 'member-desktop', $roles, true ) || in_array( 'member-barter', $roles, true ) ) && ! in_array( 'member-webstop', $roles, true ) && ! in_array( 'member-extra', $roles, true );
+	elseif ( in_array( 'member-barter', $roles, true ) )    $plan = 'barter'; // given by arrangement, same as Webstop, not for sale
+	$desktop_only = in_array( 'member-desktop', $roles, true ) && ! in_array( 'member-webstop', $roles, true ) && ! in_array( 'member-extra', $roles, true ) && ! in_array( 'member-barter', $roles, true );
 	return array( $plan, $desktop_only );
 }
 
@@ -178,7 +178,7 @@ function fsa_v2_eft_table() {
 	return $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) === $t ? $t : '';
 }
 function fsa_v2_domain_limit( $plan ) {
-	return 'extra' === $plan ? 0 : ( 'web' === $plan ? 3 : -1 ); // 0 = unlimited, -1 = no domains in this plan
+	return 'extra' === $plan ? 0 : ( in_array( $plan, array( 'web', 'barter' ), true ) ? 3 : -1 ); // 0 = unlimited, -1 = no domains in this plan
 }
 function fsa_v2_domains( $uid ) {
 	global $wpdb;
@@ -439,7 +439,7 @@ function fsa_v2_data() {
 	elseif ( in_array( 'member-webstop', $roles, true ) )   $plan = 'web';
 	elseif ( in_array( 'member-academic', $roles, true ) )  $plan = 'acad';
 	elseif ( in_array( 'member-desktop', $roles, true ) )   $plan = 'desk';
-	elseif ( in_array( 'member-barter', $roles, true ) )    $plan = 'barter'; // given by arrangement, like desktop, not for sale
+	elseif ( in_array( 'member-barter', $roles, true ) )    $plan = 'barter'; // given by arrangement, same as Webstop, not for sale
 
 	$start = '';
 	$raw = get_user_meta( $uid, 'membership-date', true ); // d/m/Y (snippet #8)
@@ -451,7 +451,7 @@ function fsa_v2_data() {
 	// subscription fonts (ACF option repeater, same rules as snippet #7)
 	$fonts = array();
 	if ( $plan && function_exists( 'get_field' ) ) {
-		$desktop_only = ( in_array( 'member-desktop', $roles, true ) || in_array( 'member-barter', $roles, true ) ) && ! in_array( 'member-webstop', $roles, true ) && ! in_array( 'member-extra', $roles, true );
+		$desktop_only = in_array( 'member-desktop', $roles, true ) && ! in_array( 'member-webstop', $roles, true ) && ! in_array( 'member-extra', $roles, true ) && ! in_array( 'member-barter', $roles, true );
 		foreach ( (array) get_field( 'fonts-repeater', 'option' ) as $row ) {
 			if ( empty( $row['font-name'] ) ) continue;
 			$fonts[] = array(
@@ -1383,7 +1383,7 @@ const SUBS={
  app:{name:'רכישה בודדת',en:'App license',logo:'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNTEwLjcyIDUxMC43MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjEuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS4xIEJ1aWxkIDEzNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiB1cmwoI2xpbmVhci1ncmFkaWVudDEpOwogICAgICB9CgogICAgICAuc3QxIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICAgIHN0cm9rZTogdXJsKCNsaW5lYXItZ3JhZGllbnQpOwogICAgICAgIHN0cm9rZS13aWR0aDogOXB4OwogICAgICB9CiAgICA8L3N0eWxlPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJsaW5lYXItZ3JhZGllbnQiIHgxPSIzODMuMDYiIHkxPSI0NzUuNzEiIHgyPSIxMjcuNjYiIHkyPSIzMy4zNCIgZ3JhZGllbnRUcmFuc2Zvcm09InRyYW5zbGF0ZSgwIDUwOS44OSkgc2NhbGUoMSAtMSkiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmY5YThiIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2UzMTY2ZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0ibGluZWFyLWdyYWRpZW50MSIgeDE9IjM2Mi42OSIgeTE9IjE4OC42OSIgeDI9IjEzNi41MyIgeTI9IjM5OS44MyIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjlhOGIiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIuODUiIHN0b3AtY29sb3I9IiNlMzE2NmYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxjaXJjbGUgY2xhc3M9InN0MSIgY3g9IjI1NS4zNiIgY3k9IjI1NS4zNiIgcj0iMjUwLjg2Ii8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTM0MC44NCwyOTAuODFjMC00NC4xOCw1Ljk4LTEyMC4yMyw4LjA5LTE2MC4xNGwtNDYuMzUtMjEuMzMtMi4zMy0uMDUtNC43Miw5OC43OC0uOTkuMDZjLTIyLjg4LTMxLjk3LTQzLjQ1LTQyLjA3LTc1LjAxLTQyLjA3LTU3LjE5LDAtOTQuNjYsNTEuNjctOTQuNjYsMTE1LjYxczM5LjM1LDEwMy43OSw5MC44NiwxMDMuNzljMzQuODcsMCw1NC40NS0xNS41NSw3Ny44Ny00OS44OSwzLjYyLDE5LjczLDcuMzcsMzUuODQsMTEuMjUsNDcuNDVoNTEuMjhsLjExLTIuMDNjLTEwLjI3LTMwLjA4LTE1LjQtNTkuOC0xNS40LTkwLjE4Wk0yMjMuMjEsMzQzLjMzYy0yOS4zOCwwLTQ4LjQ2LTIyLjM3LTQ4LjQ2LTY2LDAtNDkuNjcsMjguMDgtNzIuNzEsNTIuMjgtNzMuNzQsNTAuMjItMi4xMiw2NC45NCw1OC44Nyw2NC43OSw3NS43OS0yOS44NCw0OS42My00OC40NCw2My45NS02OC42MSw2My45NVoiLz4KPC9zdmc+'}
 };
 /* domains registered under the SUBSCRIPTION (quota belongs to the plan, not to a font) */
-const PLAN={web:{n:3,label:'וובסטופ',desc:'מינוי לאתרים ולדסקטופ'},extra:{n:0,label:'אקסטרה',desc:'מינוי לאתרים לדסקטופ ולאפליקציה'},desk:{n:0,label:'דסקטופ',desc:'מינוי דסקטופ'},acad:{n:0,label:'אקדמיק',desc:'מינוי לסטודנטים'},barter:{n:0,label:'בארטר',desc:'מינוי לדסקטופ'}};
+const PLAN={web:{n:3,label:'וובסטופ',desc:'מינוי לאתרים ולדסקטופ'},extra:{n:0,label:'אקסטרה',desc:'מינוי לאתרים לדסקטופ ולאפליקציה'},desk:{n:0,label:'דסקטופ',desc:'מינוי דסקטופ'},acad:{n:0,label:'אקדמיק',desc:'מינוי לסטודנטים'},barter:{n:3,label:'בארטר',desc:'מינוי לאתרים ולדסקטופ'}};
 /* older months = history (closed & kept, scrollable back through the years) */
 const OLDDOM=[['22.09.2026','סטודיו לוי','studio-levi.co.il','טאלנט'],['20.09.2026','חנות הבד','bad.co.il','אומץ'],['04.08.2026','קמפיין קיץ','summer-sale.co.il','דיסקברי'],['11.07.2026','גן ילדים שקד','shaked-kids.co.il','פריימריז, פורטו'],['02.05.2026','משרד עו״ד כהן','cohen-law.co.il','יזכור פרו'],['18.02.2026','מאפיית הכפר','hakfar.co.il','אומץ, טאלנט'],['09.12.2025','עמותת אור','or-org.org.il','פורטו'],['21.10.2025','סטודיו מור','mor-studio.co.il','דיסקברי, טאלנט'],['05.06.2025','כנס עיצוב 2025','design-conf.co.il','פריימריז'],['14.03.2025','קפה גינה','gina-cafe.co.il','אומץ'],['30.11.2024','חנות הספרים','books-il.co.il','יזכור פרו, פורטו'],['08.07.2024','מגזין אדריכלות','arch-mag.co.il','טאלנט']];
 const SUBDOM={web:[['03.10.2026','סטודיו דיין','studio-dayan.co.il','פורטו, טאלנט'],['14.10.2026','מגזין עגלה','agala.co.il','דיסקברי, פורטו'],...OLDDOM.map(r=>r.slice())],extra:[['03.10.2026','סטודיו דיין','studio-dayan.co.il','פורטו, טאלנט'],['14.10.2026','מגזין עגלה','agala.co.il','דיסקברי, פורטו'],['12.10.2026','אדריכלות בע״מ','fontshok.co.il','פורטו'],...OLDDOM.map(r=>r.slice())]};
@@ -1458,7 +1458,7 @@ Object.keys(SUBDOM).forEach(k=>SUBDOM[k]=[]);HISTORY.length=0;
 /* the subscription's domains come from the site (the Easy Font Table records): [date, name, address, fonts, id] */
 SUBDOM[FS.plan||'web']=(FS.domains||[]).map(r=>r.slice());
 const DOMF=(FS.domainFonts&&FS.domainFonts.length)?FS.domainFonts:FAMILY.map(f=>f[0]);
-const DOM_PLANS=['web','extra'];
+const DOM_PLANS=['web','extra','barter'];
 BONUS=FS.bonus||0;EXTRA=FS.extra||0;
 /* a site on a purchased licence: [date, name, address, id]; id '' = registered at checkout, fixed */
 const licFixed=(i,j)=>{const s=(LIC[i]&&LIC[i].sites[j])||[];return s.length>3&&!s[3]};
@@ -1564,7 +1564,7 @@ function weightPick(f,n,ws){
 function subsDownloads(){
 const dlA=(u,f,k,lbl)=>u?`<a class="dl" href="${ea(u)}" aria-label="הורדת ${ea(f)} ${k}" download>${ICON.dl}<span class="dl-k">${lbl}</span></a>`:'<span class="hint" style="margin:0">—</span>';
  if(!FAMILY.length)return `<p class="empty">אין כרגע פונטים להורדה במינוי.</p>`;
- const hasW=FAMILY.some(x=>x[1]>0),web=FAMILY.some(x=>x[2]||(x[4]||[]).some(w=>w.web)); /* desktop-only plans (desktop, barter): no web column */
+ const hasW=FAMILY.some(x=>x[1]>0),web=FAMILY.some(x=>x[2]||(x[4]||[]).some(w=>w.web)); /* desktop-only plan: no web column */
  return `<div class="tbl-wrap lic-wrap"><table class="tbl dl-tbl${hasW?'':' no-w'}${web?'':' no-web'}"><thead><tr><th>שם הפונט</th><th>${hasW?'משקלים':''}</th>${web?'<th>פורמט לאתרים</th>':''}<th>פורמט לדסקטופ</th>${hasW?'<th>הורדה לפי משקל</th>':''}</tr></thead><tbody>
  ${FAMILY.map(([f,n,w,d,ws])=>`<tr><td>${ea(f)}</td><td class="num wcount">${n?n+' משקלים':''}</td>
  ${web?`<td>${dlA(w,f,'לאתרים','אתרים')}</td>`:''}

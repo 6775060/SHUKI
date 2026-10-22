@@ -73,8 +73,10 @@ $t( ! $call( array( 'op' => 'del', 'id' => 950 ) )->ok && in_array( 'other.co.il
 $GLOBALS['user']->roles = array( 'customer', 'member-extra' );
 $ok = true; foreach ( array( 'e1', 'e2', 'e3', 'e4', 'e5' ) as $h ) $ok = $ok && $add( "$h.co.il" )->ok; $t( $ok, 'extra: unlimited domains' );
 $GLOBALS['user']->roles = array( 'customer', 'member-desktop' ); $t( ! $add( 'z.co.il' )->ok, 'desktop plan: no domains' );
-$GLOBALS['user']->roles = array( 'customer', 'member-barter' ); $t( ! $add( 'z.co.il' )->ok, 'barter plan: no domains' );
-$t( array( 'barter', true ) === fsa_v2_plan_info( $GLOBALS['user'] ), 'barter: a desktop-only subscription' );
+$GLOBALS['user']->roles = array( 'customer', 'member-barter' ); $GLOBALS['user']->ID = 9;
+$t( array( 'barter', false ) === fsa_v2_plan_info( $GLOBALS['user'] ), 'barter: same as Webstop (web files too)' );
+$t( $add( 'b1.co.il' )->ok && $add( 'b2.co.il' )->ok && $add( 'b3.co.il' )->ok && ! $add( 'b4.co.il' )->ok, 'barter: 3 domains a month, like Webstop' );
+$GLOBALS['user']->ID = 7;
 $GLOBALS['user']->roles = array( 'customer' ); $t( ! $add( 'z.co.il' )->ok, 'no subscription: refused' );
 $GLOBALS['user']->roles = array( 'customer', 'member-webstop' ); $GLOBALS['nonce_ok'] = false; $t( ! $add( 'z.co.il' )->ok, 'bad nonce refused' );
 $GLOBALS['nonce_ok'] = true; $GLOBALS['user']->user_login = 'someone'; $GLOBALS['user']->ID = 8; $GLOBALS['user']->roles = array( 'customer', 'member-webstop' );
