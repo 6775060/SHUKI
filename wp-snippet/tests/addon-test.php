@@ -31,7 +31,7 @@ function wc_create_order( $a ) { return new Order( $a['customer_id'] ); }
 function wc_add_order_item_meta( $i, $k, $v ) { foreach ( $GLOBALS['orders'] as $o ) { if ( isset( $o->items[ $i ] ) && end( $GLOBALS['orders'] ) === $o ) { $o->items[ $i ]->meta[ $k ] = $v; } } }
 function wc_get_order( $id ) { if ( 1 === $id ) { $o = new stdClass(); return new class { function get_meta( $k ) { return '_fs_domain' === $k ? 'checkout-site.co.il' : ''; } }; } return $GLOBALS['orders'][ $id ] ?? null; }
 class WC_Order {}
-eval( str_replace( "define( 'FSA_V2_ADDON_PRODUCT', 0 );", "define( 'FSA_V2_ADDON_PRODUCT', 900 );", file_get_contents( __DIR__ . '/../fsa-v2-snippet.php' ) ) );
+eval( preg_replace( "/define\( 'FSA_V2_ADDON_PRODUCT', \d+ \);/", "define( 'FSA_V2_ADDON_PRODUCT', 900 );", file_get_contents( __DIR__ . '/../fsa-v2-snippet.php' ) ) );
 
 $fail = 0; $t = function ( $ok, $m ) use ( &$fail ) { echo ( $ok ? 'ok   ' : 'FAIL ' ) . $m . "\n"; if ( ! $ok ) $fail++; };
 $call = function ( $fn, $post ) { $_POST = $post; try { $fn(); } catch ( Done $d ) { return $d; } return null; };

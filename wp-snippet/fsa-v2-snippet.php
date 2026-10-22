@@ -16,7 +16,7 @@ define( 'FSA_V2_LIVE_FOR', 'subscribers' );
 // for 'list': usernames or emails, separated by commas
 define( 'FSA_V2_LIVE_USERS', '' );
 // the ₪79 additional domain: ID of a hidden virtual WooCommerce product. 0 = not offered yet (the button says "next stage")
-define( 'FSA_V2_ADDON_PRODUCT', 0 );
+define( 'FSA_V2_ADDON_PRODUCT', 22751 );
 // ─────────────────────────────────────────────────────────────────────────
 
 function fsa_v2_is_tester() {
