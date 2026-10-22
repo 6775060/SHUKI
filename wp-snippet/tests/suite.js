@@ -50,6 +50,7 @@ for(const w of [390,1280]){
  if(!['קל','דמוי מודגש','שחור','דקיק','בינוני'].every(x=>cb.includes(x))||!cb.includes('אזכור'))bad(`${w} certificate does not list all weights`);
  if(cb.includes('26.01.2023'))bad(`${w} certificate shows the made-up demo date`);
  if(!/מספר תעודה\s*FS-L-\d+/.test(cb)||cb.includes('לא בתוקף'))bad(`${w} certificate has no fixed number`);
+ if(await p.evaluate(()=>!!document.querySelector('#certBody .cert-head img')))bad(`${w} a purchased-font certificate shows a subscription logo`);
  await p.evaluate(()=>document.querySelector('#certClose').click());await p.waitForTimeout(450);
  if(!(await p.evaluate(()=>document.querySelector('#certModal').hidden)))bad(`${w} certificate does not close`);
  // PDF: the browser's print dialog
@@ -118,6 +119,13 @@ for(const w of [390,1280]){
  if(p.url()!==url0)bad(`${w} order details left the page`);if(!(await p.locator('#fsa .otbl tr.drawer').count()))bad(`${w} order details did not open`);
  if(await p.locator('#fsa .otbl a[href*="/o/"]').count())bad(`${w} a link still leads to the old order page`);
  await go('orders');const ol=await p.locator('#fsa .otbl a[href]').evaluateAll(a=>a.map(x=>x.getAttribute('href')));if(!ol.length)bad(`${w} orders have no links`);
+ // no purchased fonts: the empty state with its art and the way to the shop, inside the screen
+ const fs=require('fs');const src=fs.readFileSync(S+'/page-theme.html','utf8');const cut=src.replace(/"lic":\[.*?\],"orders"/s,'"lic":[],"orders"');if(cut===src)bad(`${w} could not empty the purchases for the empty-state check`);fs.writeFileSync(S+'/page-empty.html',cut);
+ const ep=await b.newPage({viewport:{width:w,height:800}});const eerr=[];ep.on('pageerror',e=>eerr.push(e.message));await ep.goto('file://'+S+'/page-empty.html');await ep.waitForTimeout(400);
+ await ep.evaluate(()=>document.querySelector('#fsa .side button[data-view="lic"]').click());await ep.waitForTimeout(500);
+ const le=await ep.evaluate(()=>{const e=document.querySelector('#fsa .lic-empty');if(!e)return null;const r=e.getBoundingClientRect(),a=e.querySelector('.le-art').getBoundingClientRect(),c=e.querySelector('.le-cta');return {l:r.left,r:r.right,art:a.width,href:c&&c.getAttribute('href'),grad:c&&getComputedStyle(c).backgroundImage.includes('gradient'),ov:document.documentElement.scrollWidth-innerWidth}});
+ if(!le)bad(`${w} no empty state when nothing was bought`);else{if(le.l<0||le.r>w+1||le.ov>1)bad(`${w} empty state leaves the screen`);if(le.art<150)bad(`${w} empty state art too small (${le.art})`);if(le.href!=='https://example.com/shop')bad(`${w} empty state CTA goes to ${le.href}`);if(!le.grad)bad(`${w} empty state CTA lost its gradient`)}
+ if(eerr.length)bad(`${w} empty state JS errors: ${eerr}`);await ep.screenshot({path:`${S}/lic-empty-${w}.png`,fullPage:true});await ep.close();
  for(const v of ['plain','theme'])if(pages[v].errs.length)bad(`${w} ${v} JS errors: ${pages[v].errs}`);
 }
 console.log(fails.length?'FAIL\n'+fails.join('\n'):'ALL PASSED');await b.close()})();

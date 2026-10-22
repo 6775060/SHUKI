@@ -1009,8 +1009,9 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .sec-row + .tbl-wrap + .hist-toggle{margin-top:36px}
 @media (max-width:760px){:is(#fsa,#fsa-layer) .sec-row .sec-note{order:3;flex-basis:100%;margin:0;font-size:13px}}
 :is(#fsa,#fsa-layer) .lock-note .linkbtn{font-size:13px}
+:is(#fsa,#fsa-layer) .lock-note.lock-end{justify-content:flex-end}
 :is(#fsa,#fsa-layer) .h2-sec{font-size:18px;font-weight:700;margin:8px 0 12px;display:flex;align-items:baseline;gap:10px}
-:is(#fsa,#fsa-layer) .hist-toggle{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;margin-top:14px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+:is(#fsa,#fsa-layer) .hist-toggle{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;margin-top:14px;padding:14px 0}
 :is(#fsa,#fsa-layer) .hist-toggle .icon{width:20px;height:20px;color:var(--muted);transition:transform .6s var(--ease),color .3s var(--ease)}
 :is(#fsa,#fsa-layer) .hist-toggle:hover .icon{color:var(--violet)}
 :is(#fsa,#fsa-layer) .hist-toggle[aria-expanded="true"] .icon{transform:rotate(180deg);color:var(--violet)}
@@ -1191,6 +1192,22 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .toast{z-index:100001}
 :is(#fsa,#fsa-layer) .live-note{margin:0 4px 10px;font-size:12px;color:var(--muted)}
 :is(#fsa,#fsa-layer) .empty{padding:30px 0;color:var(--muted)}
+:is(#fsa,#fsa-layer) .lic-empty{display:flex;align-items:center;gap:40px;margin-top:28px;padding:32px 40px;background:#FAF6FE;border:1px solid #F1E8FB;border-radius:20px}
+:is(#fsa,#fsa-layer) .lic-empty .le-art{flex:none;width:260px;height:auto;display:block}
+:is(#fsa,#fsa-layer) .lic-empty .le-sp{transform-box:fill-box;transform-origin:center;animation:leTw 3.2s ease-in-out infinite}
+@keyframes leTw{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.7)}}
+:is(#fsa,#fsa-layer) .lic-empty .le-txt{max-width:420px}
+:is(#fsa,#fsa-layer) .lic-empty .le-t{font-size:25px;font-weight:700;line-height:1.3;margin:0 0 8px;color:var(--ink)}
+:is(#fsa,#fsa-layer) .lic-empty .le-p{font-size:16px;color:var(--muted);margin:0 0 22px}
+:is(#fsa,#fsa-layer) .lic-empty .le-acts{display:flex;align-items:center;flex-wrap:wrap;gap:12px 22px}
+:is(#fsa,#fsa-layer) .lic-empty .le-cta{border-radius:99px;height:44px;padding:0 28px;text-decoration:none}
+:is(#fsa,#fsa-layer) .lic-empty .le-cta:hover{filter:brightness(.97)}
+:is(#fsa,#fsa-layer) .lic-empty .le-link{font-size:15px;color:var(--violet);text-decoration:underline;text-underline-offset:3px}
+@media (max-width:760px){:is(#fsa,#fsa-layer) .lic-empty{flex-direction:column;text-align:center;gap:18px;margin-top:20px;padding:24px 18px}
+:is(#fsa,#fsa-layer) .lic-empty .le-art{width:min(220px,100%)}
+:is(#fsa,#fsa-layer) .lic-empty .le-t{font-size:22px}
+:is(#fsa,#fsa-layer) .lic-empty .le-acts{flex-direction:column;gap:14px}
+:is(#fsa,#fsa-layer) .lic-empty .le-cta{width:100%}}
 @media (max-width:760px){:is(#fsa,#fsa-layer) .side{top:0}}
 .fsa-v2 .page-header,.fsa-v2 .entry-title{display:none}
 html body.fsa-v2{overflow-x:clip}
@@ -1431,7 +1448,7 @@ function subsDomains(){
  <div class="tbl-wrap"><table class="tbl dom-tbl reg-tbl">${DOM_THEAD}<tbody>
  ${list.map(subRow).filter(r=>canEdit(r.s[0])).sort((a,b)=>parseD(b.s[0])-parseD(a.s[0])).map(domRow).join('')||`<tr><td colspan="5" class="hint" style="padding:18px 0">עוד לא נרשמו דומיינים החודש</td></tr>`}
  </tbody></table></div>
- <p class="hint lock-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</p>`;
+ <p class="hint lock-note lock-end">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</p>`;
 }
 function quotaFullPlan(){
  return `<div class="quota-line">
@@ -1466,7 +1483,40 @@ const dlA=(u,f,k,lbl)=>u?`<a class="dl" href="${ea(u)}" aria-label="הורדת $
    web licenses also show their own domain counter and open a drawer to register. No tabs. */
 V.lic=(tab,open)=>`
  <div class="head-row"><div><h1 class="h1">פונטים שלי</h1><p class="sub">פונטים שקנית בנפרד, מחוץ למינוי.</p></div>${LIC.length?licFilterBar():''}</div>
- ${LIC.length?licTable(open):`<p class="empty">עוד לא רכשת פונטים בנפרד.</p>`}`;
+ ${LIC.length?licTable(open):licEmpty()}`;
+
+/* no purchased fonts yet: a specimen card with an outlined aleph (anchor points, a pen handle) and the way to the shop */
+function licEmpty(){
+ const sp=(x,y,r,c)=>`<path class="le-sp" style="animation-delay:${(x%7)/10}s" fill="${c}" d="M${x} ${y-r}C${x+r*.18} ${y-r*.18} ${x+r*.18} ${y-r*.18} ${x+r} ${y}C${x+r*.18} ${y+r*.18} ${x+r*.18} ${y+r*.18} ${x} ${y+r}C${x-r*.18} ${y+r*.18} ${x-r*.18} ${y+r*.18} ${x-r} ${y}C${x-r*.18} ${y-r*.18} ${x-r*.18} ${y-r*.18} ${x} ${y-r}Z"/>`;
+ const an=(x,y)=>`<rect x="${x-3}" y="${y-3}" width="6" height="6" fill="#fff" stroke="#5B3FFF" stroke-width="1.4"/>`;
+ return `<div class="lic-empty">
+ <svg class="le-art" viewBox="0 0 260 200" aria-hidden="true" focusable="false">
+  <defs>
+   <linearGradient id="leBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EFE8FF"/><stop offset="1" stop-color="#FDE7F6"/></linearGradient>
+   <linearGradient id="leG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5B3FFF"/><stop offset=".55" stop-color="#A55BFF"/><stop offset="1" stop-color="#F28AD6"/></linearGradient>
+  </defs>
+  <path fill="url(#leBg)" d="M40 70C46 30 98 10 150 16S240 52 236 104 196 190 132 188 30 164 26 124 34 92 40 70Z"/>
+  <rect x="62" y="34" width="140" height="140" rx="18" fill="#E7DCFB"/>
+  <rect x="56" y="28" width="140" height="140" rx="18" fill="#fff" stroke="#ECE3F8"/>
+  <g stroke="#E3D3FA" stroke-dasharray="3 4" stroke-width="1"><path d="M68 56H184M68 142H184"/></g>
+  <g transform="translate(62.5 34.5) scale(1.075)">
+   <path fill="url(#leG)" d="M20 20H44L100 100H76Z"/>
+   <path fill="url(#leG)" d="M78 20H100V34Q100 54 70 60L62 46Q78 42 78 32Z"/>
+   <path fill="url(#leG)" d="M22 100H44V82Q44 68 58 64L50 50Q22 58 22 80Z"/>
+   <path fill="none" stroke="#2A1F4F" stroke-width=".9" d="M20 20H44L100 100H76Z"/>
+   <path stroke="#9C59CF" stroke-width="1" d="M56 70L86 50"/>
+   <circle cx="56" cy="70" r="2.6" fill="#fff" stroke="#9C59CF" stroke-width="1.2"/><circle cx="86" cy="50" r="2.6" fill="#fff" stroke="#9C59CF" stroke-width="1.2"/>
+   ${an(20,20)}${an(44,20)}${an(100,100)}${an(76,100)}${an(70,60)}
+  </g>
+  <g transform="translate(222 168) rotate(-35)"><path fill="#2A1F4F" d="M0 0L-9 -24H9Z"/><path fill="#B075FF" d="M-9 -24H9V-32H-9Z"/><circle cx="0" cy="-10" r="2.2" fill="#fff"/><path stroke="#fff" stroke-width="1.2" d="M0 -8V-1"/></g>
+  ${sp(34,46,9,'#F28AD6')}${sp(226,58,7,'#B075FF')}${sp(40,156,6,'#B075FF')}${sp(150,190,5,'#F28AD6')}
+ </svg>
+ <div class="le-txt">
+  <h2 class="le-t">האותיות כבר מחכות לך</h2>
+  <p class="le-p">עוד לא רכשת פונטים בנפרד. פונט שתקנה בחנות יופיע כאן, עם הקבצים, תעודת הרישיון והאתרים שלו.</p>
+  <div class="le-acts"><a class="btn btn-grad le-cta" href="${ea(FS.links&&FS.links.desk||'https://fontshok.co.il/')}">לחנות הפונטים</a><a class="le-link" href="https://fontshok.co.il/מחירון-רישיונות-ומנויים/">למחירון הרישיונות</a></div>
+ </div>
+</div>`}
 
 /* one row per font + weight. Every purchased licence stays its own record (own certificate, own files);
    the row only groups them: all licence names as tags, certificate/download offer a choice when there is more than one */
@@ -1612,7 +1662,7 @@ V.profile=(tab)=>`
 function cert(l,site){
  const s=SUBS[l.sub];
  return `<div class="cert">
-  <div class="cert-head"><h2>${site?'רישיון פונט לדומיין':'רישיון שימוש בפונט'}</h2><img src="${s.logo}" alt="מינוי ${s.name}"></div>
+  <div class="cert-head"><h2>${site?'רישיון פונט לדומיין':'רישיון שימוש בפונט'}</h2>${l.sub==='buy'?'':`<img src="${s.logo}" alt="מינוי ${s.name}">`}</div>
   <div class="cert-body">
    <div class="cert-row"><div class="who"><span style="color:var(--muted)">רושם הרישיון</span><b>${ea((FS.user.first||"")+" "+(FS.user.last||""))}</b>${ea(FS.user.email)}</div><div style="text-align:left">מונפק על ידי פונטשוק בע״מ<br>מספר תעודה <span class="num" dir="ltr">${ea(l.certNo||'—')}</span></div></div>
    <p style="margin:0">בהתאם להסכם הרישוי ותנאי השימוש של פונטשוק בע״מ, מאושר בזאת כי הפונט הרשום להלן מותר לשימוש ${site?'בתחומי עיצוב ממשק והטמעה באתר הרשום בלבד, תחת הדומיין שלהלן:':`בתחומים הכלולים ברישיון ${l.t}:`}</p>
