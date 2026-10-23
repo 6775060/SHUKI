@@ -6,11 +6,15 @@ import { Transactions } from './pages/Transactions';
 import { Connections } from './pages/Connections';
 import { Import } from './pages/Import';
 import { Rules } from './pages/Rules';
+import { Insights } from './pages/Insights';
+import { Funds } from './pages/Funds';
 
-export type Page = 'dashboard' | 'transactions' | 'connections' | 'import' | 'rules';
+export type Page = 'dashboard' | 'insights' | 'funds' | 'transactions' | 'connections' | 'import' | 'rules';
 
 const NAV: { id: Page; label: string }[] = [
   { id: 'dashboard', label: 'בהירות' },
+  { id: 'insights', label: 'תובנות' },
+  { id: 'funds', label: 'קופות' },
   { id: 'transactions', label: 'תנועות' },
   { id: 'connections', label: 'חיבורים' },
   { id: 'import', label: 'ייבוא קובץ' },
@@ -89,6 +93,8 @@ export function App() {
       </header>
       <main className="content">
         {page === 'dashboard' && <Dashboard nav={nav} />}
+        {page === 'insights' && <Insights nav={nav} />}
+        {page === 'funds' && <Funds />}
         {page === 'transactions' && <Transactions nav={nav} />}
         {page === 'connections' && <Connections />}
         {page === 'import' && <Import />}

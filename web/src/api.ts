@@ -128,3 +128,84 @@ export interface Summary {
   futureInstallments: { total: number; series: { description: string; perPayment: number; remaining: number; left: number }[] };
   balances: { id: number; label: string; kind: string; balance: number | null; balanceDate: string | null }[];
 }
+
+export interface Recurring {
+  key: string;
+  name: string;
+  categoryName: string | null;
+  amount: number;
+  periodMonths: 1 | 2;
+  monthsSeen: number;
+  lastDate: string;
+  nextDate: string;
+  annual: number;
+  priceChangePct: number | null;
+  isNew: boolean;
+  isTax: boolean;
+  accountKind: string;
+  scope: string | null;
+}
+
+export interface Insight {
+  tone: 'good' | 'neutral' | 'attention';
+  icon: string;
+  title: string;
+  body: string;
+  link?: { page: string; params?: Record<string, string> };
+}
+
+export interface Fund {
+  id: number;
+  name: string;
+  icon: string | null;
+  annualAmount: number;
+  monthly: number;
+  dueMonth: number | null;
+  nextDue: string | null;
+  categoryId: number | null;
+  categoryName: string | null;
+  spentLast12: number;
+  spentThisYear: number;
+}
+
+export interface InsightsData {
+  month: string;
+  today: string;
+  isCurrent: boolean;
+  trend: { month: string; income: number; expenses: number; net: number; bizIncome: number; bizExpenses: number }[];
+  categories: { categoryId: number; slug: string | null; name: string; grp: string; total: number; avg: number; deltaPct: number | null; steady: boolean }[];
+  recurring: Recurring[];
+  pace: { day: number; daysInMonth: number; spentToDate: number; avgToDate: number | null; avgFull: number | null; projected: number };
+  daily: { date: string; total: number; count: number }[];
+  balance: number | null;
+  forecast: {
+    start: number;
+    points: { date: string; balance: number }[];
+    low: { date: string; balance: number };
+    firstNegative: string | null;
+    assumptions: { dailyVariableSpend: number; dailyIrregularIncome: number; cardChargesAhead: number; recurringItems: number };
+  } | null;
+  business: {
+    hasBusiness: boolean;
+    income: number;
+    expenses: number;
+    avgIncome: number | null;
+    vatOnSales: number;
+    vatOnPurchases: number;
+    vatEstimate: number;
+    topSources: { name: string; total: number; share: number }[];
+  };
+  merchants: { name: string; total: number; count: number }[];
+  installments: { total: number; series: { description: string; perPayment: number; remaining: number; left: number }[] };
+  health: { score: number; label: string; parts: { key: string; label: string; score: number; detail: string }[] } | null;
+  safeToSpend: {
+    perDay: number;
+    daysLeft: number;
+    available: number;
+    parts: { label: string; amount: number }[];
+    nextCardCharge: { date: string; amount: number } | null;
+  } | null;
+  funds: Fund[];
+  insights: Insight[];
+  uncategorized: number;
+}

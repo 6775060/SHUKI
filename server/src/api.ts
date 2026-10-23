@@ -9,7 +9,24 @@ import type { SyncService } from './sync.js';
 import { getInstitution, listInstitutions } from './institutions.js';
 import { ingestTransactions, linkInternalTransfers, upsertAccount } from './ingest.js';
 import { parseStatement } from './importer.js';
-import { monthSummary, monthsWithData } from './stats.js';
+import { futureInstallments, monthSummary, monthsWithData } from './stats.js';
+import {
+  addMonths,
+  bankBalance,
+  buildInsights,
+  businessView,
+  categoryComparison,
+  dailySpending,
+  detectRecurring,
+  forecast,
+  fundSuggestions,
+  healthScore,
+  listFunds,
+  monthlyTrend,
+  safeToSpend,
+  spendingPace,
+  topMerchants,
+} from './insights.js';
 
 interface Deps {
   db: DB;
@@ -362,6 +379,92 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
   api.get('/summary', (req, res) => {
     const month = z.string().regex(/^\d{4}-\d{2}$/).optional().parse(req.query.month) ?? new Date().toISOString().slice(0, 7);
     res.json({ ...monthSummary(db, month), months: monthsWithData(db) });
+  });
+
+  // ---- insights ----
+  api.get('/insights', (req, res) => {
+    const today = new Date().toLocaleDateString('sv-SE'); // local YYYY-MM-DD
+    const month = z.string().regex(/^\d{4}-\d{2}$/).optional().parse(req.query.month) ?? today.slice(0, 7);
+    const isCurrent = month === today.slice(0, 7);
+    const completeEnd = isCurrent ? month : addMonths(month, 1);
+    const trend = monthlyTrend(db, month, 12);
+    const categories = categoryComparison(db, month);
+    const recurring = detectRecurring(db, today);
+    const pace = spendingPace(db, month, today);
+    const balance = bankBalance(db);
+    const fc = forecast(db, today, recurring, 60);
+    const business = businessView(db, month, trend);
+    const merchants = topMerchants(db, month);
+    const installments = futureInstallments(db);
+    const funds = listFunds(db, today);
+    const uncategorized = (
+      db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM transactions t JOIN categories c ON c.id = t.category_id
+           WHERE c.slug = 'uncategorized' AND substr(t.date, 1, 7) = ?`,
+        )
+        .get(month) as { n: number }
+    ).n;
+    res.json({
+      month,
+      today,
+      isCurrent,
+      trend,
+      categories,
+      recurring,
+      pace,
+      daily: dailySpending(db, month),
+      balance,
+      forecast: fc,
+      business,
+      merchants,
+      installments,
+      health: healthScore(db, month, trend, balance, installments.total, completeEnd),
+      safeToSpend: isCurrent ? safeToSpend(db, today, recurring, funds) : null,
+      funds,
+      insights: buildInsights({ month, isCurrent, trend, categories, recurring, pace, forecast: fc, business, merchants, uncategorized, completeEnd, funds }),
+      uncategorized,
+    });
+  });
+
+  // ---- funds ----
+  api.get('/funds', (_req, res) => {
+    const today = new Date().toLocaleDateString('sv-SE');
+    res.json({ funds: listFunds(db, today), suggestions: fundSuggestions(db, today) });
+  });
+
+  const fundBody = z.object({
+    name: z.string().min(1).max(60),
+    icon: z.string().max(8).nullable().optional(),
+    annualAmount: z.number().min(0).max(10_000_000),
+    dueMonth: z.number().int().min(1).max(12).nullable().optional(),
+    categoryId: z.number().int().nullable().optional(),
+  });
+
+  api.post('/funds', (req, res) => {
+    const b = fundBody.parse(req.body);
+    const id = db
+      .prepare('INSERT INTO funds (name, icon, annual_amount, due_month, category_id) VALUES (?, ?, ?, ?, ?)')
+      .run(b.name, b.icon ?? null, b.annualAmount, b.dueMonth ?? null, b.categoryId ?? null).lastInsertRowid;
+    res.json({ id });
+  });
+
+  api.put('/funds/:id', (req, res) => {
+    const b = fundBody.parse(req.body);
+    db.prepare('UPDATE funds SET name = ?, icon = ?, annual_amount = ?, due_month = ?, category_id = ? WHERE id = ?').run(
+      b.name,
+      b.icon ?? null,
+      b.annualAmount,
+      b.dueMonth ?? null,
+      b.categoryId ?? null,
+      Number(req.params.id),
+    );
+    res.json({ ok: true });
+  });
+
+  api.delete('/funds/:id', (req, res) => {
+    db.prepare('DELETE FROM funds WHERE id = ?').run(Number(req.params.id));
+    res.json({ ok: true });
   });
 
   api.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

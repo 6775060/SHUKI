@@ -109,6 +109,18 @@ const MIGRATIONS: string[] = [
     error_message TEXT
   );
   `,
+  `
+  CREATE TABLE funds (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    icon TEXT,
+    annual_amount REAL NOT NULL DEFAULT 0,
+    due_month INTEGER CHECK (due_month BETWEEN 1 AND 12),
+    category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+    sort INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  `,
 ];
 
 export function openDb(dataDir: string, filename = 'shefa.db'): DB {
