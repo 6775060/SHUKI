@@ -45,6 +45,21 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'no-referrer');
   next();
 });
+// The user's uploaded font. Served without a session so CSS @font-face can load it.
+app.get('/fonts/:file', (req, res) => {
+  const file = req.params.file;
+  if (!/^custom-\d+\.(woff2|woff|ttf|otf)$/.test(file)) {
+    res.status(404).end();
+    return;
+  }
+  const full = path.join(dataDir, 'fonts', file);
+  if (!fs.existsSync(full)) {
+    res.status(404).end();
+    return;
+  }
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  res.sendFile(full);
+});
 app.use('/api', createApi({ db, vault, categorizer, sync, onUnlock: catchUp }));
 
 if (fs.existsSync(config.webDist)) {

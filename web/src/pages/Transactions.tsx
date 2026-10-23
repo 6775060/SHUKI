@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api, type Account, type Category, type Txn } from '../api';
 import { date, moneyExact, monthLabel, currentMonth } from '../format';
 import type { Nav } from '../App';
+import { CategoryPicker } from '../CategoryPicker';
 
 export function Transactions({ nav }: { nav: Nav }) {
   const [month, setMonth] = useState(nav.params.month ?? currentMonth());
@@ -13,7 +14,7 @@ export function Transactions({ nav }: { nav: Nav }) {
   const [txns, setTxns] = useState<Txn[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [ruleFor, setRuleFor] = useState<Txn | null>(null);
+  const [assign, setAssign] = useState<{ txn: Txn; categoryId: number } | null>(null);
 
   useEffect(() => {
     api<Category[]>('/categories').then(setCategories);
@@ -54,7 +55,6 @@ export function Transactions({ nav }: { nav: Nav }) {
         x.id === t.id ? { ...x, ...patch, categoryName: categories.find((c) => c.id === (patch.categoryId ?? x.categoryId))?.name ?? x.categoryName } : x,
       ),
     );
-    if (patch.categoryId !== undefined) setRuleFor({ ...t, categoryId: patch.categoryId });
   };
 
   return (
@@ -107,7 +107,17 @@ export function Transactions({ nav }: { nav: Nav }) {
         </label>
       </div>
 
-      {ruleFor && <RuleSuggestion txn={ruleFor} categories={categories} onClose={() => setRuleFor(null)} onApplied={load} />}
+      {assign && (
+        <AssignDialog
+          txn={assign.txn}
+          category={categories.find((c) => c.id === assign.categoryId)!}
+          onClose={() => setAssign(null)}
+          onDone={() => {
+            setAssign(null);
+            load();
+          }}
+        />
+      )}
 
       <div className="card flush">
         {txns.length === 0 && <div className="muted pad">אין תנועות להצגה.</div>}
@@ -126,17 +136,12 @@ export function Transactions({ nav }: { nav: Nav }) {
                   </div>
                 </td>
                 <td>
-                  <select value={t.categoryId ?? ''} onChange={(e) => update(t, { categoryId: Number(e.target.value) })} aria-label="קטגוריה">
-                    {groups.map(([g, cs]) => (
-                      <optgroup key={g} label={g}>
-                        {cs.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
+                  <CategoryPicker
+                    categories={categories}
+                    value={t.categoryId}
+                    onPick={(id) => id !== t.categoryId && setAssign({ txn: t, categoryId: id })}
+                    onCreated={(c) => setCategories((list) => [...list, c])}
+                  />
                 </td>
                 <td>
                   <button
@@ -157,38 +162,63 @@ export function Transactions({ nav }: { nav: Nav }) {
   );
 }
 
-function RuleSuggestion({ txn, categories, onClose, onApplied }: { txn: Txn; categories: Category[]; onClose: () => void; onApplied: () => void }) {
-  const [pattern, setPattern] = useState(txn.description.split(/\s+/).slice(0, 2).join(' '));
-  const [msg, setMsg] = useState('');
-  const category = categories.find((c) => c.id === txn.categoryId);
+function AssignDialog({ txn, category, onClose, onDone }: { txn: Txn; category: Category; onClose: () => void; onDone: () => void }) {
+  const [info, setInfo] = useState<{ key: string; count: number; total: number; currentRule: string | null } | null>(null);
+  const [applyTo, setApplyTo] = useState<'merchant' | 'one'>('merchant');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api<{ key: string; count: number; total: number; currentRule: string | null }>(`/transactions/${txn.id}/merchant`).then((r) => {
+      setInfo(r);
+      if (!r.key) setApplyTo('one');
+    });
+  }, [txn.id]);
 
   const save = async () => {
-    const r = await api<{ changed: number }>('/rules', { method: 'POST', json: { pattern, categoryId: txn.categoryId } });
-    setMsg(`נשמר. ${r.changed} תנועות סווגו מחדש.`);
-    onApplied();
-    setTimeout(onClose, 1800);
+    setBusy(true);
+    await api(`/transactions/${txn.id}/assign`, { method: 'POST', json: { categoryId: category.id, applyTo } });
+    onDone();
   };
 
   return (
-    <div className="card rule-box">
-      {msg ? (
-        <div>{msg}</div>
-      ) : (
-        <>
-          <div>
-            לסווג תמיד תנועות שמכילות <input value={pattern} onChange={(e) => setPattern(e.target.value)} className="inline" /> בתור{' '}
-            <b>{category?.name}</b>?
+    <div className="overlay" role="dialog" aria-modal="true" onClick={onClose}>
+      <div className="calm-card" onClick={(e) => e.stopPropagation()}>
+        <h3>
+          לשייך ל<b>{category.name}</b>
+        </h3>
+        <div className="muted">{txn.description}</div>
+        {info && info.key ? (
+          <div className="choice-list">
+            <label className={`choice ${applyTo === 'merchant' ? 'on' : ''}`}>
+              <input type="radio" checked={applyTo === 'merchant'} onChange={() => setApplyTo('merchant')} />
+              <div>
+                <b>כל החיובים מבית העסק הזה – מהעבר ומהעתיד</b>
+                <div className="sub">
+                  {info.count} חיובים עד היום ({moneyExact(info.total)}) יעברו ל{category.name}, וכל חיוב חדש מ"{info.key}" ייכנס לשם אוטומטית.
+                  {info.currentRule && info.currentRule !== category.name ? ` (במקום ${info.currentRule})` : ''}
+                </div>
+              </div>
+            </label>
+            <label className={`choice ${applyTo === 'one' ? 'on' : ''}`}>
+              <input type="radio" checked={applyTo === 'one'} onChange={() => setApplyTo('one')} />
+              <div>
+                <b>רק התנועה הזו</b>
+                <div className="sub">למשל קנייה חד-פעמית שונה מהרגיל.</div>
+              </div>
+            </label>
           </div>
-          <div className="row">
-            <button className="primary small" onClick={save} disabled={pattern.trim().length < 2}>
-              כן, ליצור כלל
-            </button>
-            <button className="ghost small" onClick={onClose}>
-              רק הפעם
-            </button>
-          </div>
-        </>
-      )}
+        ) : (
+          <div className="sub">{info ? 'רק התנועה הזו תשתנה.' : 'טוען…'}</div>
+        )}
+        <div className="row between">
+          <button className="ghost" onClick={onClose}>
+            ביטול
+          </button>
+          <button className="primary" onClick={save} disabled={busy || !info}>
+            {busy ? 'רגע…' : 'שמירה'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

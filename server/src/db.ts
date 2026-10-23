@@ -141,6 +141,43 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_docs_date ON business_docs(doc_date);
   `,
+  `
+  -- Rules can match a whole business (merchant) exactly; more everyday categories.
+  ALTER TABLE rules ADD COLUMN match TEXT NOT NULL DEFAULT 'contains';
+  INSERT OR IGNORE INTO categories (slug, name, grp, kind, sort) VALUES ('gym', 'מכון כושר וספורט', 'איכות חיים', 'expense', 60);
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'מכון כושר', id, 0, 1 FROM categories WHERE slug = 'gym';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'כושר', id, 0, 1 FROM categories WHERE slug = 'gym';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'הולמס פלייס', id, 0, 1 FROM categories WHERE slug = 'gym';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'HOLMES PLACE', id, 0, 1 FROM categories WHERE slug = 'gym';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'GO ACTIVE', id, 0, 1 FROM categories WHERE slug = 'gym';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'גו אקטיב', id, 0, 1 FROM categories WHERE slug = 'gym';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'FITNESS', id, 0, 1 FROM categories WHERE slug = 'gym';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'GYM', id, 0, 1 FROM categories WHERE slug = 'gym';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'קאנטרי', id, 0, 1 FROM categories WHERE slug = 'gym';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'פילאטיס', id, 0, 1 FROM categories WHERE slug = 'gym';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'יוגה', id, 0, 1 FROM categories WHERE slug = 'gym';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'בריכה', id, 0, 1 FROM categories WHERE slug = 'gym';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'ספורט קלאב', id, 0, 1 FROM categories WHERE slug = 'gym';
+  INSERT OR IGNORE INTO categories (slug, name, grp, kind, sort) VALUES ('grooming', 'מספרה וטיפוח', 'איכות חיים', 'expense', 61);
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'מספרה', id, 0, 1 FROM categories WHERE slug = 'grooming';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'ברבר', id, 0, 1 FROM categories WHERE slug = 'grooming';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'BARBER', id, 0, 1 FROM categories WHERE slug = 'grooming';
+  INSERT OR IGNORE INTO categories (slug, name, grp, kind, sort) VALUES ('judaica', 'ספרים ותשמישי קדושה', 'איכות חיים', 'expense', 62);
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'ספרי קודש', id, 0, 1 FROM categories WHERE slug = 'judaica';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'יודאיקה', id, 0, 1 FROM categories WHERE slug = 'judaica';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'תשמישי קדושה', id, 0, 1 FROM categories WHERE slug = 'judaica';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'סת"ם', id, 0, 1 FROM categories WHERE slug = 'judaica';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'סופר סת', id, 0, 1 FROM categories WHERE slug = 'judaica';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'ספרים', id, 0, 1 FROM categories WHERE slug = 'judaica';
+  INSERT OR IGNORE INTO categories (slug, name, grp, kind, sort) VALUES ('kids', 'ילדים: צעצועים וחוגים', 'משתנות חיוניות', 'expense', 63);
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'צעצועים', id, 0, 1 FROM categories WHERE slug = 'kids';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'TOYS', id, 0, 1 FROM categories WHERE slug = 'kids';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'טויס', id, 0, 1 FROM categories WHERE slug = 'kids';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'קידס', id, 0, 1 FROM categories WHERE slug = 'kids';
+  INSERT OR IGNORE INTO categories (slug, name, grp, kind, sort) VALUES ('gifts', 'מתנות', 'הוצאות שנתיות', 'expense', 64);
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'מתנה', id, 0, 1 FROM categories WHERE slug = 'gifts';
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'מתנות', id, 0, 1 FROM categories WHERE slug = 'gifts';
+  `,
 ];
 
 export function openDb(dataDir: string, filename = 'shefa.db'): DB {

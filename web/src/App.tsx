@@ -9,8 +9,10 @@ import { Rules } from './pages/Rules';
 import { Insights } from './pages/Insights';
 import { Funds } from './pages/Funds';
 import { Business } from './pages/Business';
+import { Settings } from './pages/Settings';
+import { applyFont, type FontSetting } from './font';
 
-export type Page = 'dashboard' | 'insights' | 'funds' | 'business' | 'transactions' | 'connections' | 'import' | 'rules';
+export type Page = 'dashboard' | 'insights' | 'funds' | 'business' | 'transactions' | 'connections' | 'import' | 'rules' | 'settings';
 
 const NAV: { id: Page; label: string }[] = [
   { id: 'dashboard', label: 'בהירות' },
@@ -20,7 +22,8 @@ const NAV: { id: Page; label: string }[] = [
   { id: 'transactions', label: 'תנועות' },
   { id: 'connections', label: 'חיבורים' },
   { id: 'import', label: 'ייבוא קובץ' },
-  { id: 'rules', label: 'כללי סיווג' },
+  { id: 'rules', label: 'קטגוריות' },
+  { id: 'settings', label: 'הגדרות' },
 ];
 
 export interface Nav {
@@ -46,6 +49,10 @@ export function App() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (state === 'open') api<{ font: FontSetting }>('/settings').then((r) => applyFont(r.font)).catch(() => {});
+  }, [state]);
 
   const go: Nav['go'] = (p, prm = {}) => {
     setPage(p);
@@ -102,6 +109,7 @@ export function App() {
         {page === 'connections' && <Connections />}
         {page === 'import' && <Import />}
         {page === 'rules' && <Rules />}
+        {page === 'settings' && <Settings />}
       </main>
     </div>
   );

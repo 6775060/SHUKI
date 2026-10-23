@@ -1,10 +1,13 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { config } from './config.js';
 import type { SQLInputValue } from 'node:sqlite';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { getMeta, setMeta, transaction, type DB } from './db.js';
 import type { Vault } from './vault.js';
-import type { Categorizer } from './categorize.js';
+import { merchantKey, type Categorizer } from './categorize.js';
 import type { SyncService } from './sync.js';
 import { getInstitution, listInstitutions } from './institutions.js';
 import { ingestTransactions, linkInternalTransfers, upsertAccount } from './ingest.js';
@@ -215,21 +218,94 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
 
   // ---- categories & rules ----
   api.get('/categories', (_req, res) => {
-    res.json(db.prepare('SELECT id, slug, name, grp, kind FROM categories ORDER BY sort, id').all());
+    res.json(
+      db
+        .prepare(
+          `SELECT c.id, c.slug, c.name, c.grp, c.kind, (SELECT COUNT(*) FROM transactions t WHERE t.category_id = c.id) AS txnCount
+           FROM categories c ORDER BY c.sort, c.id`,
+        )
+        .all(),
+    );
   });
 
   api.post('/categories', (req, res) => {
-    const body = z.object({ name: z.string().min(1), grp: z.string().min(1), kind: z.enum(['expense', 'income', 'transfer']) }).parse(req.body);
+    const body = z.object({ name: z.string().min(1).max(40), grp: z.string().min(1).max(40), kind: z.enum(['expense', 'income', 'transfer']) }).parse(req.body);
     const id = db.prepare('INSERT INTO categories (name, grp, kind, sort) VALUES (?, ?, ?, 1000)').run(body.name, body.grp, body.kind).lastInsertRowid;
     res.json({ id });
+  });
+
+  api.patch('/categories/:id', (req, res) => {
+    const b = z.object({ name: z.string().min(1).max(40).optional(), grp: z.string().min(1).max(40).optional() }).parse(req.body);
+    const id = Number(req.params.id);
+    if (b.name) db.prepare('UPDATE categories SET name = ? WHERE id = ?').run(b.name, id);
+    if (b.grp) db.prepare('UPDATE categories SET grp = ? WHERE id = ?').run(b.grp, id);
+    res.json({ ok: true });
+  });
+
+  api.delete('/categories/:id', (req, res) => {
+    const id = Number(req.params.id);
+    const c = db.prepare('SELECT slug FROM categories WHERE id = ?').get(id) as { slug: string | null } | undefined;
+    if (!c || c.slug) {
+      res.status(400).json({ error: 'BUILT_IN' }); // only user-made categories can be removed
+      return;
+    }
+    transaction(db, () => {
+      db.prepare("UPDATE transactions SET category_id = (SELECT id FROM categories WHERE slug = 'uncategorized'), category_locked = 0 WHERE category_id = ?").run(id);
+      db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+    });
+    categorizer.reload();
+    res.json({ ok: true, changed: recategorize() });
+  });
+
+  // ---- "this business is always this category" ----
+  const merchantMatches = (key: string) =>
+    (db.prepare('SELECT id, description, amount FROM transactions').all() as { id: number; description: string; amount: number }[]).filter(
+      (t) => merchantKey(t.description) === key,
+    );
+
+  api.get('/transactions/:id/merchant', (req, res) => {
+    const t = db.prepare('SELECT description FROM transactions WHERE id = ?').get(Number(req.params.id)) as { description: string } | undefined;
+    if (!t) {
+      res.status(404).end();
+      return;
+    }
+    const key = merchantKey(t.description);
+    const list = key ? merchantMatches(key) : [];
+    const rule = db.prepare("SELECT c.name FROM rules r JOIN categories c ON c.id = r.category_id WHERE r.match = 'merchant' AND r.pattern = ?").get(key) as { name: string } | undefined;
+    res.json({ key, count: list.length, total: list.reduce((s, x) => s - x.amount, 0), currentRule: rule?.name ?? null });
+  });
+
+  api.post('/transactions/:id/assign', (req, res) => {
+    const b = z.object({ categoryId: z.number().int(), applyTo: z.enum(['one', 'merchant']) }).parse(req.body);
+    const id = Number(req.params.id);
+    const t = db.prepare('SELECT description FROM transactions WHERE id = ?').get(id) as { description: string } | undefined;
+    if (!t) {
+      res.status(404).end();
+      return;
+    }
+    const key = merchantKey(t.description);
+    if (b.applyTo === 'one' || !key) {
+      db.prepare('UPDATE transactions SET category_id = ?, category_locked = 1 WHERE id = ?').run(b.categoryId, id);
+      res.json({ changed: 1 });
+      return;
+    }
+    const list = merchantMatches(key);
+    transaction(db, () => {
+      db.prepare("DELETE FROM rules WHERE match = 'merchant' AND pattern = ?").run(key);
+      db.prepare("INSERT INTO rules (pattern, category_id, match) VALUES (?, ?, 'merchant')").run(key, b.categoryId);
+      const upd = db.prepare('UPDATE transactions SET category_id = ?, category_locked = 1 WHERE id = ?');
+      for (const x of list) upd.run(b.categoryId, x.id);
+    });
+    categorizer.reload();
+    res.json({ changed: list.length, key });
   });
 
   api.get('/rules', (_req, res) => {
     res.json(
       db
         .prepare(
-          `SELECT r.id, r.pattern, r.category_id AS categoryId, c.name AS categoryName, r.scope, r.account_kind AS accountKind, r.is_default AS isDefault
-           FROM rules r JOIN categories c ON c.id = r.category_id ORDER BY r.is_default, c.sort, r.pattern`,
+          `SELECT r.id, r.pattern, r.category_id AS categoryId, c.name AS categoryName, r.scope, r.account_kind AS accountKind, r.is_default AS isDefault, r.match
+           FROM rules r JOIN categories c ON c.id = r.category_id ORDER BY r.is_default, r.match = 'merchant' DESC, c.sort, r.pattern`,
         )
         .all(),
     );
@@ -476,7 +552,54 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
   api.get('/settings', (_req, res) => {
     const today = new Date().toLocaleDateString('sv-SE');
     const c = cycleView(db, today, [], []).settings;
-    res.json({ ...c, taxReservePct: Number(getMeta(db, 'tax_reserve_pct') ?? 15) });
+    res.json({ ...c, taxReservePct: Number(getMeta(db, 'tax_reserve_pct') ?? 15), font: fontSetting() });
+  });
+
+  // ---- your own font ----
+  const fontDir = path.join(config.dataDir, 'fonts');
+  function fontSetting(): { file: string | null; family: string | null; name: string | null } {
+    return {
+      file: getMeta(db, 'font_file') ?? null,
+      family: getMeta(db, 'font_family') ?? null,
+      name: getMeta(db, 'font_name') ?? null,
+    };
+  }
+  const FONT_TYPES: Record<string, (b: Buffer) => boolean> = {
+    woff2: (b) => b.subarray(0, 4).toString('latin1') === 'wOF2',
+    woff: (b) => b.subarray(0, 4).toString('latin1') === 'wOFF',
+    ttf: (b) => b.readUInt32BE(0) === 0x00010000 || b.subarray(0, 4).toString('latin1') === 'true',
+    otf: (b) => b.subarray(0, 4).toString('latin1') === 'OTTO',
+  };
+
+  api.post('/settings/font', express.raw({ type: 'application/octet-stream', limit: '12mb' }), (req, res) => {
+    const q = z.object({ filename: z.string().max(200) }).parse(req.query);
+    const buf = req.body as Buffer;
+    const ext = path.extname(q.filename).slice(1).toLowerCase();
+    if (!FONT_TYPES[ext] || buf.length < 12 || !FONT_TYPES[ext](buf)) {
+      res.status(400).json({ error: 'NOT_A_FONT' });
+      return;
+    }
+    fs.mkdirSync(fontDir, { recursive: true });
+    for (const f of fs.readdirSync(fontDir)) fs.rmSync(path.join(fontDir, f));
+    const file = `custom-${Date.now()}.${ext}`;
+    fs.writeFileSync(path.join(fontDir, file), buf);
+    setMeta(db, 'font_file', file);
+    setMeta(db, 'font_name', path.basename(q.filename, path.extname(q.filename)).slice(0, 60));
+    db.prepare("DELETE FROM meta WHERE key = 'font_family'").run();
+    res.json(fontSetting());
+  });
+
+  api.put('/settings/font', (req, res) => {
+    // A font already installed on Windows, by name.
+    const b = z.object({ family: z.string().min(1).max(60).regex(/^[\p{L}\p{N} _-]+$/u) }).parse(req.body);
+    setMeta(db, 'font_family', b.family);
+    res.json(fontSetting());
+  });
+
+  api.delete('/settings/font', (_req, res) => {
+    if (fs.existsSync(fontDir)) for (const f of fs.readdirSync(fontDir)) fs.rmSync(path.join(fontDir, f));
+    db.prepare("DELETE FROM meta WHERE key IN ('font_file', 'font_family', 'font_name')").run();
+    res.json(fontSetting());
   });
 
   api.put('/settings', (req, res) => {

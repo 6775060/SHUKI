@@ -109,7 +109,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', 'Arial Hebrew', sans-serif;
+  font-family: var(--font, system-ui, -apple-system, 'Segoe UI', 'Arial Hebrew', sans-serif);
   font-size: 15px;
   line-height: 1.55;
 }
@@ -1498,4 +1498,141 @@ details summary {
   .calm-btn {
     width: 100%;
   }
+}
+
+/* ---------- category picker ---------- */
+
+.picker {
+  position: relative;
+  display: inline-block;
+}
+
+.picker-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 150px;
+  max-width: 210px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 5px 10px;
+  background: var(--surface);
+  text-align: start;
+}
+
+.picker-btn span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-pop {
+  position: fixed;
+  width: min(280px, calc(100vw - 16px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.16);
+  z-index: 30;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.picker-search {
+  width: 100%;
+}
+
+.picker-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.picker-grp {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 8px 6px 2px;
+}
+
+.picker-opt {
+  display: block;
+  width: 100%;
+  text-align: start;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.picker-opt:hover,
+.picker-opt.sel {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.picker-new {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.picker-new select {
+  flex: 1;
+  min-width: 0;
+}
+
+.pad-s {
+  padding: 8px;
+}
+
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.choice {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 10px;
+  align-items: start;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  flex-direction: row;
+}
+
+.choice.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.add-cat input {
+  flex: 1;
+  min-width: 140px;
+}
+
+.cat-group {
+  margin-top: 6px;
+}
+
+.font-preview {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.font-preview-big {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.or {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
 }

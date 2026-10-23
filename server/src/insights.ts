@@ -1,5 +1,7 @@
 import type { DB } from './db.js';
-import { normalize } from './categorize.js';
+import { merchantKey } from './categorize.js';
+
+export { merchantKey };
 
 // Everything the dashboard shows beyond raw totals: trends, recurring charges,
 // a cash-flow forecast, a health score and plain-Hebrew insights. All numbers
@@ -116,17 +118,6 @@ function median(xs: number[]): number {
 
 const round = (n: number) => Math.round(n);
 const pct = (n: number) => Math.round(n * 100);
-
-// A stable merchant key: "שופרסל דיל 123 ב"ש" and "שופרסל דיל 456" match.
-export function merchantKey(description: string): string {
-  return normalize(description)
-    .replace(/\d+/g, ' ')
-    .replace(/["']/g, '')
-    .split(' ')
-    .filter((w) => w.length > 1)
-    .slice(0, 3)
-    .join(' ');
-}
 
 // ---------- trend ----------
 
