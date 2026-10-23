@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
-import { api, type InsightsData, type Summary } from '../api';
+import { useEffect, useState, type FormEvent } from 'react';
+import { api, type CycleView, type InsightsData, type Summary } from '../api';
 import { currentMonth, date, money, monthLabel } from '../format';
-import { CalendarHeat, CategoryCompareChart, ForecastChart, IncomeExpenseChart, Meter, ScoreRing, Sparkline, TableToggle } from '../charts';
+import { CalendarHeat, CategoryCompareChart, ForecastChart, IncomeExpenseChart, Meter, ScoreRing, TableToggle } from '../charts';
 import { InsightCards } from './Insights';
+import { CalmButton } from './Calm';
 import type { Nav } from '../App';
 
 const shortMonth = (m: string) => {
@@ -10,25 +11,12 @@ const shortMonth = (m: string) => {
   return new Date(y, mo - 1, 1).toLocaleDateString('he-IL', { month: 'short' });
 };
 
-function Delta({ value, avg, upIsGood, partial }: { value: number; avg: number | null; upIsGood: boolean; partial: boolean }) {
-  if (!avg) return <span className="delta muted">אין עדיין השוואה</span>;
-  // Mid-month, a full-month comparison would always look like a drop.
-  if (partial) return <span className="delta muted">{Math.round((value / avg) * 100)}% מחודש רגיל, עד כה</span>;
-  const d = (value - avg) / avg;
-  if (Math.abs(d) < 0.03) return <span className="delta muted">כמו חודש רגיל</span>;
-  const good = d > 0 === upIsGood;
-  return (
-    <span className={`delta ${good ? 'good' : 'warm'}`}>
-      {d > 0 ? '▲' : '▼'} {Math.abs(Math.round(d * 100))}% מחודש רגיל
-    </span>
-  );
-}
-
 export function Dashboard({ nav }: { nav: Nav }) {
   const [month, setMonth] = useState(currentMonth());
   const [data, setData] = useState<InsightsData | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(false);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -38,7 +26,7 @@ export function Dashboard({ nav }: { nav: Nav }) {
         setSummary(s);
       })
       .finally(() => setLoading(false));
-  }, [month]);
+  }, [month, reload]);
 
   if (!data || !summary) return <div className="muted">טוען…</div>;
 
@@ -56,18 +44,17 @@ export function Dashboard({ nav }: { nav: Nav }) {
 
   const months = Array.from(new Set([currentMonth(), ...summary.months])).sort().reverse();
   const cur = data.trend[data.trend.length - 1];
-  const prev = data.trend.slice(0, -1).filter((p) => p.income > 0 || p.expenses > 0).slice(-3);
-  const avg = (k: 'income' | 'expenses' | 'net' | 'bizIncome') => (prev.length ? prev.reduce((s, p) => s + p[k], 0) / prev.length : null);
-  const series = (k: 'income' | 'expenses' | 'net' | 'bizIncome') => data.trend.filter((p) => p.income > 0 || p.expenses > 0).map((p) => p[k]);
-  const trendData = data.trend.filter((p, i) => i >= data.trend.findIndex((q) => q.income > 0 || q.expenses > 0)).map((p) => ({ label: shortMonth(p.month), income: p.income, expenses: p.expenses }));
-  const steadyCats = data.categories.filter((c) => c.total > 0).slice(0, 9);
+  const firstWithData = data.trend.findIndex((q) => q.income > 0 || q.expenses > 0);
+  const trendData = data.trend.slice(Math.max(0, firstWithData)).map((p) => ({ label: shortMonth(p.month), income: p.income, expenses: p.expenses }));
+  const homeCats = data.categories.filter((c) => c.total > 0).slice(0, 9);
   const pace = data.pace;
   const paceOver = pace.avgFull !== null && pace.projected > pace.avgFull * 1.05;
-  const sts = data.safeToSpend;
+  const cy = data.cycle;
   const upcoming = data.recurring
-    .filter((r) => r.amount < 0 && r.nextDate <= addDaysIso(data.today, 14))
+    .filter((r) => r.amount < 0 && r.scope !== 'business' && r.nextDate <= addDaysIso(data.today, 14))
     .sort((a, b) => a.nextDate.localeCompare(b.nextDate))
-    .slice(0, 6);
+    .slice(0, 5);
+  const homeBalances = summary.balances.filter((b) => b.kind === 'bank');
 
   return (
     <div className={`stack dash ${loading ? 'refetch' : ''}`}>
@@ -84,45 +71,14 @@ export function Dashboard({ nav }: { nav: Nav }) {
             {data.uncategorized} לסיווג
           </button>
         )}
+        <span className="spacer" />
+        <CalmButton cycle={cy} />
       </div>
 
-      {/* hero row */}
+      {/* hero: this week */}
       <div className="hero-row">
         <section className="card hero-card">
-          {sts ? (
-            <>
-              <div className="eyebrow">בטוח להוציא היום</div>
-              <div className="hero-figure">{money(sts.perDay)}</div>
-              <div className="muted">
-                {sts.available > 0
-                  ? `לכל אחד מ-${sts.daysLeft} הימים שנשארו בחודש, אחרי כל מה שכבר מחויב.`
-                  : 'החודש כבר מחויב כולו. זה רגע לנשום, לא להיבהל – ולבדוק מה אפשר לדחות.'}
-              </div>
-              <details className="breakdown">
-                <summary>איך זה מחושב</summary>
-                {sts.parts.map((p) => (
-                  <div key={p.label} className="split-row">
-                    <span>{p.label}</span>
-                    <span className={p.amount < 0 ? 'warm' : ''}>{money(p.amount)}</span>
-                  </div>
-                ))}
-                <div className="split-row strong">
-                  <span>פנוי עד סוף החודש</span>
-                  <span>{money(sts.available)}</span>
-                </div>
-                {data.funds.length === 0 && (
-                  <button className="link small" onClick={() => nav.go('funds')}>
-                    להוסיף קופות להוצאות צפויות ←
-                  </button>
-                )}
-              </details>
-              {sts.nextCardCharge && (
-                <div className="note">
-                  💳 חיוב אשראי של <b>{money(sts.nextCardCharge.amount)}</b> צפוי ב-{date(sts.nextCardCharge.date)}
-                </div>
-              )}
-            </>
-          ) : (
+          {cy ? <WeekHero cy={cy} /> : (
             <>
               <div className="eyebrow">{monthLabel(month)}</div>
               <div className="hero-figure">{money(Math.abs(cur.net))}</div>
@@ -157,46 +113,58 @@ export function Dashboard({ nav }: { nav: Nav }) {
         )}
       </div>
 
-      {/* KPI row */}
-      <div className="kpis">
-        <div className="tile">
-          <div className="tile-label">נכנס</div>
-          <div className="tile-value">{money(cur.income)}</div>
-          <div className="tile-foot">
-            <Delta value={cur.income} avg={avg('income')} upIsGood partial={data.isCurrent} />
-            <Sparkline values={series('income')} />
-          </div>
-        </div>
-        <div className="tile">
-          <div className="tile-label">יצא</div>
-          <div className="tile-value">{money(cur.expenses)}</div>
-          <div className="tile-foot">
-            <Delta value={cur.expenses} avg={avg('expenses')} upIsGood={false} partial={data.isCurrent} />
-            <Sparkline values={series('expenses')} />
-          </div>
-        </div>
-        <div className="tile">
-          <div className="tile-label">{cur.net >= 0 ? 'נשאר' : 'פער'}</div>
-          <div className={`tile-value ${cur.net >= 0 ? 'pos' : 'warm'}`}>{money(Math.abs(cur.net))}</div>
-          <div className="tile-foot">
-            <span className="delta muted">{cur.income > 0 ? `${Math.round((cur.net / cur.income) * 100)}% מההכנסה` : ''}</span>
-            <Sparkline values={series('net')} />
-          </div>
-        </div>
-        {data.business.hasBusiness && (
-          <div className="tile">
-            <div className="tile-label">הכנסה עסקית</div>
-            <div className="tile-value">{money(cur.bizIncome)}</div>
-            <div className="tile-foot">
-              <Delta value={cur.bizIncome} avg={avg('bizIncome')} upIsGood partial={data.isCurrent} />
-              <Sparkline values={series('bizIncome')} />
-            </div>
-          </div>
-        )}
-      </div>
+      {cy && (
+        <div className="grid-main">
+          <CycleCard cy={cy} onSaved={() => setReload((r) => r + 1)} onFunds={() => nav.go('funds')} />
 
-      {/* insights */}
-      {data.insights.length > 0 && (
+          <section className="card">
+            <h3>כרטיסי האשראי</h3>
+            {data.cards.length === 0 && <div className="muted">עוד לא חוברו כרטיסים.</div>}
+            {data.cards.map((c) => (
+              <div key={c.accountId} className="card-bill">
+                <div className="card-chip" aria-hidden>
+                  💳
+                </div>
+                <div className="card-bill-main">
+                  <div className="strong">{c.label}</div>
+                  <div className="sub">
+                    {c.nextDate ? `החיוב הבא: ${date(c.nextDate)} · בעוד ${c.daysUntil} ימים` : c.chargeDay ? `יורד בדרך כלל ב-${c.chargeDay} לחודש` : 'אין חיוב צפוי ידוע'}
+                  </div>
+                </div>
+                <div className="card-bill-amount">{c.nextDate ? money(c.amount) : '—'}</div>
+              </div>
+            ))}
+            <div className="sep" />
+            <h3>בשבועיים הקרובים</h3>
+            {upcoming.length === 0 && data.installments.total === 0 && <div className="muted">אין חיובים קבועים צפויים.</div>}
+            {upcoming.map((r) => (
+              <div key={r.key} className="split-row">
+                <span className="date-pill">{date(r.nextDate).slice(0, 5)}</span>
+                <span>{r.name}</span>
+                <span>{money(-r.amount)}</span>
+              </div>
+            ))}
+            {data.installments.total > 0 && (
+              <div className="note">
+                🧾 עסקאות בתשלומים: עוד <b>{money(data.installments.total)}</b> בחודשים הבאים
+              </div>
+            )}
+            {homeBalances.length > 0 && (
+              <>
+                <div className="sep" />
+                {homeBalances.map((b) => (
+                  <div key={b.id} className="split-row">
+                    <span>{b.label}</span>
+                    <span className={b.balance !== null && b.balance < 0 ? 'warm' : ''}>{b.balance === null ? '—' : money(b.balance)}</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </section>
+        </div>
+      )}
+
+      {(data.insights.length > 0 || data.businessTips.length > 0) && (
         <section>
           <div className="row between section-head">
             <h3>מה כדאי לדעת</h3>
@@ -206,39 +174,63 @@ export function Dashboard({ nav }: { nav: Nav }) {
               </button>
             )}
           </div>
-          <InsightCards insights={data.insights.slice(0, 4)} nav={nav} />
+          <InsightCards insights={data.insights.slice(0, data.businessTips.length ? 3 : 4)} nav={nav} />
+          {data.businessTips.length > 0 && (
+            <div className="insights biz-tips">
+              {data.businessTips.map((t) => (
+                <article key={t.key} className="insight biz">
+                  <div className="insight-icon" aria-hidden>
+                    {t.icon}
+                  </div>
+                  <div>
+                    <div className="insight-tone">טיפ לעסק{t.impact ? ` · עד ${money(t.impact)} בחודש` : ''}</div>
+                    <h4>{t.title}</h4>
+                    <p>{t.why}</p>
+                    <button className="link small" onClick={() => nav.go('business', { month })}>
+                      לעסק ←
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
       <div className="grid-main">
         <section className="card">
-          <h3>נכנס מול יצא</h3>
-          <TableToggle
-            table={
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>חודש</th>
-                    <th>נכנס</th>
-                    <th>יצא</th>
-                    <th>הפרש</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {trendData.map((d) => (
-                    <tr key={d.label}>
-                      <td>{d.label}</td>
-                      <td>{money(d.income)}</td>
-                      <td>{money(d.expenses)}</td>
-                      <td>{money(d.income - d.expenses)}</td>
+          <h3>לאן הלך הכסף של הבית – מול חודש רגיל</h3>
+          {homeCats.length ? (
+            <TableToggle
+              table={
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>קטגוריה</th>
+                      <th>החודש</th>
+                      <th>חודש רגיל</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            }
-          >
-            <IncomeExpenseChart data={trendData} />
-          </TableToggle>
+                  </thead>
+                  <tbody>
+                    {homeCats.map((c) => (
+                      <tr key={c.categoryId}>
+                        <td>{c.name}</td>
+                        <td>{money(c.total)}</td>
+                        <td>{money(c.avg)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              }
+            >
+              <CategoryCompareChart
+                data={homeCats.map((c) => ({ id: c.categoryId, name: c.name, total: c.total, avg: c.avg }))}
+                onSelect={(id) => nav.go('transactions', { month, categoryId: String(id) })}
+              />
+            </TableToggle>
+          ) : (
+            <div className="muted">אין הוצאות בחודש הזה.</div>
+          )}
         </section>
 
         <section className="card">
@@ -295,108 +287,179 @@ export function Dashboard({ nav }: { nav: Nav }) {
           </TableToggle>
           <p className="sub">
             לפי: היתרה היום ({money(data.forecast.start)}), חיובי אשראי שכבר בדרך ({money(data.forecast.assumptions.cardChargesAhead)}),{' '}
-            {data.forecast.assumptions.recurringItems} חיובים והכנסות קבועים, והקצב הרגיל שלך: כ-{money(data.forecast.assumptions.dailyVariableSpend)} הוצאות ו-
+            {data.forecast.assumptions.recurringItems} חיובים והכנסות קבועים, והקצב הרגיל: כ-{money(data.forecast.assumptions.dailyVariableSpend)} הוצאות ו-
             {money(data.forecast.assumptions.dailyIrregularIncome)} הכנסות ביום.
           </p>
         </section>
       )}
 
-      <div className="grid-main">
-        <section className="card">
-          <h3>לאן הלך הכסף – מול חודש רגיל</h3>
-          {steadyCats.length ? (
-            <TableToggle
-              table={
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>קטגוריה</th>
-                      <th>החודש</th>
-                      <th>חודש רגיל</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {steadyCats.map((c) => (
-                      <tr key={c.categoryId}>
-                        <td>{c.name}</td>
-                        <td>{money(c.total)}</td>
-                        <td>{money(c.avg)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              }
-            >
-              <CategoryCompareChart
-                data={steadyCats.map((c) => ({ id: c.categoryId, name: c.name, total: c.total, avg: c.avg }))}
-                onSelect={(id) => nav.go('transactions', { month, categoryId: String(id) })}
-              />
-            </TableToggle>
-          ) : (
-            <div className="muted">אין הוצאות בחודש הזה.</div>
-          )}
-        </section>
-
-        <section className="card">
-          <h3>בשבועיים הקרובים</h3>
-          {upcoming.length === 0 && data.installments.total === 0 && <div className="muted">אין חיובים קבועים צפויים.</div>}
-          {upcoming.map((r) => (
-            <div key={r.key} className="split-row">
-              <span className="date-pill">{date(r.nextDate).slice(0, 5)}</span>
-              <span>{r.name}</span>
-              <span>{money(-r.amount)}</span>
-            </div>
-          ))}
-          {data.installments.total > 0 && (
-            <div className="note">
-              🧾 עסקאות בתשלומים: עוד <b>{money(data.installments.total)}</b> בחודשים הבאים
-            </div>
-          )}
-          <div className="sep" />
-          <h3>יתרות</h3>
-          {summary.balances.map((b) => (
-            <div key={b.id} className="split-row">
-              <span>{b.label}</span>
-              <span className={b.balance !== null && b.balance < 0 ? 'warm' : ''}>{b.balance === null ? '—' : money(b.balance)}</span>
-            </div>
-          ))}
-        </section>
-      </div>
-
-      {data.business.hasBusiness && (
-        <section className="card">
-          <h3>העסק החודש</h3>
-          <div className="biz-grid">
-            <div>
-              <div className="tile-label">הכנסות</div>
-              <div className="tile-value">{money(data.business.income)}</div>
-              <div className="sub">הוצאות עסקיות: {money(data.business.expenses)}</div>
-            </div>
-            <div>
-              <div className="tile-label">להפריש למע"מ (הערכה)</div>
-              <div className="tile-value">{money(data.business.vatEstimate)}</div>
-              <div className="sub">
-                מע"מ עסקאות {money(data.business.vatOnSales)} פחות תשומות {money(data.business.vatOnPurchases)}
-              </div>
-            </div>
-            <div>
-              <div className="tile-label">מקורות הכנסה (3 חודשים)</div>
-              {data.business.topSources.slice(0, 4).map((s) => (
-                <div key={s.name} className="source-row">
-                  <span className="source-name">{s.name.replace(/^העברה מלקוח\s*/, '')}</span>
-                  <Meter value={s.share} max={1} label={s.name} />
-                  <span className="muted small">{Math.round(s.share * 100)}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      <section className="card">
+        <h3>נכנס מול יצא – הבית והעסק יחד</h3>
+        <TableToggle
+          table={
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>חודש</th>
+                  <th>נכנס</th>
+                  <th>יצא</th>
+                  <th>הפרש</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trendData.map((d) => (
+                  <tr key={d.label}>
+                    <td>{d.label}</td>
+                    <td>{money(d.income)}</td>
+                    <td>{money(d.expenses)}</td>
+                    <td>{money(d.income - d.expenses)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          }
+        >
+          <IncomeExpenseChart data={trendData} />
+        </TableToggle>
+      </section>
 
       <blockquote className="quote">
         "איזהו עשיר? השמח בחלקו" <span>– אבות ד, א</span>
       </blockquote>
     </div>
+  );
+}
+
+function WeekHero({ cy }: { cy: CycleView }) {
+  const w = cy.week;
+  const over = w.left < 0;
+  return (
+    <>
+      <div className="eyebrow">השבוע אפשר להוציא עוד</div>
+      <div className="hero-figure">{money(Math.max(0, w.left))}</div>
+      <div className="muted">
+        {over
+          ? `השבוע יצא ${money(-w.left)} מעבר לתקציב. זה קורה. ביום ראשון מתחילים שבוע חדש, נקי.`
+          : `על הוצאות משתנות (אוכל, בילויים, קניות) עד מוצאי שבת · עוד ${w.daysLeft} ימים`}
+      </div>
+      <div className="hero-meter">
+        <div className="hero-meter-fill" style={{ width: `${Math.min(100, (w.spent / Math.max(1, w.budget)) * 100)}%` }} />
+      </div>
+      <div className="row between small hero-meta">
+        <span>יצא השבוע: {money(w.spent)}</span>
+        <span>תקציב השבוע: {money(w.budget)}</span>
+      </div>
+      {w.joy > 0 && (
+        <div className="note joy">
+          🥐 ובנוסף, <b>{money(w.joy)}</b> שמורים השבוע לשמחות קטנות – בורקס, ארטיק, הפתעה. מופרש מראש, גם בשבוע צפוף. אפשר לומר כן.
+        </div>
+      )}
+    </>
+  );
+}
+
+const SEGMENTS = [
+  { key: 'fixed', label: 'קבועות', cls: 'seg-1' },
+  { key: 'installments', label: 'תשלומים', cls: 'seg-2' },
+  { key: 'funds', label: 'קופות', cls: 'seg-3' },
+  { key: 'variable', label: 'משתנות (צפי)', cls: 'seg-4' },
+  { key: 'joy', label: 'שמחות קטנות', cls: 'seg-5' },
+] as const;
+
+function CycleCard({ cy, onSaved, onFunds }: { cy: CycleView; onSaved: () => void; onFunds: () => void }) {
+  const values = { fixed: cy.fixed.monthly, installments: cy.installments, funds: cy.funds, joy: cy.joy, variable: cy.projectedVariable };
+  const total = Math.max(cy.income.expected, Object.values(values).reduce((s, v) => s + v, 0), 1);
+  const free = Math.max(0, cy.income.expected - Object.values(values).reduce((s, v) => s + v, 0));
+  const positive = cy.forecastEnd >= 0;
+
+  return (
+    <section className="card">
+      <div className="row between">
+        <h3>החודש התזרימי שלי</h3>
+        <span className="muted small">
+          {date(cy.start).slice(0, 5)}–{date(cy.end).slice(0, 5)} · יום {cy.day} מתוך {cy.days}
+        </span>
+      </div>
+      <div className="cycle-head">
+        <div>
+          <div className="tile-label">צפי לסוף החודש</div>
+          <div className={`tile-value ${positive ? 'pos' : 'warm'}`}>
+            {positive ? '+' : '−'}
+            {money(Math.abs(cy.forecastEnd))}
+          </div>
+        </div>
+        <div>
+          <div className="tile-label">צפוי להיכנס הביתה</div>
+          <div className="tile-value">{money(cy.income.expected)}</div>
+          <div className="sub">נכנס עד היום: {money(cy.income.received)}</div>
+        </div>
+      </div>
+
+      <div className="stackbar" role="img" aria-label="חלוקת ההכנסה הצפויה">
+        {SEGMENTS.map((s) =>
+          values[s.key] > 0 ? <span key={s.key} className={s.cls} style={{ width: `${(values[s.key] / total) * 100}%` }} title={`${s.label}: ${money(values[s.key])}`} /> : null,
+        )}
+        {free > 0 && <span className="seg-free" style={{ width: `${(free / total) * 100}%` }} title={`פנוי: ${money(free)}`} />}
+      </div>
+      <div className="stack-legend">
+        {SEGMENTS.map((s) => (
+          <span key={s.key}>
+            <i className={`key rect ${s.cls}`} /> {s.label} <b>{money(values[s.key])}</b>
+          </span>
+        ))}
+        <span>
+          <i className="key rect seg-free" /> פנוי <b>{money(free)}</b>
+        </span>
+      </div>
+      <p className="sub">
+        {positive
+          ? 'בקצב הנוכחי החודש ייגמר בפלוס. את העודף כדאי להפנות לכרית הביטחון או לקופה – לפני שהוא מתפזר.'
+          : 'בקצב הנוכחי החודש עלול להיגמר במינוס. זה הזמן לבחור: לצמצם את ההוצאות המשתנות השבוע, או לדחות קנייה גדולה.'}
+        {cy.funds === 0 && (
+          <>
+            {' '}
+            <button className="link small" onClick={onFunds}>
+              להוסיף קופות ←
+            </button>
+          </>
+        )}
+      </p>
+      <CycleSettings cy={cy} onSaved={onSaved} />
+    </section>
+  );
+}
+
+function CycleSettings({ cy, onSaved }: { cy: CycleView; onSaved: () => void }) {
+  const [startDay, setStartDay] = useState(cy.settings.startDayIsAuto ? '0' : String(cy.settings.startDay));
+  const [joy, setJoy] = useState(String(cy.settings.weeklyJoy));
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    await api('/settings', { method: 'PUT', json: { cycleStartDay: Number(startDay), weeklyJoy: Number(joy) || 0 } });
+    onSaved();
+  };
+  return (
+    <details className="settings">
+      <summary className="muted small">הגדרות החודש התזרימי</summary>
+      <form className="row wrap" onSubmit={save}>
+        <label>
+          החודש מתחיל ב-
+          <select value={startDay} onChange={(e) => setStartDay(e.target.value)}>
+            <option value="0">אוטומטי (זוהה: {cy.settings.startDayDetected} לחודש)</option>
+            {Array.from({ length: 28 }, (_, i) => (
+              <option key={i + 1} value={i + 1}>
+                {i + 1} לחודש
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          כסף לשמחות קטנות בשבוע (₪)
+          <input type="number" min={0} step={10} value={joy} onChange={(e) => setJoy(e.target.value)} dir="ltr" style={{ width: 100 }} />
+        </label>
+        <button className="ghost small">שמירה</button>
+      </form>
+      <p className="sub">ברירת המחדל: היום שבו נכנס הכסף הגדול של החודש לחשבון הבית (למשל המשכורת מהעסק).</p>
+    </details>
   );
 }
 

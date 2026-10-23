@@ -208,4 +208,72 @@ export interface InsightsData {
   funds: Fund[];
   insights: Insight[];
   uncategorized: number;
+  cycle: CycleView | null;
+  cards: CardBill[];
+  businessTips: Tip[];
+}
+
+export interface CycleView {
+  start: string;
+  end: string;
+  day: number;
+  days: number;
+  income: { expected: number; received: number; basis: 'history' | 'received' | 'none' };
+  fixed: { monthly: number; items: { name: string; amount: number }[] };
+  installments: number;
+  funds: number;
+  joy: number;
+  variableBudget: number;
+  variableSpent: number;
+  projectedVariable: number;
+  forecastEnd: number;
+  week: { start: string; end: string; budget: number; spent: number; left: number; joy: number; daysLeft: number };
+  settings: { startDay: number; startDayDetected: number; startDayIsAuto: boolean; weeklyJoy: number };
+}
+
+export interface CardBill {
+  accountId: number;
+  label: string;
+  nextDate: string | null;
+  amount: number;
+  chargeDay: number | null;
+  daysUntil: number | null;
+}
+
+export interface Tip {
+  key: string;
+  icon: string;
+  title: string;
+  why: string;
+  action: string;
+  impact: number | null;
+  relevance: 'high' | 'medium';
+}
+
+export interface BusinessData {
+  month: string;
+  trend: InsightsData['trend'];
+  income: number;
+  expenses: number;
+  net: number;
+  margin: number | null;
+  avgIncome: number | null;
+  avgNet: number | null;
+  vat: { sales: number; purchases: number; estimate: number };
+  taxReservePct: number;
+  allocation: { label: string; pct: number; amount: number }[];
+  ownerPay: { sustainable: number | null; actualAvg: number | null; months: number; businessNetAvg: number | null };
+  categories: InsightsData['categories'];
+  clients: { name: string; total: number; share: number; count: number }[];
+  clientSource: 'documents' | 'bank';
+  activeClients: number[];
+  fees: { total: number; pctOfTurnover: number | null; bySource: { name: string; total: number }[] };
+  docs: {
+    count: number;
+    lastDate: string | null;
+    openInvoices: { number: string | null; counterparty: string | null; date: string; amount: number; days: number }[];
+    expensesWithoutInvoice: { date: string; description: string; amount: number }[];
+  };
+  tips: Tip[];
+  connections: { sumit: boolean; sumitLastSync: string | null; sumitError: string | null; sources: { source: string; n: number; last: string }[] };
 }

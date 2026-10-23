@@ -164,15 +164,15 @@ function previousMonthsWithData(trend: MonthPoint[], month: string, n: number): 
 
 // ---------- categories vs average ----------
 
-export function categoryComparison(db: DB, month: string): CategoryCompare[] {
+export function categoryComparison(db: DB, month: string, scope?: 'private' | 'business'): CategoryCompare[] {
   const rows = db
     .prepare(
       `SELECT c.id AS categoryId, c.slug, c.name, c.grp, substr(t.date, 1, 7) AS month, -SUM(t.amount) AS total
        FROM transactions t JOIN categories c ON c.id = t.category_id
-       WHERE c.kind = 'expense' AND t.date >= ? AND t.date < ?
+       WHERE c.kind = 'expense' AND t.date >= ? AND t.date < ? AND (? IS NULL OR t.scope = ?)
        GROUP BY c.id, month`,
     )
-    .all(`${addMonths(month, -3)}-01`, `${addMonths(month, 1)}-01`) as { categoryId: number; slug: string | null; name: string; grp: string; month: string; total: number }[];
+    .all(`${addMonths(month, -3)}-01`, `${addMonths(month, 1)}-01`, scope ?? null, scope ?? null) as { categoryId: number; slug: string | null; name: string; grp: string; month: string; total: number }[];
   const prevMonths = new Set(rows.filter((r) => r.month < month).map((r) => r.month));
   const divisor = Math.max(1, prevMonths.size);
   const map = new Map<number, CategoryCompare & { seen: number }>();
@@ -758,7 +758,7 @@ export function buildInsights(args: {
     });
   }
 
-  const subs = recurring.filter((r) => r.amount < 0 && !r.isTax);
+  const subs = recurring.filter((r) => r.amount < 0 && !r.isTax && r.scope !== 'business');
   if (subs.length) {
     const monthly = subs.reduce((s, r) => s - r.amount / r.periodMonths, 0);
     out.push({
@@ -769,7 +769,7 @@ export function buildInsights(args: {
       link: { page: 'insights' },
     });
   }
-  for (const r of recurring.filter((r) => r.amount < 0 && r.priceChangePct && r.priceChangePct > 0).slice(0, 2)) {
+  for (const r of recurring.filter((r) => r.amount < 0 && r.scope !== 'business' && r.priceChangePct && r.priceChangePct > 0).slice(0, 2)) {
     out.push({
       tone: 'attention',
       icon: '🏷️',
@@ -795,37 +795,6 @@ export function buildInsights(args: {
               ? 'יש איזון. היעד הבא: 10% שנשארים כל חודש, "שלם לעצמך קודם".'
               : 'זה מידע, לא שיפוט. הצעד הראשון הוא לראות איפה הפער, והגרפים למטה מראים בדיוק את זה.',
       });
-    }
-  }
-
-  if (business.hasBusiness && business.income > 0) {
-    if (business.vatEstimate > 0) {
-      out.push({
-        tone: 'neutral',
-        icon: '🧾',
-        title: `להפריש כ-${ils(business.vatEstimate)} למע"מ מהחודש הזה`,
-        body: 'הערכה לפי ההכנסות וההוצאות העסקיות שנקלטו. כשהכסף מופרש מראש, הדיווח לא מבהיל. המספר המדויק – מרואה החשבון.',
-      });
-    }
-    const top = business.topSources.slice(0, 2).reduce((s, e) => s + e.share, 0);
-    if (business.topSources.length >= 2 && top >= 0.6) {
-      out.push({
-        tone: 'neutral',
-        icon: '🧱',
-        title: `${pct(top)}% מההכנסה העסקית מגיעה משני מקורות`,
-        body: 'ריכוזיות היא סיכון. לקוח נוסף או שירות משלים ללקוחות קיימים יחזקו את היציבות.',
-      });
-    }
-    if (business.avgIncome && args.isCurrent === false) {
-      const d = (business.income - business.avgIncome) / business.avgIncome;
-      if (Math.abs(d) > 0.15) {
-        out.push({
-          tone: d > 0 ? 'good' : 'neutral',
-          icon: d > 0 ? '🚀' : '🌊',
-          title: d > 0 ? `הכנסה עסקית גבוהה ב-${pct(d)}% מהממוצע` : `הכנסה עסקית נמוכה ב-${pct(-d)}% מהממוצע`,
-          body: d > 0 ? 'חודש חזק. זה הזמן להפריש לכרית הביטחון, לפני שהכסף מתפזר.' : 'חודשים חלשים הם חלק מעבודה עצמאית. בשביל זה בונים כרית.',
-        });
-      }
     }
   }
 

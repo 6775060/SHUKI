@@ -121,6 +121,26 @@ const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   `,
+  `
+  -- Documents from the business systems: SUMIT (invoices/receipts), Grow
+  -- (card clearing) and Paperless (expense invoices).
+  CREATE TABLE business_docs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('income', 'expense', 'payment')),
+    external_id TEXT NOT NULL,
+    doc_date TEXT NOT NULL,
+    number TEXT,
+    counterparty TEXT,
+    amount REAL NOT NULL,
+    vat REAL,
+    fee REAL,
+    status TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (source, external_id)
+  );
+  CREATE INDEX idx_docs_date ON business_docs(doc_date);
+  `,
 ];
 
 export function openDb(dataDir: string, filename = 'shefa.db'): DB {

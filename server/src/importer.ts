@@ -5,7 +5,7 @@ import type { IncomingTxn } from './ingest.js';
 // Fallback for when a scraper is broken: the Excel/CSV exports banks and card
 // companies offer. Formats differ, so the header row is detected by keywords.
 
-type Cell = string | number | Date | null;
+export type Cell = string | number | Date | null;
 
 export interface ParsedFile {
   headers: string[];
@@ -30,7 +30,7 @@ const DEBIT_HEADERS = ['חובה', 'בחובה', 'חיוב'];
 const CREDIT_HEADERS = ['זכות', 'בזכות'];
 const INSTALLMENT_HEADERS = ['תשלום', 'פירוט נוסף', 'הערות'];
 
-function clean(v: Cell): string {
+export function clean(v: Cell): string {
   if (v === null || v === undefined) return '';
   if (v instanceof Date) return v.toISOString();
   return String(v).replace(/[‎‏‪-‮]/g, '').trim();
@@ -116,7 +116,7 @@ function parseHtmlTable(html: string): Cell[][] {
   return rows;
 }
 
-async function readRows(filename: string, buf: Buffer): Promise<Cell[][]> {
+export async function readRows(filename: string, buf: Buffer): Promise<Cell[][]> {
   const lower = filename.toLowerCase();
   const head = buf.subarray(0, 512).toString('utf8').trimStart();
   // Several Israeli banks export "xls" files that are really HTML tables.

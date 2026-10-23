@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import type { SQLInputValue } from 'node:sqlite';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
-import { transaction, type DB } from './db.js';
+import { getMeta, setMeta, transaction, type DB } from './db.js';
 import type { Vault } from './vault.js';
 import type { Categorizer } from './categorize.js';
 import type { SyncService } from './sync.js';
@@ -27,6 +27,8 @@ import {
   spendingPace,
   topMerchants,
 } from './insights.js';
+import { cardBills, cycleView } from './cycle.js';
+import { businessData, parseDocsFile, saveDocs, syncSumit, type DocSource } from './business.js';
 
 interface Deps {
   db: DB;
@@ -388,7 +390,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     const isCurrent = month === today.slice(0, 7);
     const completeEnd = isCurrent ? month : addMonths(month, 1);
     const trend = monthlyTrend(db, month, 12);
-    const categories = categoryComparison(db, month);
+    const categories = categoryComparison(db, month, 'private');
     const recurring = detectRecurring(db, today);
     const pace = spendingPace(db, month, today);
     const balance = bankBalance(db);
@@ -423,6 +425,9 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
       safeToSpend: isCurrent ? safeToSpend(db, today, recurring, funds) : null,
       funds,
       insights: buildInsights({ month, isCurrent, trend, categories, recurring, pace, forecast: fc, business, merchants, uncategorized, completeEnd, funds }),
+      cycle: isCurrent ? cycleView(db, today, recurring, funds) : null,
+      cards: cardBills(db, today),
+      businessTips: business.hasBusiness ? businessData(db, month, today).tips.filter((t) => t.relevance === 'high').slice(0, 2) : [],
       uncategorized,
     });
   });
@@ -465,6 +470,74 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
   api.delete('/funds/:id', (req, res) => {
     db.prepare('DELETE FROM funds WHERE id = ?').run(Number(req.params.id));
     res.json({ ok: true });
+  });
+
+  // ---- settings ----
+  api.get('/settings', (_req, res) => {
+    const today = new Date().toLocaleDateString('sv-SE');
+    const c = cycleView(db, today, [], []).settings;
+    res.json({ ...c, taxReservePct: Number(getMeta(db, 'tax_reserve_pct') ?? 15) });
+  });
+
+  api.put('/settings', (req, res) => {
+    const b = z
+      .object({
+        cycleStartDay: z.number().int().min(0).max(28).optional(), // 0 = automatic
+        weeklyJoy: z.number().min(0).max(5000).optional(),
+        taxReservePct: z.number().min(0).max(60).optional(),
+      })
+      .parse(req.body);
+    if (b.cycleStartDay !== undefined) setMeta(db, 'cycle_start_day', String(b.cycleStartDay));
+    if (b.weeklyJoy !== undefined) setMeta(db, 'weekly_joy', String(b.weeklyJoy));
+    if (b.taxReservePct !== undefined) setMeta(db, 'tax_reserve_pct', String(b.taxReservePct));
+    res.json({ ok: true });
+  });
+
+  // ---- business ----
+  api.get('/business', (req, res) => {
+    const today = new Date().toLocaleDateString('sv-SE');
+    const month = z.string().regex(/^\d{4}-\d{2}$/).optional().parse(req.query.month) ?? today.slice(0, 7);
+    const sources = db.prepare('SELECT source, COUNT(*) AS n, MAX(doc_date) AS last FROM business_docs GROUP BY source').all();
+    res.json({
+      ...businessData(db, month, today),
+      connections: { sumit: !!getMeta(db, 'sumit_creds'), sumitLastSync: getMeta(db, 'sumit_last_sync') ?? null, sumitError: getMeta(db, 'sumit_error') ?? null, sources },
+    });
+  });
+
+  const docSource = z.enum(['sumit', 'grow', 'paperless', 'other']);
+  api.post('/business/import', express.raw({ type: 'application/octet-stream', limit: '20mb' }), async (req, res) => {
+    const q = z
+      .object({ source: docSource, kind: z.enum(['income', 'expense', 'payment']), filename: z.string(), dryRun: z.enum(['0', '1']).default('1') })
+      .parse(req.query);
+    try {
+      const parsed = await parseDocsFile(q.filename, req.body as Buffer, q.source as DocSource, q.kind);
+      if (q.dryRun === '1') {
+        res.json({ headers: parsed.headers, count: parsed.docs.length, skipped: parsed.skipped, preview: parsed.docs.slice(0, 10) });
+        return;
+      }
+      res.json({ ...saveDocs(db, parsed.docs), skipped: parsed.skipped });
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+    }
+  });
+
+  api.put('/business/sumit', (req, res) => {
+    const b = z.object({ companyId: z.string().regex(/^\d+$/), apiKey: z.string().min(8) }).parse(req.body);
+    setMeta(db, 'sumit_creds', vault.seal(b));
+    res.json({ ok: true });
+  });
+
+  api.delete('/business/sumit', (_req, res) => {
+    db.prepare("DELETE FROM meta WHERE key IN ('sumit_creds', 'sumit_last_sync', 'sumit_error')").run();
+    res.json({ ok: true });
+  });
+
+  api.post('/business/sumit/sync', async (_req, res) => {
+    try {
+      res.json(await syncSumit(db, vault, new Date().toLocaleDateString('sv-SE')));
+    } catch (err) {
+      res.status(502).json({ error: (err as Error).message });
+    }
   });
 
   api.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

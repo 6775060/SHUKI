@@ -8,6 +8,8 @@ import { Vault } from './vault.js';
 import { Categorizer } from './categorize.js';
 import { SyncService } from './sync.js';
 import { createApi } from './api.js';
+import { getMeta } from './db.js';
+import { syncSumit } from './business.js';
 
 const dataDir = ensureDataDir();
 const db = openDb(dataDir);
@@ -25,7 +27,9 @@ function catchUp(): void {
 }
 
 cron.schedule(config.syncCron, () => {
-  if (vault.isUnlocked()) sync.enqueueAll();
+  if (!vault.isUnlocked()) return;
+  sync.enqueueAll();
+  if (getMeta(db, 'sumit_creds')) syncSumit(db, vault, new Date().toLocaleDateString('sv-SE')).catch((e) => console.error('SUMIT sync failed', e));
 });
 
 const app = express();
