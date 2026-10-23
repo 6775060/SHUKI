@@ -1,4 +1,4 @@
-import type { DB } from './db.js';
+import { transaction, type DB } from './db.js';
 
 type Kind = 'expense' | 'income' | 'transfer';
 
@@ -83,12 +83,12 @@ export function seedCategoriesAndRules(db: DB): void {
   const insertRule = db.prepare(
     'INSERT INTO rules (pattern, category_id, scope, account_kind, priority, is_default) VALUES (?, ?, ?, ?, ?, 1)',
   );
-  db.transaction(() => {
+  transaction(db, () => {
     SEED.forEach((c, i) => {
       const id = insertCat.run(c.slug, c.name, c.grp, c.kind, i).lastInsertRowid;
       // Rules scoped to an account kind are more specific, so they win.
       const priority = c.accountKind ? 10 : 0;
       for (const p of c.patterns ?? []) insertRule.run(p, id, c.scope ?? null, c.accountKind ?? null, priority);
     });
-  })();
+  });
 }

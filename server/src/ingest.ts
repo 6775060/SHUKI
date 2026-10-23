@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import type { DB } from './db.js';
+import { transaction, type DB } from './db.js';
 import { Categorizer, normalize } from './categorize.js';
 
 export interface IncomingTxn {
@@ -74,7 +74,7 @@ export function ingestTransactions(
 
   let added = 0;
   let updated = 0;
-  db.transaction(() => {
+  transaction(db, () => {
     txns.forEach((t, i) => {
       const status = t.status ?? 'completed';
       const existing = find.get(hashes[i]) as { id: number; status: string } | undefined;
@@ -122,7 +122,7 @@ export function ingestTransactions(
       const del = db.prepare('DELETE FROM transactions WHERE id = ?');
       for (const p of pending) if (!seen.has(p.hash)) del.run(p.id);
     }
-  })();
+  });
   return { added, updated };
 }
 
@@ -188,7 +188,7 @@ export function linkInternalTransfers(db: DB, categorizer: Categorizer): number 
   const used = new Set<number>();
   const mark = db.prepare('UPDATE transactions SET category_id = ? WHERE id = ?');
   let linked = 0;
-  db.transaction(() => {
+  transaction(db, () => {
     for (const p of pairs) {
       if (used.has(p.outId) || used.has(p.inId)) continue;
       used.add(p.outId).add(p.inId);
@@ -196,6 +196,6 @@ export function linkInternalTransfers(db: DB, categorizer: Categorizer): number 
       mark.run(transferId, p.inId);
       linked++;
     }
-  })();
+  });
   return linked;
 }

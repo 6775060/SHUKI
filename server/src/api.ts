@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
+import type { SQLInputValue } from 'node:sqlite';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
-import type { DB } from './db.js';
+import { transaction, type DB } from './db.js';
 import type { Vault } from './vault.js';
 import type { Categorizer } from './categorize.js';
 import type { SyncService } from './sync.js';
@@ -243,7 +244,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
       .all() as { id: number; description: string; memo: string | null; amount: number; category_id: number; scope: string; kind: 'bank' | 'card' | 'cash'; default_scope: 'private' | 'business' }[];
     const upd = db.prepare('UPDATE transactions SET category_id = ?, scope = ? WHERE id = ?');
     let changed = 0;
-    db.transaction(() => {
+    transaction(db, () => {
       for (const r of rows) {
         const c = categorizer.categorize({ description: r.description, memo: r.memo, amount: r.amount, accountKind: r.kind, accountScope: r.default_scope });
         if (c.categoryId !== r.category_id || c.scope !== r.scope) {
@@ -251,7 +252,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
           changed++;
         }
       }
-    })();
+    });
     return changed;
   }
 
@@ -271,7 +272,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
       })
       .parse(req.query);
     const where: string[] = [];
-    const params: unknown[] = [];
+    const params: SQLInputValue[] = [];
     if (q.month) {
       where.push("substr(t.date, 1, 7) = ?");
       params.push(q.month);

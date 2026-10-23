@@ -57,7 +57,7 @@
 ## למפתחים
 
 ```
-server/   שרת Node.js + TypeScript (Express, SQLite, israeli-bank-scrapers)
+server/   שרת Node.js + TypeScript (Express, SQLite המובנה ב-Node, israeli-bank-scrapers)
 web/      ממשק React + Vite, מימין לשמאל
 docs/     מסמך האיפיון
 ```

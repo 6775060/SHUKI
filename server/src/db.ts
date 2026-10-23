@@ -1,8 +1,22 @@
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import { seedCategoriesAndRules } from './categories.js';
 
-export type DB = Database.Database;
+// Node's built-in SQLite: no native module to compile, so installing on
+// Windows needs nothing beyond Node.js itself.
+export type DB = DatabaseSync;
+
+export function transaction<T>(db: DB, fn: () => T): T {
+  db.exec('BEGIN');
+  try {
+    const result = fn();
+    db.exec('COMMIT');
+    return result;
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
 
 const MIGRATIONS: string[] = [
   `
@@ -98,20 +112,20 @@ const MIGRATIONS: string[] = [
 ];
 
 export function openDb(dataDir: string, filename = 'shefa.db'): DB {
-  const db = new Database(filename === ':memory:' ? ':memory:' : path.join(dataDir, filename));
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
+  const db = new DatabaseSync(filename === ':memory:' ? ':memory:' : path.join(dataDir, filename));
+  db.exec('PRAGMA journal_mode = WAL');
+  db.exec('PRAGMA foreign_keys = ON');
   migrate(db);
   return db;
 }
 
 function migrate(db: DB): void {
-  const version = db.pragma('user_version', { simple: true }) as number;
+  const version = (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
   for (let v = version; v < MIGRATIONS.length; v++) {
-    db.transaction(() => {
+    transaction(db, () => {
       db.exec(MIGRATIONS[v]);
-      db.pragma(`user_version = ${v + 1}`);
-    })();
+      db.exec(`PRAGMA user_version = ${v + 1}`);
+    });
   }
   if (version === 0) seedCategoriesAndRules(db);
 }

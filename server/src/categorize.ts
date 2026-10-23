@@ -50,7 +50,7 @@ export class Categorizer {
          FROM rules r JOIN categories c ON c.id = r.category_id
          ORDER BY r.is_default ASC, r.priority DESC, length(r.pattern) DESC, r.id DESC`,
       )
-      .all() as Rule[];
+      .all() as unknown as Rule[];
     for (const row of this.db.prepare('SELECT id, slug FROM categories WHERE slug IS NOT NULL').all() as { id: number; slug: string }[]) {
       this.slugs.set(row.slug, row.id);
     }
