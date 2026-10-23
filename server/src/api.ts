@@ -1,0 +1,376 @@
+import crypto from 'node:crypto';
+import express, { type NextFunction, type Request, type Response } from 'express';
+import { z } from 'zod';
+import type { DB } from './db.js';
+import type { Vault } from './vault.js';
+import type { Categorizer } from './categorize.js';
+import type { SyncService } from './sync.js';
+import { getInstitution, listInstitutions } from './institutions.js';
+import { ingestTransactions, linkInternalTransfers, upsertAccount } from './ingest.js';
+import { parseStatement } from './importer.js';
+import { monthSummary, monthsWithData } from './stats.js';
+
+interface Deps {
+  db: DB;
+  vault: Vault;
+  categorizer: Categorizer;
+  sync: SyncService;
+  onUnlock: () => void;
+}
+
+const scope = z.enum(['private', 'business']);
+
+export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): express.Router {
+  const api = express.Router();
+  api.use(express.json({ limit: '1mb' }));
+
+  const sessions = new Set<string>();
+  const newSession = () => {
+    const token = crypto.randomBytes(32).toString('hex');
+    sessions.add(token);
+    return token;
+  };
+
+  const requireSession = (req: Request, res: Response, next: NextFunction) => {
+    const token = req.header('x-session');
+    if (!vault.isUnlocked() || !token || !sessions.has(token)) {
+      res.status(401).json({ error: 'LOCKED' });
+      return;
+    }
+    next();
+  };
+
+  // ---- vault ----
+  api.get('/status', (_req, res) => {
+    res.json({ initialized: vault.isInitialized(), unlocked: vault.isUnlocked() });
+  });
+
+  api.post('/setup', (req, res) => {
+    const { password } = z.object({ password: z.string().min(8) }).parse(req.body);
+    if (vault.isInitialized()) {
+      res.status(409).json({ error: 'ALREADY_INITIALIZED' });
+      return;
+    }
+    vault.setup(password);
+    onUnlock();
+    res.json({ token: newSession() });
+  });
+
+  let failedAttempts = 0;
+  api.post('/unlock', async (req, res) => {
+    const { password } = z.object({ password: z.string() }).parse(req.body);
+    if (failedAttempts >= 5) await new Promise((r) => setTimeout(r, 2000 * (failedAttempts - 4)));
+    if (!vault.unlock(password)) {
+      failedAttempts++;
+      res.status(401).json({ error: 'WRONG_PASSWORD' });
+      return;
+    }
+    failedAttempts = 0;
+    onUnlock();
+    res.json({ token: newSession() });
+  });
+
+  api.post('/lock', requireSession, (_req, res) => {
+    sessions.clear();
+    vault.lock();
+    res.json({ ok: true });
+  });
+
+  api.use(requireSession);
+
+  // ---- institutions & connections ----
+  api.get('/institutions', (_req, res) => res.json(listInstitutions()));
+
+  api.get('/connections', (_req, res) => {
+    const rows = db
+      .prepare(
+        `SELECT c.id, c.company_id AS companyId, c.label, c.default_scope AS defaultScope, c.enabled, c.last_sync_at AS lastSyncAt,
+           c.last_status AS lastStatus, c.last_error AS lastError,
+           (SELECT added FROM sync_runs r WHERE r.connection_id = c.id ORDER BY r.id DESC LIMIT 1) AS lastAdded
+         FROM connections c ORDER BY c.id`,
+      )
+      .all();
+    res.json({ connections: rows, sync: sync.status() });
+  });
+
+  api.post('/connections', (req, res) => {
+    const body = z
+      .object({ companyId: z.string(), label: z.string().min(1), defaultScope: scope, credentials: z.record(z.string(), z.string()) })
+      .parse(req.body);
+    const inst = getInstitution(body.companyId);
+    if (!inst) {
+      res.status(400).json({ error: 'UNKNOWN_INSTITUTION' });
+      return;
+    }
+    const missing = inst.loginFields.filter((f) => !body.credentials[f.key]?.trim());
+    if (missing.length) {
+      res.status(400).json({ error: 'MISSING_FIELDS', fields: missing.map((f) => f.key) });
+      return;
+    }
+    const creds = Object.fromEntries(inst.loginFields.map((f) => [f.key, body.credentials[f.key].trim()]));
+    const id = db
+      .prepare('INSERT INTO connections (company_id, label, default_scope, credentials_enc) VALUES (?, ?, ?, ?)')
+      .run(body.companyId, body.label, body.defaultScope, vault.seal(creds)).lastInsertRowid as number;
+    sync.enqueue(id);
+    res.json({ id });
+  });
+
+  api.patch('/connections/:id', (req, res) => {
+    const id = Number(req.params.id);
+    const body = z
+      .object({
+        label: z.string().min(1).optional(),
+        defaultScope: scope.optional(),
+        enabled: z.boolean().optional(),
+        credentials: z.record(z.string(), z.string()).optional(),
+      })
+      .parse(req.body);
+    const conn = db.prepare('SELECT company_id FROM connections WHERE id = ?').get(id) as { company_id: string } | undefined;
+    if (!conn) {
+      res.status(404).end();
+      return;
+    }
+    if (body.label) db.prepare('UPDATE connections SET label = ? WHERE id = ?').run(body.label, id);
+    if (body.defaultScope) {
+      db.prepare('UPDATE connections SET default_scope = ? WHERE id = ?').run(body.defaultScope, id);
+      db.prepare('UPDATE accounts SET default_scope = ? WHERE connection_id = ?').run(body.defaultScope, id);
+    }
+    if (body.enabled !== undefined) db.prepare('UPDATE connections SET enabled = ? WHERE id = ?').run(body.enabled ? 1 : 0, id);
+    if (body.credentials) {
+      const inst = getInstitution(conn.company_id)!;
+      const creds = Object.fromEntries(inst.loginFields.map((f) => [f.key, (body.credentials![f.key] ?? '').trim()]));
+      if (Object.values(creds).some((v) => !v)) {
+        res.status(400).json({ error: 'MISSING_FIELDS' });
+        return;
+      }
+      db.prepare('UPDATE connections SET credentials_enc = ?, last_error = NULL WHERE id = ?').run(vault.seal(creds), id);
+    }
+    res.json({ ok: true });
+  });
+
+  api.delete('/connections/:id', (req, res) => {
+    // Transactions stay; only the stored login is removed.
+    db.prepare('DELETE FROM connections WHERE id = ?').run(Number(req.params.id));
+    res.json({ ok: true });
+  });
+
+  api.post('/connections/:id/sync', (req, res) => {
+    sync.enqueue(Number(req.params.id));
+    res.json({ ok: true });
+  });
+
+  api.post('/sync', (_req, res) => {
+    sync.enqueueAll();
+    res.json({ ok: true });
+  });
+
+  // ---- accounts ----
+  api.get('/accounts', (_req, res) => {
+    res.json(
+      db
+        .prepare(
+          `SELECT a.id, a.kind, a.company_id AS companyId, a.account_number AS accountNumber, a.label, a.default_scope AS defaultScope,
+             a.balance, a.balance_date AS balanceDate, (SELECT COUNT(*) FROM transactions t WHERE t.account_id = a.id) AS txnCount
+           FROM accounts a ORDER BY a.kind, a.label`,
+        )
+        .all(),
+    );
+  });
+
+  api.post('/accounts', (req, res) => {
+    const body = z
+      .object({ kind: z.enum(['bank', 'card', 'cash']), label: z.string().min(1), companyId: z.string().nullable(), accountNumber: z.string().min(1), defaultScope: scope })
+      .parse(req.body);
+    const acc = upsertAccount(db, { connectionId: null, ...body });
+    res.json({ id: acc.id });
+  });
+
+  api.patch('/accounts/:id', (req, res) => {
+    const body = z.object({ label: z.string().min(1).optional(), defaultScope: scope.optional() }).parse(req.body);
+    const id = Number(req.params.id);
+    if (body.label) db.prepare('UPDATE accounts SET label = ? WHERE id = ?').run(body.label, id);
+    if (body.defaultScope) db.prepare('UPDATE accounts SET default_scope = ? WHERE id = ?').run(body.defaultScope, id);
+    res.json({ ok: true });
+  });
+
+  // ---- categories & rules ----
+  api.get('/categories', (_req, res) => {
+    res.json(db.prepare('SELECT id, slug, name, grp, kind FROM categories ORDER BY sort, id').all());
+  });
+
+  api.post('/categories', (req, res) => {
+    const body = z.object({ name: z.string().min(1), grp: z.string().min(1), kind: z.enum(['expense', 'income', 'transfer']) }).parse(req.body);
+    const id = db.prepare('INSERT INTO categories (name, grp, kind, sort) VALUES (?, ?, ?, 1000)').run(body.name, body.grp, body.kind).lastInsertRowid;
+    res.json({ id });
+  });
+
+  api.get('/rules', (_req, res) => {
+    res.json(
+      db
+        .prepare(
+          `SELECT r.id, r.pattern, r.category_id AS categoryId, c.name AS categoryName, r.scope, r.account_kind AS accountKind, r.is_default AS isDefault
+           FROM rules r JOIN categories c ON c.id = r.category_id ORDER BY r.is_default, c.sort, r.pattern`,
+        )
+        .all(),
+    );
+  });
+
+  api.post('/rules', (req, res) => {
+    const body = z
+      .object({ pattern: z.string().min(2), categoryId: z.number().int(), scope: scope.nullable().optional(), applyToExisting: z.boolean().default(true) })
+      .parse(req.body);
+    const id = db
+      .prepare('INSERT INTO rules (pattern, category_id, scope) VALUES (?, ?, ?)')
+      .run(body.pattern, body.categoryId, body.scope ?? null).lastInsertRowid;
+    categorizer.reload();
+    const changed = body.applyToExisting ? recategorize() : 0;
+    res.json({ id, changed });
+  });
+
+  api.delete('/rules/:id', (req, res) => {
+    db.prepare('DELETE FROM rules WHERE id = ?').run(Number(req.params.id));
+    categorizer.reload();
+    res.json({ ok: true });
+  });
+
+  // Re-run rules on every transaction the user has not categorized by hand.
+  function recategorize(): number {
+    const rows = db
+      .prepare(
+        `SELECT t.id, t.description, t.memo, t.amount, t.category_id, t.scope, a.kind, a.default_scope
+         FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.category_locked = 0`,
+      )
+      .all() as { id: number; description: string; memo: string | null; amount: number; category_id: number; scope: string; kind: 'bank' | 'card' | 'cash'; default_scope: 'private' | 'business' }[];
+    const upd = db.prepare('UPDATE transactions SET category_id = ?, scope = ? WHERE id = ?');
+    let changed = 0;
+    db.transaction(() => {
+      for (const r of rows) {
+        const c = categorizer.categorize({ description: r.description, memo: r.memo, amount: r.amount, accountKind: r.kind, accountScope: r.default_scope });
+        if (c.categoryId !== r.category_id || c.scope !== r.scope) {
+          upd.run(c.categoryId, c.scope, r.id);
+          changed++;
+        }
+      }
+    })();
+    return changed;
+  }
+
+  api.post('/recategorize', (_req, res) => res.json({ changed: recategorize() }));
+
+  // ---- transactions ----
+  api.get('/transactions', (req, res) => {
+    const q = z
+      .object({
+        month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+        accountId: z.coerce.number().optional(),
+        categoryId: z.coerce.number().optional(),
+        scope: scope.optional(),
+        search: z.string().optional(),
+        uncategorized: z.enum(['1']).optional(),
+        limit: z.coerce.number().max(2000).default(500),
+      })
+      .parse(req.query);
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (q.month) {
+      where.push("substr(t.date, 1, 7) = ?");
+      params.push(q.month);
+    }
+    if (q.accountId) {
+      where.push('t.account_id = ?');
+      params.push(q.accountId);
+    }
+    if (q.categoryId) {
+      where.push('t.category_id = ?');
+      params.push(q.categoryId);
+    }
+    if (q.scope) {
+      where.push('t.scope = ?');
+      params.push(q.scope);
+    }
+    if (q.uncategorized) where.push("c.slug = 'uncategorized'");
+    if (q.search) {
+      where.push('(t.description LIKE ? OR t.memo LIKE ? OR t.note LIKE ?)');
+      params.push(`%${q.search}%`, `%${q.search}%`, `%${q.search}%`);
+    }
+    const rows = db
+      .prepare(
+        `SELECT t.id, t.date, t.amount, t.original_amount AS originalAmount, t.original_currency AS originalCurrency,
+           t.description, t.memo, t.status, t.installment_number AS installmentNumber, t.installment_total AS installmentTotal,
+           t.category_id AS categoryId, c.name AS categoryName, c.kind AS categoryKind, t.scope, t.note, t.source,
+           a.id AS accountId, a.label AS accountLabel, a.kind AS accountKind
+         FROM transactions t JOIN accounts a ON a.id = t.account_id LEFT JOIN categories c ON c.id = t.category_id
+         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+         ORDER BY t.date DESC, t.id DESC LIMIT ?`,
+      )
+      .all(...params, q.limit);
+    res.json(rows);
+  });
+
+  api.patch('/transactions/:id', (req, res) => {
+    const body = z
+      .object({ categoryId: z.number().int().optional(), scope: scope.optional(), note: z.string().max(500).nullable().optional() })
+      .parse(req.body);
+    const id = Number(req.params.id);
+    if (body.categoryId !== undefined) db.prepare('UPDATE transactions SET category_id = ?, category_locked = 1 WHERE id = ?').run(body.categoryId, id);
+    if (body.scope) db.prepare('UPDATE transactions SET scope = ?, category_locked = 1 WHERE id = ?').run(body.scope, id);
+    if (body.note !== undefined) db.prepare('UPDATE transactions SET note = ? WHERE id = ?').run(body.note, id);
+    res.json({ ok: true });
+  });
+
+  api.post('/transactions', (req, res) => {
+    const body = z
+      .object({ accountId: z.number().int(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), amount: z.number(), description: z.string().min(1) })
+      .parse(req.body);
+    const account = db.prepare('SELECT id, kind, default_scope FROM accounts WHERE id = ?').get(body.accountId) as
+      | { id: number; kind: 'bank' | 'card' | 'cash'; default_scope: 'private' | 'business' }
+      | undefined;
+    if (!account) {
+      res.status(404).end();
+      return;
+    }
+    const r = ingestTransactions(db, categorizer, account, [{ ...body, uniqueKey: crypto.randomUUID() }], 'manual');
+    res.json(r);
+  });
+
+  // ---- file import ----
+  api.post('/import', express.raw({ type: 'application/octet-stream', limit: '20mb' }), async (req, res) => {
+    const q = z.object({ accountId: z.coerce.number(), filename: z.string(), dryRun: z.enum(['0', '1']).default('1') }).parse(req.query);
+    const account = db.prepare('SELECT id, kind, default_scope FROM accounts WHERE id = ?').get(q.accountId) as
+      | { id: number; kind: 'bank' | 'card' | 'cash'; default_scope: 'private' | 'business' }
+      | undefined;
+    if (!account) {
+      res.status(404).json({ error: 'ACCOUNT_NOT_FOUND' });
+      return;
+    }
+    try {
+      const parsed = await parseStatement(q.filename, req.body as Buffer, account.kind);
+      if (q.dryRun === '1') {
+        res.json({ headers: parsed.headers, count: parsed.txns.length, skipped: parsed.skipped, preview: parsed.txns.slice(0, 15) });
+        return;
+      }
+      const r = ingestTransactions(db, categorizer, account, parsed.txns, 'import');
+      linkInternalTransfers(db, categorizer);
+      res.json({ ...r, skipped: parsed.skipped });
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+    }
+  });
+
+  // ---- dashboard ----
+  api.get('/summary', (req, res) => {
+    const month = z.string().regex(/^\d{4}-\d{2}$/).optional().parse(req.query.month) ?? new Date().toISOString().slice(0, 7);
+    res.json({ ...monthSummary(db, month), months: monthsWithData(db) });
+  });
+
+  api.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    if (err instanceof z.ZodError) {
+      res.status(400).json({ error: 'VALIDATION', issues: err.issues });
+      return;
+    }
+    console.error(err);
+    res.status(500).json({ error: 'INTERNAL' });
+  });
+
+  return api;
+}
