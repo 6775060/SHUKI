@@ -130,6 +130,16 @@ for(const w of [390,1280]){
   const desk=await variant('desk',s=>s.replace('"plan":"web"','"plan":"desk"').replace(/"web":"https:[^"]*"/g,'"web":""'));
   if(desk.tabs)bad(`${w} desktop plan still shows the domain tabs`);if(desk.th.includes('פורמט לאתרים'))bad(`${w} desktop plan still has a web column`);if(!desk.th.includes('פורמט לדסקטופ'))bad(`${w} desktop plan lost the desktop column`);
   const ex=await variant('extra',s=>s.replace('"plan":"web"','"plan":"extra"'));if(ex.tabs!==2||!ex.th.includes('פורמט לאתרים'))bad(`${w} extra plan: tabs ${ex.tabs}, columns ${ex.th}`);
+  // features in testing: off unless the site lists them; on, the studio vote and the gallery render inside the screen
+  {const off=await variant('nofeat',s=>s);void off;const vp0=await b.newPage({viewport:{width:w,height:900}});await vp0.goto('file://'+S+'/page-nofeat.html');await vp0.waitForTimeout(300);
+   if(await vp0.evaluate(()=>[...document.querySelectorAll('#fsa .side button[data-view="studio"],#fsa .side button[data-view="show"]')].some(b=>!b.hidden)))bad(`${w} studio / gallery visible while off`);await vp0.close();
+   const feat='"features":["studio","show"],"studio":{"closes":"30 בנובמבר","vote":null,"fonts":[{"id":"a","name":"שחף","sample":"ים של אותיות","desc":"צר","stage":2,"pct":46},{"id":"b","name":"מגדלור","sample":"אור","desc":"סריף","stage":1,"pct":31},{"id":"c","name":"גלגל","sample":"כוח","desc":"שמן","stage":3,"pct":23}]},"showcase":[{"name":"קפה","host":"cafe.example","font":"פורטו"},{"name":"מגזין","host":"mag.example","font":"טאלנט"}],"plan":"web"';
+   fs.writeFileSync(S+'/page-feat.html',base.replace('"plan":"web"',feat));
+   const fp=await b.newPage({viewport:{width:w,height:900}});const fe=[];fp.on('pageerror',x=>fe.push(x.message));await fp.goto('file://'+S+'/page-feat.html');await fp.waitForTimeout(400);
+   if(!(await fp.locator('#fsa .st-teaser').count()))bad(`${w} studio teaser missing on "המינוי שלי"`);
+   for(const v of ['studio','show','dom']){await fp.evaluate(x=>document.querySelector(`#fsa .side button[data-view="${x}"]`).click(),v);await fp.waitForTimeout(450);if(v==='dom'){await fp.click('#fsa [data-dommode="g"]');await fp.waitForTimeout(300)}
+    const r=await fp.evaluate(()=>({cards:document.querySelectorAll('#fsa .st-card,#fsa .sc').length,ov:document.documentElement.scrollWidth-innerWidth}));if(!r.cards)bad(`${w} ${v} renders no cards`);if(r.ov>1)bad(`${w} ${v} scrolls sideways ${r.ov}px`)}
+   if(fe.length)bad(`${w} features JS errors: ${fe}`);await fp.close()}
   const np=await variant('none',s=>s.replace('"plan":"web"','"plan":"","offers":{"web":{"price":378,"url":"https://example.com/web"}}'));
   if(!np.prices||np.prices[0]!=='₪378'||np.prices[1]!=='₪680'||np.prices[2]!=='₪179')bad(`${w} offer prices (store price first, then the written ones): ${np.prices}`);
   const ok=(i,n,h)=>np.offers[i]&&np.offers[i].startsWith(n)&&np.offers[i].endsWith('|'+h);if(np.offers.length!==3||!ok(0,'וובסטופ','https://example.com/web')||!ok(1,'אקסטרה','https://example.com/extra')||!np.offers[2].startsWith('דסקטופ'))bad(`${w} no-subscription offers: ${np.offers}`)}

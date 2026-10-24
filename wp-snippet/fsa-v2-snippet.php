@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '87' );
+define( 'FSA_V2_BUILD', '93' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -1452,6 +1452,90 @@ add_shortcode( 'fs_account_v2', function () {
 @media (max-width:900px){:is(#fsa,#fsa-layer) .offer{grid-template-columns:minmax(0,1fr) auto;padding:18px 20px 18px 34px}:is(#fsa,#fsa-layer) .offer .of-cta{grid-column:1/-1;width:100%}}
 @media (max-width:560px){:is(#fsa,#fsa-layer) .offer .of-br{display:none}:is(#fsa,#fsa-layer) .offer .of-id{align-items:flex-start;gap:10px}:is(#fsa,#fsa-layer) .offer .of-id>div{flex:1;min-width:0}:is(#fsa,#fsa-layer) .offer .of-id>img{width:40px;height:40px}}
 @media (max-width:420px){:is(#fsa,#fsa-layer) .offer{grid-template-columns:minmax(0,1fr)}}
+:is(#fsa,#fsa-layer) .side button.has-dot::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--violet-text);margin-inline-end:8px;vertical-align:middle}
+/* studio */
+:is(#fsa,#fsa-layer) .st-close{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);white-space:nowrap}
+:is(#fsa,#fsa-layer) .st-close .icon{width:18px;height:18px}
+:is(#fsa,#fsa-layer) .st-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:26px}
+:is(#fsa,#fsa-layer) .st-card{border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;background:var(--card);transition:border-color .3s var(--ease),box-shadow .3s var(--ease)}
+:is(#fsa,#fsa-layer) .st-card.mine{border-color:#C9B2FF;box-shadow:0 0 0 3px #EFE3FF}
+:is(#fsa,#fsa-layer) .st-spec{height:150px;display:grid;place-items:center;padding:0 16px;background:linear-gradient(135deg,#EFE8FF,#FDE7F6);font-size:46px;line-height:1.1;text-align:center;color:#2A1F4F;overflow:hidden}
+:is(#fsa,#fsa-layer) .st-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px;flex:1}
+:is(#fsa,#fsa-layer) .st-top{display:flex;align-items:baseline;gap:8px}
+:is(#fsa,#fsa-layer) .st-top h3{font-size:19px;font-weight:700;margin:0}
+:is(#fsa,#fsa-layer) .st-code{font-size:12px;color:var(--muted)}
+:is(#fsa,#fsa-layer) .st-desc{font-size:14px;color:var(--muted);margin:0;line-height:1.45}
+:is(#fsa,#fsa-layer) .st-stage{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+:is(#fsa,#fsa-layer) .st-stage li{font-size:11px;color:var(--faint);padding-top:7px;border-top:3px solid var(--soft);white-space:nowrap}
+:is(#fsa,#fsa-layer) .st-stage li.on{color:var(--ink);border-top-color:#B075FF}
+:is(#fsa,#fsa-layer) .st-res{display:flex;align-items:center;gap:10px}
+:is(#fsa,#fsa-layer) .st-bar{flex:1;height:8px;border-radius:99px;background:var(--soft);overflow:hidden}
+:is(#fsa,#fsa-layer) .st-bar i{display:block;height:100%;background:var(--grad);border-radius:99px;transition:width .6s var(--ease)}
+:is(#fsa,#fsa-layer) .st-res b{font-size:15px;min-width:42px;text-align:end}
+:is(#fsa,#fsa-layer) .st-vote{margin-top:auto;height:42px;border-radius:99px;width:100%}
+:is(#fsa,#fsa-layer) .st-vote.btn-line{background:var(--card);border:1px solid #D9C8F5;color:var(--ink)}
+:is(#fsa,#fsa-layer) .st-why{margin-top:22px;display:grid;gap:8px;font-size:15px}
+:is(#fsa,#fsa-layer) .st-why-row{display:flex;gap:10px}
+:is(#fsa,#fsa-layer) .st-why-row input{flex:1;min-width:0;height:44px;border:1px solid #E3C8F5;border-radius:99px;padding:0 18px;font:inherit;background:var(--card)}
+:is(#fsa,#fsa-layer) .st-why-row .btn{height:44px;border-radius:99px;padding:0 24px}
+:is(#fsa,#fsa-layer) .st-cta{margin-top:22px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:16px 20px;border-radius:14px;background:#FAF6FE;border:1px solid #F1E8FB}
+:is(#fsa,#fsa-layer) .st-cta span{color:var(--muted);font-size:14px;flex:1;min-width:200px}
+:is(#fsa,#fsa-layer) .st-cta .btn{border-radius:99px;height:42px}
+:is(#fsa,#fsa-layer) .st-note{margin-top:16px}
+:is(#fsa,#fsa-layer) .st-teaser{display:flex;align-items:center;gap:14px;margin:-18px 0 30px;padding:12px 14px 12px 12px;border-radius:14px;background:#FAF6FE;border:1px solid #F1E8FB}
+:is(#fsa,#fsa-layer) .st-dot{display:flex;flex:none}
+:is(#fsa,#fsa-layer) .st-dot i{font-style:normal;width:38px;height:44px;display:grid;place-items:center;background:var(--card);border-radius:10px;font-size:24px;color:var(--violet);box-shadow:0 2px 0 #E3D3FA;margin-inline-start:-8px;transform:rotate(-4deg)}
+:is(#fsa,#fsa-layer) .st-dot i:first-child{margin-inline-start:0;transform:rotate(4deg)}
+:is(#fsa,#fsa-layer) .st-t-txt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.35}
+:is(#fsa,#fsa-layer) .st-t-txt span{font-size:14px;color:var(--muted)}
+:is(#fsa,#fsa-layer) .st-teaser .btn{border-radius:99px;height:40px;padding:0 20px;flex:none}
+:is(#fsa,#fsa-layer) .st-teaser .btn-line{background:var(--card);border:1px solid #D9C8F5}
+:is(#fsa,#fsa-layer) .st-x{flex:none}
+/* sites gallery */
+:is(#fsa,#fsa-layer) .chips{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 20px}
+:is(#fsa,#fsa-layer) .chips button{all:unset;cursor:pointer;font-size:14px;padding:6px 14px;border-radius:99px;border:1px solid var(--line);color:var(--muted);transition:background-color .25s var(--ease),color .25s var(--ease),border-color .25s var(--ease)}
+:is(#fsa,#fsa-layer) .chips button:hover{color:var(--ink);border-color:#D9C8F5}
+:is(#fsa,#fsa-layer) .chips button[aria-pressed="true"]{background:#F1E8FB;border-color:#F1E8FB;color:var(--ink);font-weight:600}
+:is(#fsa,#fsa-layer) .chips button:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+:is(#fsa,#fsa-layer) .dom-mode{margin:4px 0 22px}
+:is(#fsa,#fsa-layer) .sc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 18px}
+:is(#fsa,#fsa-layer) .sc{margin:0;display:flex;flex-direction:column;gap:10px}
+:is(#fsa,#fsa-layer) .sc-frame{display:block;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--card);text-decoration:none;color:inherit;transition:transform .35s var(--ease),box-shadow .35s var(--ease)}
+:is(#fsa,#fsa-layer) .sc-frame:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(42,31,79,.12)}
+:is(#fsa,#fsa-layer) .sc-frame:focus-visible{outline:2px solid var(--violet);outline-offset:3px}
+:is(#fsa,#fsa-layer) .sc-bar{display:flex;align-items:center;gap:5px;height:26px;padding:0 10px;background:var(--soft);border-bottom:1px solid var(--line)}
+:is(#fsa,#fsa-layer) .sc-bar i{width:7px;height:7px;border-radius:50%;background:#D6D6D6}
+:is(#fsa,#fsa-layer) .sc-bar span{margin-inline-start:8px;flex:1;min-width:0;font-size:11px;color:var(--muted);background:var(--card);border-radius:99px;padding:1px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+:is(#fsa,#fsa-layer) .sc-shot{aspect-ratio:16/10;overflow:hidden;background:var(--softer)}
+:is(#fsa,#fsa-layer) .sc-shot img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+:is(#fsa,#fsa-layer) .sk{height:100%;display:flex;flex-direction:column;background:hsl(var(--hu) 60% 97%);color:hsl(var(--hu) 45% 22%)}
+:is(#fsa,#fsa-layer) .sk-nav{display:flex;align-items:center;gap:8px;padding:8% 7% 0;font-size:13px}
+:is(#fsa,#fsa-layer) .sk-nav b{margin-inline-end:auto;font-weight:700}
+:is(#fsa,#fsa-layer) .sk-nav i{width:22px;height:4px;border-radius:2px;background:hsl(var(--hu) 30% 80%)}
+:is(#fsa,#fsa-layer) .sk-hero{flex:1;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:0 7%}
+:is(#fsa,#fsa-layer) .sk-h{font-size:clamp(20px,2.6vw,30px);line-height:1.05;font-weight:700;color:hsl(var(--hu) 55% 30%)}
+:is(#fsa,#fsa-layer) .sk-p{display:grid;gap:5px;width:70%}
+:is(#fsa,#fsa-layer) .sk-p i{height:5px;border-radius:3px;background:hsl(var(--hu) 25% 84%)}
+:is(#fsa,#fsa-layer) .sk-p i+i{width:70%}
+:is(#fsa,#fsa-layer) .sk-btn{width:62px;height:16px;border-radius:99px;background:hsl(var(--hu) 60% 55%)}
+:is(#fsa,#fsa-layer) .sk-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 7% 7%}
+:is(#fsa,#fsa-layer) .sk-row i{height:28px;border-radius:6px;background:hsl(var(--hu) 40% 90%)}
+:is(#fsa,#fsa-layer) .sc figcaption{display:flex;flex-direction:column;gap:6px;padding:0 2px}
+:is(#fsa,#fsa-layer) .sc figcaption>div:first-child{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+:is(#fsa,#fsa-layer) .sc-by{font-size:13px;color:var(--muted)}
+:is(#fsa,#fsa-layer) .sc-fonts{display:flex;flex-wrap:wrap;gap:6px}
+:is(#fsa,#fsa-layer) .sc-fonts span{font-size:12px;background:#F3E3F8;border-radius:99px;padding:1px 9px}
+:is(#fsa,#fsa-layer) .sc-acts{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:13px}
+:is(#fsa,#fsa-layer) .sc-share{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;color:var(--violet);font-weight:600}
+:is(#fsa,#fsa-layer) .sc-share .icon{width:16px;height:16px}
+:is(#fsa,#fsa-layer) .sc-share:focus-visible{outline:2px solid var(--violet);outline-offset:2px;border-radius:4px}
+:is(#fsa,#fsa-layer) .sc-pub{display:inline-flex;align-items:center;gap:6px;color:var(--muted);cursor:pointer;font-weight:400}
+:is(#fsa,#fsa-layer) .sc-pub input{accent-color:var(--violet);width:15px;height:15px;margin:0}
+:is(#fsa,#fsa-layer) .sc-invite{margin-top:30px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:16px 20px;border-radius:14px;background:#FAF6FE;border:1px solid #F1E8FB}
+:is(#fsa,#fsa-layer) .sc-invite span{color:var(--muted);font-size:14px;flex:1;min-width:200px}
+:is(#fsa,#fsa-layer) .sc-invite .btn{border-radius:99px;height:40px;background:var(--card);border:1px solid #D9C8F5}
+@media (max-width:1000px){:is(#fsa,#fsa-layer) .st-grid,:is(#fsa,#fsa-layer) .sc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){:is(#fsa,#fsa-layer) .st-grid,:is(#fsa,#fsa-layer) .sc-grid{grid-template-columns:minmax(0,1fr)}:is(#fsa,#fsa-layer) .st-teaser{flex-wrap:wrap;margin-top:-22px}:is(#fsa,#fsa-layer) .st-teaser .st-t-txt{flex-basis:calc(100% - 140px)}:is(#fsa,#fsa-layer) .st-teaser .btn{order:5;width:100%}:is(#fsa,#fsa-layer) .st-why-row{flex-direction:column}:is(#fsa,#fsa-layer) .st-spec{height:120px;font-size:40px}}
 :is(#fsa,#fsa-layer) .bye-sheet{max-width:440px;overflow:hidden;border-radius:22px;text-align:center}
 :is(#fsa,#fsa-layer) .bye-art{display:flex;justify-content:center;gap:8px;padding:30px 20px 22px;background:linear-gradient(135deg,#EFE8FF,#FDE7F6)}
 :is(#fsa,#fsa-layer) .bye-t{width:48px;height:56px;display:grid;place-items:center;background:#fff;border-radius:12px;font-size:30px;font-weight:700;line-height:1;color:var(--violet);box-shadow:0 3px 0 #E3D3FA,0 8px 18px rgba(91,63,255,.12);transform:rotate(calc((var(--i) - 1.5) * 4deg));animation:byeBob 2.6s ease-in-out infinite;animation-delay:calc(var(--i) * .18s)}
@@ -1520,7 +1604,9 @@ FSACSS;
     <nav class="side" aria-label="אזור אישי">
       <button data-view="subs">המינוי שלי</button>
       <button data-view="lic">פונטים שלי</button>
+      <button data-view="studio" hidden>בסטודיו</button>
       <button data-view="dom">דומיינים</button>
+      <button data-view="show" hidden>גלריה</button>
       <button data-view="orders">הזמנות</button>
       <button data-view="profile">פרופיל</button>
       <span class="sep"></span>
@@ -1568,6 +1654,8 @@ const ICON={
   spark:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M8.03339 3.65784C8.37932 2.78072 9.62068 2.78072 9.96661 3.65785L11.0386 6.37599C11.1442 6.64378 11.3562 6.85576 11.624 6.96137L14.3422 8.03339C15.2193 8.37932 15.2193 9.62068 14.3422 9.96661L11.624 11.0386C11.3562 11.1442 11.1442 11.3562 11.0386 11.624L9.96661 14.3422C9.62067 15.2193 8.37932 15.2193 8.03339 14.3422L6.96137 11.624C6.85575 11.3562 6.64378 11.1442 6.37599 11.0386L3.65784 9.96661C2.78072 9.62067 2.78072 8.37932 3.65785 8.03339L6.37599 6.96137C6.64378 6.85575 6.85576 6.64378 6.96137 6.37599L8.03339 3.65784Z"/><path d="M16.4885 13.3481C16.6715 12.884 17.3285 12.884 17.5115 13.3481L18.3121 15.3781C18.368 15.5198 18.4802 15.632 18.6219 15.6879L20.6519 16.4885C21.116 16.6715 21.116 17.3285 20.6519 17.5115L18.6219 18.3121C18.4802 18.368 18.368 18.4802 18.3121 18.6219L17.5115 20.6519C17.3285 21.116 16.6715 21.116 16.4885 20.6519L15.6879 18.6219C15.632 18.4802 15.5198 18.368 15.3781 18.3121L13.3481 17.5115C12.884 17.3285 12.884 16.6715 13.3481 16.4885L15.3781 15.6879C15.5198 15.632 15.632 15.5198 15.6879 15.3781L16.4885 13.3481Z" opacity=".5"/></g></svg>',
   smile:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="12" cy="12" r="10" stroke-width="1.5" opacity=".5"/><path stroke-width="1.5" d="M9 16C9.85038 16.6303 10.8846 17 12 17C13.1154 17 14.1496 16.6303 15 16"/><path d="M15.5 10.5C15.5 11.0523 15.2761 11.5 15 11.5C14.7239 11.5 14.5 11.0523 14.5 10.5C14.5 9.94772 14.7239 9.5 15 9.5C15.2761 9.5 15.5 9.94772 15.5 10.5Z"/><ellipse cx="9" cy="10.5" rx=".5" ry="1"/></g></svg>',
   chev:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M19 9L12 15L5 9" opacity=".5"/><path d="M8.5 12L12 15L19 9"/></g></svg>',
+  share:'<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></g></svg>',
+  clock:'<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></g></svg>',
   close:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M17 7L7 17M7 7l10 10"/></g></svg>',
   globe:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M2 12H22M16 12C16 13.3132 15.8965 14.6136 15.6955 15.8268C15.4945 17.0401 15.1999 18.1425 14.8284 19.0711C14.457 19.9997 14.016 20.7362 13.5307 21.2388C13.0454 21.7413 12.5253 22 12 22C11.4747 22 10.9546 21.7413 10.4693 21.2388C9.98396 20.7362 9.54301 19.9997 9.17157 19.0711C8.80014 18.1425 8.5055 17.0401 8.30448 15.8268C8.10346 14.6136 8 13.3132 8 12C8 10.6868 8.10346 9.38642 8.30448 8.17316C8.5055 6.95991 8.80014 5.85752 9.17157 4.92893C9.54301 4.00035 9.98396 3.26375 10.4693 2.7612C10.9546 2.25866 11.4747 2 12 2C12.5253 2 13.0454 2.25866 13.5307 2.76121C14.016 3.26375 14.457 4.00035 14.8284 4.92893C15.1999 5.85752 15.4945 6.95991 15.6955 8.17317C15.8965 9.38642 16 10.6868 16 12Z" opacity=".5"/><path d="M22 12C22 13.3132 21.7413 14.6136 21.2388 15.8268C20.7362 17.0401 19.9997 18.1425 19.0711 19.0711C18.1425 19.9997 17.0401 20.7362 15.8268 21.2388C14.6136 21.7413 13.3132 22 12 22C10.6868 22 9.38642 21.7413 8.17317 21.2388C6.95991 20.7362 5.85752 19.9997 4.92893 19.0711C4.00035 18.1425 3.26375 17.0401 2.7612 15.8268C2.25866 14.6136 2 13.3132 2 12C2 10.6868 2.25866 9.38642 2.76121 8.17316C3.26375 6.95991 4.00035 5.85752 4.92893 4.92893C5.85752 4.00035 6.95991 3.26375 8.17317 2.7612C9.38642 2.25866 10.6868 2 12 2C13.3132 2 14.6136 2.25866 15.8268 2.76121C17.0401 3.26375 18.1425 4.00035 19.0711 4.92893C19.9997 5.85752 20.7362 6.95991 21.2388 8.17317C21.7413 9.38642 22 10.6868 22 12L22 12Z"/></g></svg>',
   user:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><circle cx="12" cy="6" r="4"/><ellipse cx="12" cy="17" opacity=".5" rx="7" ry="4"/></g></svg>',
@@ -1734,7 +1822,7 @@ const noPlan=()=>`<div class="head-row"><div><h1 class="h1">המינוי שלי<
   <tbody>${CMP.map(r=>r[0]==='grp'?`<tr class="grp"><td>${r[1]}</td><td></td><td></td><td></td></tr>`:`<tr><td><b>${r[0]}</b> - ${r[1]}</td>${[2,3,4].map(i=>`<td>${cmpCell(r[i])}</td>`).join('')}</tr>`).join('')}<tr class="cmp-end"><td></td><td></td><td></td><td></td></tr></tbody>
  </table></div></section>
  <a class="of-more" href="${PRICING}">כל הפרטים על המינויים והרישיונות</a>`;
-const _subs=V.subs;V.subs=tab=>FS.plan?_subs(tab):noPlan();
+const _subs=V.subs;V.subs=tab=>{if(!FS.plan)return noPlan();const h=_subs(tab),t=studioTeaser();if(!t)return h;const i=h.search(/<div class="tabs"|<h2 class="h2-sec dl-only-h"/);return i<0?h:h.slice(0,i)+t+h.slice(i)};
 /* font-update note: sits under the download table ("כל הפונטים לאתרים / לדסקטופ") */
 const fontNote=()=>state.noteHidden?'':`<div class="note x-new" data-new="חדש: עדכון פונט">
    <span class="note-ic">${ICON.spark}</span>
@@ -1995,7 +2083,7 @@ function cert(l,site){
 let state={view:'subs',plan:'web',sub:{subs:'dl',lic:'list',profile:'me'},open:{lic:-1,orders:-1}};
 try{const s=JSON.parse(localStorage.getItem('fsa-v2')||'null');if(s&&V[s.view])state=Object.assign(state,s)}catch(e){}
 state.open={lic:-1,orders:-1};
-{const hv=location.hash.slice(1);if(V[hv])state.view=hv;if(hv==='subdom'){state.view='subs';state.sub.subs='reg'}
+{const hv=location.hash.slice(1);if(V[hv])state.view=hv;if(['studio','show'].includes(state.view)&&!(FS.features||[]).includes(state.view))state.view='subs';if(hv==='subdom'){state.view='subs';state.sub.subs='reg'}
  /* #order-123 (from the old "view order" links and the order e-mails): the orders list with that order open */
  const om=/^order-(\d+)$/.exec(hv);if(om){state.view='orders';const i=ORDERS.findIndex(o=>String(o.id)===om[1]);state.open.orders=i}}state.plan=FS.plan||'web';state.noteHidden=1;
 /* back from paying for an add-on on the live site (WooCommerce return URL): reopen the matching registration form */
@@ -2007,6 +2095,58 @@ function save(){try{localStorage.setItem('fsa-v2',JSON.stringify(state))}catch(e
 /* "https://www.studio-dayan.co.il/about" -> host "studio-dayan.co.il" -> name "Studio Dayan".
    On the live site the server can also fetch the page <title> for a nicer name. */
 const cleanHost=v=>v.trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').split(/[\/?#]/)[0];
+/* ── features in testing (off on the site until FS.features lists them) ─────────────────────────────
+   studio: vote which font in development comes out first · show: sites made with the fonts, and "my sites" as a gallery */
+const FEAT=FS.features||[];
+const STAGES=['סקיצה','משקלים','ניקוד','כמעט מוכן'];
+const fontFace=n=>(FS.fontFaces&&FS.fontFaces[n])||'inherit';
+/* studio */
+const stVote=()=>{const S=FS.studio;return S&&S.vote?S.fonts.find(f=>f.id===S.vote):null};
+V.studio=()=>{const S=FS.studio||{fonts:[]},mine=S.vote,can=!!FS.plan&&S.open!==false,res=!!mine||!can;
+ return `<div class="head-row"><div><h1 class="h1">בסטודיו</h1><p class="sub">${S.fonts.length} פונטים בעבודה עכשיו. איזה מהם תרצו לקבל ראשון?</p></div>${S.closes?`<span class="st-close">${ICON.clock||''}ההצבעה נסגרת ב־${ea(S.closes)}</span>`:''}</div>
+ <div class="st-grid">${S.fonts.map(f=>`<article class="st-card${mine===f.id?' mine':''}">
+  <div class="st-spec" style="font-family:${ea(f.family||'inherit')}" aria-label="דוגמה: ${ea(f.sample)}">${ea(f.sample)}</div>
+  <div class="st-body">
+   <div class="st-top"><h3>${ea(f.name)}</h3><span class="st-code">שם עבודה</span></div>
+   <p class="st-desc">${ea(f.desc)}</p>
+   <ol class="st-stage" aria-label="שלב: ${STAGES[f.stage]}">${STAGES.map((x,i)=>`<li class="${i<=f.stage?'on':''}">${x}</li>`).join('')}</ol>
+   ${res?`<div class="st-res"><span class="st-bar"><i style="width:${f.pct}%"></i></span><b class="num">${f.pct}%</b></div>`:''}
+   ${can?`<button class="btn ${mine===f.id?'btn-grad':'btn-line'} st-vote" data-vote="${ea(f.id)}" ${mine===f.id?'aria-pressed="true"':''}>${mine===f.id?'הבחירה שלך':mine?'לבחור בו במקום':'זה הפונט שלי'}</button>`:''}
+  </div></article>`).join('')}</div>
+ ${mine&&can?`<form class="st-why" id="stWhy"><label for="stWhyIn">מה היית מעצב/ת עם ${ea(stVote().name)}? <span class="hint">(רשות)</span></label><div class="st-why-row"><input id="stWhyIn" maxlength="140" value="${ea(S.why||'')}" placeholder="למשל: מיתוג לבית קפה, כותרות למגזין"><button class="btn btn-grad">שליחה</button></div></form>`:''}
+ ${!can?`<div class="st-cta"><b>מנויים בוחרים מה יוצא ראשון.</b><span>במינוי מקבלים את כל הפונטים, וגם קול בבחירת הפונט הבא.</span><button class="btn btn-grad" data-view="subs">למינויים</button></div>`:''}
+ <p class="hint st-note">ההצבעה עוזרת לנו להחליט מה ייצא קודם. ההחלטה הסופית היא של הסטודיו. ${can?'האחוזים מוצגים אחרי שבוחרים.':''} כשהפונט יוצא, ${can?'מי שבחר בו מקבל כאן הודעה.':'הוא נכנס למינוי.'}</p>`};
+function studioTeaser(){if(!FEAT.includes('studio')||!FS.studio||!FS.plan||state.stHide)return '';const v=stVote(),n=FS.studio.fonts.length;
+ return `<div class="st-teaser"><span class="st-dot" aria-hidden="true">${FS.studio.fonts.slice(0,3).map(f=>`<i style="font-family:${ea(f.family||'inherit')}">${ea(f.sample.charAt(0))}</i>`).join('')}</span>
+  <div class="st-t-txt">${v?`<b>בחרת ב${ea(v.name)}</b><span>${v.pct}% מהמנויים בחרו כמוך</span>`:`<b>בסטודיו: ${n} פונטים בפיתוח</b><span>איזה מהם תרצו לקבל ראשון?</span>`}</div>
+  <button class="btn ${v?'btn-line':'btn-grad'}" data-view="studio">${v?'לתוצאות':'להצבעה'}</button><button class="ibtn st-x" data-sthide="1" aria-label="הסתרה">${ICON.close}</button></div>`}
+/* sites: a browser frame with a picture of the site (a screenshot when the site sends one, else a drawn sketch in the site's font) */
+const hue=h=>{let x=0;for(const c of h)x=(x*31+c.charCodeAt(0))%360;return x};
+function siteShot(x){const hu=hue(x.host),ff=fontFace((x.fonts||[x.font])[0]);
+ if(x.img)return `<img src="${ea(x.img)}" alt="" loading="lazy">`;
+ return `<div class="sk" style="--hu:${hu};font-family:${ea(ff)}"><div class="sk-nav"><b>${ea(x.name)}</b><i></i><i></i><i></i></div><div class="sk-hero"><div class="sk-h">${ea(x.head||x.name)}</div><div class="sk-p"><i></i><i></i></div><span class="sk-btn"></span></div><div class="sk-row"><i></i><i></i><i></i></div></div>`}
+function siteCard(x,mine){const fonts=x.fonts||[x.font];
+ return `<figure class="sc"><a class="sc-frame" href="https://${ea(x.host)}" target="_blank" rel="noopener" aria-label="${ea(x.name)}, ${ea(x.host)}"><div class="sc-bar"><i></i><i></i><i></i><span dir="ltr">${ea(x.host)}</span></div><div class="sc-shot">${siteShot(x)}</div></a>
+  <figcaption><div><b>${ea(x.name)}</b>${x.by?`<span class="sc-by">${ea(x.by)}</span>`:''}</div><div class="sc-fonts">${fonts.map(f=>`<span>${ea(f)}</span>`).join('')}</div>
+  ${mine?`<div class="sc-acts"><button class="sc-share" data-share="${ea(x.host)}">${ICON.share||''}שיתוף</button><label class="sc-pub"><input type="checkbox" data-pub="${ea(x.host)}" ${(state.pub||{})[x.host]?'checked':''}> להציג בגלריה של פונטשוק</label></div>`:''}</figcaption></figure>`}
+function fontChips(list,cur,attr){return `<div class="chips" role="group" aria-label="סינון לפי פונט"><button ${attr}="" aria-pressed="${!cur}">הכל</button>${list.map(f=>`<button ${attr}="${ea(f)}" aria-pressed="${cur===f}">${ea(f)}</button>`).join('')}</div>`}
+V.show=()=>{const all=FS.showcase||[],fonts=[...new Set(all.flatMap(x=>x.fonts||[x.font]))],f=state.showF||'',items=f?all.filter(x=>(x.fonts||[x.font]).includes(f)):all;
+ return `<div class="head-row"><div><h1 class="h1">פונטים בשימוש</h1><p class="sub">אתרים שנבנו עם הפונטים של פונטשוק. לחיצה פותחת את האתר.</p></div></div>
+ ${fontChips(fonts,f,'data-showf')}
+ <div class="sc-grid">${items.map(x=>siteCard(x)).join('')||'<p class="empty">עוד אין אתרים עם הפונט הזה.</p>'}</div>
+ <div class="sc-invite"><b>יש לך אתר עם פונט של פונטשוק?</b><span>באזור הדומיינים אפשר לבחור אילו מהאתרים שלך יופיעו כאן.</span><button class="btn btn-line" data-mysites="1">לאתרים שלי</button></div>`};
+/* the customer's own sites (every registered domain, newest first, one card per address) */
+function mySites(){const seen=new Set(),out=[];
+ const rows=[...(SUBDOM[state.plan]||[]).map(s=>({d:s[0],name:s[1],host:s[2],fonts:String(s[3]).split(',').map(x=>x.trim()).filter(Boolean)})),...LIC.filter(l=>l.web).flatMap(l=>(l.sites||[]).map(s=>({d:s[0],name:s[1]||siteName(s[2]),host:s[2],fonts:[l.f]})))].sort((a,b)=>parseD(b.d)-parseD(a.d));
+ rows.forEach(r=>{if(!r.host||seen.has(r.host))return;seen.add(r.host);out.push(r)});return out}
+function domGallery(){const all=mySites(),fonts=[...new Set(all.flatMap(x=>x.fonts))],f=state.myF||'',items=f?all.filter(x=>x.fonts.includes(f)):all;
+ return `${fontChips(fonts,f,'data-myf')}<div class="sc-grid">${items.map(x=>siteCard(x,true)).join('')||'<p class="empty">עוד אין אתרים רשומים.</p>'}</div>
+ <p class="hint">התמונות מתעדכנות מהאתרים עצמם. "שיתוף" יוצר קישור לעמוד עם האתרים שבחרת, בלי פרטים אישיים.</p>`}
+const _dom=V.dom;V.dom=()=>{if(!FEAT.includes('show'))return _dom();const g=state.domMode==='g';
+ const sw=`<div class="seg-f dom-mode" role="group" aria-label="תצוגה"><button data-dommode="l" aria-pressed="${!g}">רשימה</button><button data-dommode="g" aria-pressed="${g}">תצוגת אתרים</button></div>`;
+ if(!g)return _dom().replace('<h2 class="h2-sec sec-row">',sw+'<h2 class="h2-sec sec-row">');
+ return `<div class="head-row"><div><h1 class="h1">דומיינים</h1><p class="sub">כל האתרים שלך במקום אחד. רישום אתר חדש נעשה במינוי או בפונט שרכשת.</p></div></div>${sw}${domGallery()}`};
+
 const siteName=h=>{const parts=h.split('.');const sld=['co','org','net','ac','gov','muni'];let i=parts.length-2;if(i>0&&sld.includes(parts[i]))i--;return (parts[Math.max(i,0)]||h).split('-').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ')};
 const today=()=>{const d=new Date();return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`};
 /* render({page}) fades the whole page in only when the page changes; {opening} lets a just-opened drawer unfold; {fresh} highlights a just-added row */
@@ -2078,6 +2218,7 @@ function byeFacts(){
   f.push(!lim?'רישום דומיינים <b>ללא הגבלה</b>, כל עוד המינוי פעיל':left?`נשארו לך <b>${left===1?'דומיין אחד':left+' דומיינים'}</b> לרשום החודש. הם לא עוברים לחודש הבא`:`ניצלת את הדומיינים של ${CYCLE.label}. המכסה מתחדשת ב־${nextReset()}`)}
  if(LIC.length){const n=licGroups().length;f.push(`<b>${n===1?'פונט אחד':n+' פונטים'}</b> שקנית, עם הקבצים והתעודות שלהם`)}
  if(!p)f.push('עוד אין לך מינוי. במינוי מקבלים את כל הפונטים להורדה');
+ if(FEAT.includes('studio')&&FS.studio&&p&&!FS.studio.vote)f.unshift(`עוד לא בחרת איזה פונט <b>ייצא ראשון</b> מהסטודיו`);
  return f.slice(0,3)}
 function openBye(){
  const tiles=['ב','י','י','?'];
@@ -2112,6 +2253,7 @@ function openCert(spec){
 $('#certClose').onclick=hideModal;
 modal.addEventListener('click',e=>{if(e.target.id==='certModal')hideModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){hideModal();closeMenus();closeCart();closeBye()}});
+document.addEventListener('change',e=>{const c=e.target.closest&&e.target.closest('[data-pub]');if(!c)return;state.pub=Object.assign({},state.pub,{[c.dataset.pub]:c.checked});save();toast(c.checked?'האתר יוצג בגלריה אחרי אישור של פונטשוק':'האתר לא יוצג בגלריה')});
 document.addEventListener('click',e=>{
  const t=e.target.closest('button,a');if(!t||!t.closest('#fsa,#fsa-layer'))return;
  if((t.dataset.addon||t.dataset.planaddon)&&!FS.addon){e.preventDefault();soon();return}
@@ -2146,12 +2288,21 @@ document.addEventListener('click',e=>{
   domApi('del',{id:s[4]}).then(()=>{render();toast(`${s[2]} הוסר והמקום במכסה התפנה`)}).catch(x=>{t.disabled=false;toast(x.message)});return}
  if(t.dataset.go2){state.sub.subs='reg';goPage(t.dataset.go2);return}
  if(t.id==='logout'){openBye();return}
+ if(t.dataset.vote){const id=t.dataset.vote;if(FS.studio.vote===id)return;t.disabled=true;postApi('fsa_v2_vote',{font:id}).then(r=>{Object.assign(FS.studio,r);render();toast('הבחירה נשמרה. אפשר לשנות עד שההצבעה נסגרת.')}).catch(x=>{t.disabled=false;toast(x.message)});return}
+ if(t.dataset.sthide){state.stHide=1;render();return}
+ if(t.dataset.showf!==undefined){state.showF=t.dataset.showf;render();return}
+ if(t.dataset.myf!==undefined){state.myF=t.dataset.myf;render();return}
+ if(t.dataset.dommode){state.domMode=t.dataset.dommode;render();return}
+ if(t.dataset.mysites){state.domMode='g';goPage('dom');return}
+ if(t.dataset.share){const u=(FS.shareBase||location.origin+'/sites/')+encodeURIComponent(FS.user.id||'me');const done=()=>toast('הקישור לעמוד האתרים שלך הועתק');
+  (navigator.clipboard?navigator.clipboard.writeText(u).then(done,()=>toast(u)):(toast(u),0));return}
  if(t.dataset.bye==='stay'){closeBye();return}
  if(t.dataset.bye==='go'){location.href=FS.links.logout;return}
  if(t.dataset.t){e.preventDefault();soon()}
 });
 document.addEventListener('submit',e=>{
  const f=e.target;if(!f.closest('#fsa,#fsa-layer'))return;e.preventDefault();if(f.id==='pform'){saveProfile(f);return}
+ if(f.id==='stWhy'){const w=$('#stWhyIn').value.trim();postApi('fsa_v2_vote',{font:FS.studio.vote,why:w}).then(r=>{Object.assign(FS.studio,r);toast('תודה! קראנו.')}).catch(x=>toast(x.message));return}
  if(f.dataset.subadd){
   const host=cleanHost($('#sd2').value),picked=[...f.querySelectorAll('.fp-menu input:checked')].map(i=>i.value),err=$('#sdErr');
   const msg=!host||!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)?'צריך להזין כתובת אתר תקינה, למשל studio.co.il':!picked.length?'צריך לבחור לפחות פונט אחד':'';
@@ -2197,6 +2348,8 @@ document.addEventListener('input',e=>{if(e.target.dataset.namefor){const n=docum
 document.addEventListener('input',e=>{if(e.target.id==='sd2')$('#sdErr').hidden=true});
 document.addEventListener('input',e=>{if(e.target.id==='oq'){const q=e.target.value.trim().replace('#','');document.querySelectorAll('#otb tr[data-oid]').forEach(r=>r.hidden=q&&!r.dataset.oid.includes(q))}});
 $('#fsaName').textContent=FS.user.first||'';
+FEAT.forEach(k=>{const b=document.querySelector(`#fsa .side button[data-view="${k}"]`);if(b)b.hidden=false});
+if(FS.studio&&FS.plan&&!FS.studio.vote){const b=document.querySelector('#fsa .side button[data-view="studio"]');if(b)b.classList.add('has-dot')}
 if(FS.mode==='live'){const n=$('#fsaNote');if(n)n.innerHTML=`<a href="${ea(FS.oldUrl)}">למעבר לאזור האישי הקודם</a>${FS.build?` <span class="fsa-build">· גרסה ${ea(FS.build)}</span>`:''}`}
 const h=new Date().getHours();$('#greet').textContent=h<5?'לילה טוב':h<12?'בוקר טוב':h<17?'צהריים טובים':h<21?'ערב טוב':'לילה טוב';
 document.querySelectorAll('i[data-ic]').forEach(e=>{const w=document.createElement('span');w.className='ic-wrap '+(e.className||'');if(e.title)w.title=e.title;w.innerHTML=ICON[e.dataset.ic];e.replaceWith(w)});
