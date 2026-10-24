@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './config.js';
+import { FONT_TYPES, isVariableFont } from './fonts.js';
 import type { SQLInputValue } from 'node:sqlite';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
@@ -557,19 +558,15 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
 
   // ---- your own font ----
   const fontDir = path.join(config.dataDir, 'fonts');
-  function fontSetting(): { file: string | null; family: string | null; name: string | null } {
+  function fontSetting(): { file: string | null; family: string | null; name: string | null; variable: boolean } {
     return {
       file: getMeta(db, 'font_file') ?? null,
       family: getMeta(db, 'font_family') ?? null,
       name: getMeta(db, 'font_name') ?? null,
+      variable: getMeta(db, 'font_variable') === '1',
     };
   }
-  const FONT_TYPES: Record<string, (b: Buffer) => boolean> = {
-    woff2: (b) => b.subarray(0, 4).toString('latin1') === 'wOF2',
-    woff: (b) => b.subarray(0, 4).toString('latin1') === 'wOFF',
-    ttf: (b) => b.readUInt32BE(0) === 0x00010000 || b.subarray(0, 4).toString('latin1') === 'true',
-    otf: (b) => b.subarray(0, 4).toString('latin1') === 'OTTO',
-  };
+
 
   api.post('/settings/font', express.raw({ type: 'application/octet-stream', limit: '12mb' }), (req, res) => {
     const q = z.object({ filename: z.string().max(200) }).parse(req.query);
@@ -585,6 +582,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     fs.writeFileSync(path.join(fontDir, file), buf);
     setMeta(db, 'font_file', file);
     setMeta(db, 'font_name', path.basename(q.filename, path.extname(q.filename)).slice(0, 60));
+    setMeta(db, 'font_variable', isVariableFont(buf, ext, q.filename) ? '1' : '0');
     db.prepare("DELETE FROM meta WHERE key = 'font_family'").run();
     res.json(fontSetting());
   });
@@ -598,7 +596,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
 
   api.delete('/settings/font', (_req, res) => {
     if (fs.existsSync(fontDir)) for (const f of fs.readdirSync(fontDir)) fs.rmSync(path.join(fontDir, f));
-    db.prepare("DELETE FROM meta WHERE key IN ('font_file', 'font_family', 'font_name')").run();
+    db.prepare("DELETE FROM meta WHERE key IN ('font_file', 'font_family', 'font_name', 'font_variable')").run();
     res.json(fontSetting());
   });
 

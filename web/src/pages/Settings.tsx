@@ -55,13 +55,19 @@ export function Settings() {
         <div className="font-preview" aria-label="תצוגה מקדימה">
           <div className="font-preview-big">שפע ובהירות ₪12,480</div>
           <div>איזהו עשיר? השמח בחלקו · 0123456789</div>
+          <div className="font-weights">
+            <span style={{ fontWeight: 300 }}>דק 300</span>
+            <span style={{ fontWeight: 400 }}>רגיל 400</span>
+            <span style={{ fontWeight: 600 }}>בינוני 600</span>
+            <span style={{ fontWeight: 800 }}>שמן 800</span>
+          </div>
         </div>
         <div className="sub">
-          כרגע: {font?.file ? `קובץ שהועלה – ${font.name}` : font?.family ? `פונט מותקן – ${font.family}` : 'ברירת המחדל של המערכת'}
+          כרגע: {font?.file ? `קובץ שהועלה – ${font.name}${font.variable ? ' (Variable – כל המשקלים מקובץ אחד)' : ''}` : font?.family ? `פונט מותקן – ${font.family}` : 'ברירת המחדל של המערכת'}
         </div>
 
         <label>
-          העלאת קובץ פונט (TTF / OTF / WOFF / WOFF2)
+          העלאת קובץ פונט (TTF / OTF / WOFF / WOFF2). בפונט Variable – להעלות את קובץ ה-Variable, והוא ישמש לכל המשקלים.
           <input type="file" accept=".ttf,.otf,.woff,.woff2" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
         </label>
 
