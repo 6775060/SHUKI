@@ -1498,33 +1498,37 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .chips button[aria-pressed="true"]{background:#F1E8FB;border-color:#F1E8FB;color:var(--ink);font-weight:600}
 :is(#fsa,#fsa-layer) .chips button:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
 :is(#fsa,#fsa-layer) .dom-mode{margin:4px 0 22px}
-:is(#fsa,#fsa-layer) .sc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 18px}
+:is(#fsa,#fsa-layer) .sc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px 22px;margin-top:8px}
 :is(#fsa,#fsa-layer) .sc{margin:0;display:flex;flex-direction:column;gap:10px}
-:is(#fsa,#fsa-layer) .sc-frame{display:block;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--card);text-decoration:none;color:inherit;transition:transform .35s var(--ease),box-shadow .35s var(--ease)}
-:is(#fsa,#fsa-layer) .sc-frame:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(42,31,79,.12)}
-:is(#fsa,#fsa-layer) .sc-frame:focus-visible{outline:2px solid var(--violet);outline-offset:3px}
-:is(#fsa,#fsa-layer) .sc-bar{display:flex;align-items:center;gap:5px;height:26px;padding:0 10px;background:var(--soft);border-bottom:1px solid var(--line)}
-:is(#fsa,#fsa-layer) .sc-bar i{width:7px;height:7px;border-radius:50%;background:#D6D6D6}
-:is(#fsa,#fsa-layer) .sc-bar span{margin-inline-start:8px;flex:1;min-width:0;font-size:11px;color:var(--muted);background:var(--card);border-radius:99px;padding:1px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
-:is(#fsa,#fsa-layer) .sc-shot{aspect-ratio:16/10;overflow:hidden;background:var(--softer)}
-:is(#fsa,#fsa-layer) .sc-shot img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+:is(#fsa,#fsa-layer) .sc-head{border-bottom:1px solid var(--ink);padding-bottom:22px;margin-bottom:6px}
+:is(#fsa,#fsa-layer) .sc-eyebrow{display:inline-block;border:1.5px solid var(--ink);padding:2px 12px;font-size:22px;font-weight:300;line-height:1.3}
+:is(#fsa,#fsa-layer) .sc-title{font-size:56px;font-weight:800;line-height:1.05;margin:6px 0 8px}
+:is(#fsa,#fsa-layer) .sc-mon{display:block;background:#1F1F22;border-radius:10px;padding:7px;text-decoration:none;color:inherit;transition:transform .35s var(--ease),box-shadow .35s var(--ease)}
+:is(#fsa,#fsa-layer) .sc-mon:hover{transform:translateY(-3px);box-shadow:0 16px 30px rgba(31,31,34,.18)}
+:is(#fsa,#fsa-layer) .sc-mon:focus-visible{outline:2px solid var(--violet);outline-offset:3px}
+:is(#fsa,#fsa-layer) .sc-screen{display:block;aspect-ratio:16/10;overflow:hidden;background:var(--softer);border-radius:3px;container-type:inline-size}
+:is(#fsa,#fsa-layer) .sc-screen img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+:is(#fsa,#fsa-layer) .sc-stand{display:flex;flex-direction:column;align-items:center;margin-top:-1px}
+:is(#fsa,#fsa-layer) .sc-stand i{width:22%;height:22px;background:linear-gradient(#8E8E93,#6E6E73);clip-path:polygon(12% 0,88% 0,100% 100%,0 100%)}
+:is(#fsa,#fsa-layer) .sc-stand b{width:34%;height:7px;border-radius:5px 5px 2px 2px;background:#6E6E73}
 :is(#fsa,#fsa-layer) .sk{height:100%;display:flex;flex-direction:column;background:hsl(var(--hu) 60% 97%);color:hsl(var(--hu) 45% 22%)}
-:is(#fsa,#fsa-layer) .sk-nav{display:flex;align-items:center;gap:8px;padding:8% 7% 0;font-size:13px}
+:is(#fsa,#fsa-layer) .sk-nav{display:flex;align-items:center;gap:2.5cqw;padding:7% 7% 0;font-size:max(7px,4.2cqw)}
 :is(#fsa,#fsa-layer) .sk-nav b{margin-inline-end:auto;font-weight:700}
-:is(#fsa,#fsa-layer) .sk-nav i{width:22px;height:4px;border-radius:2px;background:hsl(var(--hu) 30% 80%)}
-:is(#fsa,#fsa-layer) .sk-hero{flex:1;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:0 7%}
-:is(#fsa,#fsa-layer) .sk-h{font-size:clamp(20px,2.6vw,30px);line-height:1.05;font-weight:700;color:hsl(var(--hu) 55% 30%)}
-:is(#fsa,#fsa-layer) .sk-p{display:grid;gap:5px;width:70%}
-:is(#fsa,#fsa-layer) .sk-p i{height:5px;border-radius:3px;background:hsl(var(--hu) 25% 84%)}
+:is(#fsa,#fsa-layer) .sk-nav i{width:7cqw;height:1.3cqw;border-radius:2px;background:hsl(var(--hu) 30% 80%)}
+:is(#fsa,#fsa-layer) .sk-hero{flex:1;display:flex;flex-direction:column;justify-content:center;gap:2.6cqw;padding:0 7%}
+:is(#fsa,#fsa-layer) .sk-h{font-size:max(11px,10cqw);line-height:1.05;font-weight:700;color:hsl(var(--hu) 55% 30%)}
+:is(#fsa,#fsa-layer) .sk-p{display:grid;gap:1.6cqw;width:70%}
+:is(#fsa,#fsa-layer) .sk-p i{height:1.6cqw;border-radius:3px;background:hsl(var(--hu) 25% 84%)}
 :is(#fsa,#fsa-layer) .sk-p i+i{width:70%}
-:is(#fsa,#fsa-layer) .sk-btn{width:62px;height:16px;border-radius:99px;background:hsl(var(--hu) 60% 55%)}
-:is(#fsa,#fsa-layer) .sk-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 7% 7%}
-:is(#fsa,#fsa-layer) .sk-row i{height:28px;border-radius:6px;background:hsl(var(--hu) 40% 90%)}
-:is(#fsa,#fsa-layer) .sc figcaption{display:flex;flex-direction:column;gap:6px;padding:0 2px}
-:is(#fsa,#fsa-layer) .sc figcaption>div:first-child{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-:is(#fsa,#fsa-layer) .sc-by{font-size:13px;color:var(--muted)}
-:is(#fsa,#fsa-layer) .sc-fonts{display:flex;flex-wrap:wrap;gap:6px}
-:is(#fsa,#fsa-layer) .sc-fonts span{font-size:12px;background:#F3E3F8;border-radius:99px;padding:1px 9px}
+:is(#fsa,#fsa-layer) .sk-btn{width:20cqw;height:5cqw;border-radius:99px;background:hsl(var(--hu) 60% 55%)}
+:is(#fsa,#fsa-layer) .sk-row{display:grid;grid-template-columns:repeat(3,1fr);gap:2cqw;padding:0 7% 7%}
+:is(#fsa,#fsa-layer) .sk-row i{height:9cqw;border-radius:6px;background:hsl(var(--hu) 40% 90%)}
+:is(#fsa,#fsa-layer) .sc figcaption{display:flex;flex-direction:column;gap:8px;padding:6px 2px 0}
+:is(#fsa,#fsa-layer) .sc-name{font-size:21px;font-weight:700;margin:0;line-height:1.25}
+:is(#fsa,#fsa-layer) .sc-meta{display:grid;grid-template-columns:auto 1fr;gap:3px 18px;margin:0;font-size:15px}
+:is(#fsa,#fsa-layer) .sc-meta dt{color:var(--faint);font-weight:400}
+:is(#fsa,#fsa-layer) .sc-meta dd{margin:0;color:var(--ink);min-width:0;overflow-wrap:anywhere}
+:is(#fsa,#fsa-layer) .sc-meta .sc-host{text-align:right;font-size:14px}
 :is(#fsa,#fsa-layer) .sc-acts{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:13px}
 :is(#fsa,#fsa-layer) .sc-share{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;color:var(--violet);font-weight:600}
 :is(#fsa,#fsa-layer) .sc-share .icon{width:16px;height:16px}
@@ -1535,7 +1539,7 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .sc-invite span{color:var(--muted);font-size:14px;flex:1;min-width:200px}
 :is(#fsa,#fsa-layer) .sc-invite .btn{border-radius:99px;height:40px;background:var(--card);border:1px solid #D9C8F5}
 @media (max-width:1000px){:is(#fsa,#fsa-layer) .st-grid,:is(#fsa,#fsa-layer) .sc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:620px){:is(#fsa,#fsa-layer) .st-grid,:is(#fsa,#fsa-layer) .sc-grid{grid-template-columns:minmax(0,1fr)}:is(#fsa,#fsa-layer) .st-teaser{flex-wrap:wrap;margin-top:-22px}:is(#fsa,#fsa-layer) .st-teaser .st-t-txt{flex-basis:calc(100% - 140px)}:is(#fsa,#fsa-layer) .st-teaser .btn{order:5;width:100%}:is(#fsa,#fsa-layer) .st-why-row{flex-direction:column}:is(#fsa,#fsa-layer) .st-spec{height:120px;font-size:40px}}
+@media (max-width:620px){:is(#fsa,#fsa-layer) .st-grid{grid-template-columns:minmax(0,1fr)}:is(#fsa,#fsa-layer) .sc-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 12px}:is(#fsa,#fsa-layer) .sc-name{font-size:17px}:is(#fsa,#fsa-layer) .sc-meta{font-size:13px;gap:2px 12px}:is(#fsa,#fsa-layer) .sc-mon{padding:4px;border-radius:7px}:is(#fsa,#fsa-layer) .sc-stand i{height:14px}:is(#fsa,#fsa-layer) .sc-title{font-size:40px}:is(#fsa,#fsa-layer) .sc-eyebrow{font-size:18px}:is(#fsa,#fsa-layer) .sc-acts{flex-direction:column;align-items:flex-start}:is(#fsa,#fsa-layer) .st-teaser{flex-wrap:wrap;margin-top:-22px}:is(#fsa,#fsa-layer) .st-teaser .st-t-txt{flex-basis:calc(100% - 140px)}:is(#fsa,#fsa-layer) .st-teaser .btn{order:5;width:100%}:is(#fsa,#fsa-layer) .st-why-row{flex-direction:column}:is(#fsa,#fsa-layer) .st-spec{height:120px;font-size:40px}}
 :is(#fsa,#fsa-layer) .bye-sheet{max-width:440px;overflow:hidden;border-radius:22px;text-align:center}
 :is(#fsa,#fsa-layer) .bye-art{display:flex;justify-content:center;gap:8px;padding:30px 20px 22px;background:linear-gradient(135deg,#EFE8FF,#FDE7F6)}
 :is(#fsa,#fsa-layer) .bye-t{width:48px;height:56px;display:grid;place-items:center;background:#fff;border-radius:12px;font-size:30px;font-weight:700;line-height:1;color:var(--violet);box-shadow:0 3px 0 #E3D3FA,0 8px 18px rgba(91,63,255,.12);transform:rotate(calc((var(--i) - 1.5) * 4deg));animation:byeBob 2.6s ease-in-out infinite;animation-delay:calc(var(--i) * .18s)}
@@ -2125,13 +2129,14 @@ const hue=h=>{let x=0;for(const c of h)x=(x*31+c.charCodeAt(0))%360;return x};
 function siteShot(x){const hu=hue(x.host),ff=fontFace((x.fonts||[x.font])[0]);
  if(x.img)return `<img src="${ea(x.img)}" alt="" loading="lazy">`;
  return `<div class="sk" style="--hu:${hu};font-family:${ea(ff)}"><div class="sk-nav"><b>${ea(x.name)}</b><i></i><i></i><i></i></div><div class="sk-hero"><div class="sk-h">${ea(x.head||x.name)}</div><div class="sk-p"><i></i><i></i></div><span class="sk-btn"></span></div><div class="sk-row"><i></i><i></i><i></i></div></div>`}
-function siteCard(x,mine){const fonts=x.fonts||[x.font];
- return `<figure class="sc"><a class="sc-frame" href="https://${ea(x.host)}" target="_blank" rel="noopener" aria-label="${ea(x.name)}, ${ea(x.host)}"><div class="sc-bar"><i></i><i></i><i></i><span dir="ltr">${ea(x.host)}</span></div><div class="sc-shot">${siteShot(x)}</div></a>
-  <figcaption><div><b>${ea(x.name)}</b>${x.by?`<span class="sc-by">${ea(x.by)}</span>`:''}</div><div class="sc-fonts">${fonts.map(f=>`<span>${ea(f)}</span>`).join('')}</div>
-  ${mine?`<div class="sc-acts"><button class="sc-share" data-share="${ea(x.host)}">${ICON.share||''}שיתוף</button><label class="sc-pub"><input type="checkbox" data-pub="${ea(x.host)}" ${(state.pub||{})[x.host]?'checked':''}> להציג בגלריה של פונטשוק</label></div>`:''}</figcaption></figure>`}
+/* one site as a desktop monitor (screen + stand), caption: name, then label / value rows (font, year; own sites also the address) */
+function siteCard(x,mine){const fonts=x.fonts||[x.font],yr=x.year||(x.d?String(x.d).split('.')[2]:'');
+ return `<figure class="sc"><a class="sc-mon" href="https://${ea(x.host)}" target="_blank" rel="noopener" aria-label="${ea(x.name)}, ${ea(x.host)}"><span class="sc-screen">${siteShot(x)}</span></a><span class="sc-stand" aria-hidden="true"><i></i><b></b></span>
+  <figcaption><h3 class="sc-name">${ea(x.name)}</h3><dl class="sc-meta"><dt>${fonts.length>1?'פונטים':'פונט'}</dt><dd>${fonts.map(ea).join(', ')}</dd>${yr?`<dt>שנה</dt><dd class="num">${ea(yr)}</dd>`:''}${x.by?`<dt>עיצוב</dt><dd>${ea(x.by)}</dd>`:''}${mine?`<dt>כתובת</dt><dd dir="ltr" class="sc-host">${ea(x.host)}</dd>`:''}</dl>
+  ${mine?`<div class="sc-acts"><button class="sc-share" data-share="${ea(x.host)}">${ICON.share||''}שיתוף</button><label class="sc-pub"><input type="checkbox" data-pub="${ea(x.host)}" ${(state.pub||{})[x.host]?'checked':''}> להציג בגלריה</label></div>`:''}</figcaption></figure>`}
 function fontChips(list,cur,attr){return `<div class="chips" role="group" aria-label="סינון לפי פונט"><button ${attr}="" aria-pressed="${!cur}">הכל</button>${list.map(f=>`<button ${attr}="${ea(f)}" aria-pressed="${cur===f}">${ea(f)}</button>`).join('')}</div>`}
 V.show=()=>{const all=FS.showcase||[],fonts=[...new Set(all.flatMap(x=>x.fonts||[x.font]))],f=state.showF||'',items=f?all.filter(x=>(x.fonts||[x.font]).includes(f)):all;
- return `<div class="head-row"><div><h1 class="h1">פונטים בשימוש</h1><p class="sub">אתרים שנבנו עם הפונטים של פונטשוק. לחיצה פותחת את האתר.</p></div></div>
+ return `<div class="sc-head"><span class="sc-eyebrow">הפונטים בפעולה</span><h1 class="sc-title">אתרי אינטרנט</h1><p class="sub">אתרים שנבנו עם הפונטים של פונטשוק. לחיצה פותחת את האתר.</p></div>
  ${fontChips(fonts,f,'data-showf')}
  <div class="sc-grid">${items.map(x=>siteCard(x)).join('')||'<p class="empty">עוד אין אתרים עם הפונט הזה.</p>'}</div>
  <div class="sc-invite"><b>יש לך אתר עם פונט של פונטשוק?</b><span>באזור הדומיינים אפשר לבחור אילו מהאתרים שלך יופיעו כאן.</span><button class="btn btn-line" data-mysites="1">לאתרים שלי</button></div>`};
