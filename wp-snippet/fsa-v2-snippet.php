@@ -1460,6 +1460,10 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .st-card{border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;background:var(--card);transition:border-color .3s var(--ease),box-shadow .3s var(--ease)}
 :is(#fsa,#fsa-layer) .st-card.mine{border-color:#C9B2FF;box-shadow:0 0 0 3px #EFE3FF}
 :is(#fsa,#fsa-layer) .st-spec{height:150px;display:grid;place-items:center;padding:0 16px;background:linear-gradient(135deg,#EFE8FF,#FDE7F6);font-size:46px;line-height:1.1;text-align:center;color:#2A1F4F;overflow:hidden}
+:is(#fsa,#fsa-layer) .st-spec span{display:flex;flex-direction:column;align-items:center;gap:4px}
+:is(#fsa,#fsa-layer) .st-spec small{font-size:.5em;opacity:.8}
+:is(#fsa,#fsa-layer) .st-spec.st-img{padding:0;background:none}
+:is(#fsa,#fsa-layer) .st-spec.st-img img{width:100%;height:100%;object-fit:cover;display:block}
 :is(#fsa,#fsa-layer) .st-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px;flex:1}
 :is(#fsa,#fsa-layer) .st-top{display:flex;align-items:baseline;gap:8px}
 :is(#fsa,#fsa-layer) .st-top h3{font-size:19px;font-weight:700;margin:0}
@@ -2082,9 +2086,9 @@ function cert(l,site){
 
 /* state & router */
 let state={view:'subs',plan:'web',sub:{subs:'dl',lic:'list',profile:'me'},open:{lic:-1,orders:-1}};
-try{const s=JSON.parse(localStorage.getItem('fsa-v2')||'null');if(s&&V[s.view])state=Object.assign(state,s)}catch(e){}
+try{const s=JSON.parse(localStorage.getItem('fsa-v2')||'null');if(s&&(V[s.view]||['studio','show'].includes(s.view)))state=Object.assign(state,s)}catch(e){}
 state.open={lic:-1,orders:-1};
-{const hv=location.hash.slice(1);if(V[hv])state.view=hv;if(['studio','show'].includes(state.view)&&!(FS.features||[]).includes(state.view))state.view='subs';if(hv==='subdom'){state.view='subs';state.sub.subs='reg'}
+{const hv=location.hash.slice(1);if(V[hv]||['studio','show'].includes(hv))state.view=hv;if(['studio','show'].includes(state.view)&&!(FS.features||[]).includes(state.view))state.view='subs';if(hv==='subdom'){state.view='subs';state.sub.subs='reg'}
  /* #order-123 (from the old "view order" links and the order e-mails): the orders list with that order open */
  const om=/^order-(\d+)$/.exec(hv);if(om){state.view='orders';const i=ORDERS.findIndex(o=>String(o.id)===om[1]);state.open.orders=i}}state.plan=FS.plan||'web';state.noteHidden=1;
 /* back from paying for an add-on on the live site (WooCommerce return URL): reopen the matching registration form */
@@ -2105,7 +2109,7 @@ const stVote=()=>{const S=FS.studio;return S&&S.vote?S.fonts.find(f=>f.id===S.vo
 V.studio=()=>{const S=FS.studio||{fonts:[]},mine=S.vote,can=!!FS.plan&&S.open!==false,res=!!mine||!can;
  return `<div class="head-row"><div><h1 class="h1">בסטודיו</h1><p class="sub">${S.fonts.length} פונטים בעבודה עכשיו. איזה מהם תרצו לקבל ראשון?</p></div>${S.closes?`<span class="st-close">${ICON.clock||''}ההצבעה נסגרת ב־${ea(S.closes)}</span>`:''}</div>
  <div class="st-grid">${S.fonts.map(f=>`<article class="st-card${mine===f.id?' mine':''}">
-  <div class="st-spec" style="font-family:${ea(f.family||'inherit')}" aria-label="דוגמה: ${ea(f.sample)}">${ea(f.sample)}</div>
+  ${f.img?`<div class="st-spec st-img"><img src="${ea(f.img)}" alt="דוגמה של ${ea(f.name)}: ${ea(f.sample||'')} ${ea(f.sampleEn||'')}"></div>`:`<div class="st-spec" style="font-family:${ea(f.family||'inherit')}" aria-label="דוגמה: ${ea(f.sample)}"><span>${ea(f.sample)}${f.sampleEn?`<small dir="ltr">${ea(f.sampleEn)}</small>`:''}</span></div>`}
   <div class="st-body">
    <div class="st-top"><h3>${ea(f.name)}</h3><span class="st-code">שם עבודה</span></div>
    <p class="st-desc">${ea(f.desc)}</p>
