@@ -1465,9 +1465,6 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .st-top h3{font-size:19px;font-weight:700;margin:0}
 :is(#fsa,#fsa-layer) .st-code{font-size:12px;color:var(--muted)}
 :is(#fsa,#fsa-layer) .st-desc{font-size:14px;color:var(--muted);margin:0;line-height:1.45}
-:is(#fsa,#fsa-layer) .st-stage{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
-:is(#fsa,#fsa-layer) .st-stage li{font-size:11px;color:var(--faint);padding-top:7px;border-top:3px solid var(--soft);white-space:nowrap}
-:is(#fsa,#fsa-layer) .st-stage li.on{color:var(--ink);border-top-color:#B075FF}
 :is(#fsa,#fsa-layer) .st-res{display:flex;align-items:center;gap:10px}
 :is(#fsa,#fsa-layer) .st-bar{flex:1;height:8px;border-radius:99px;background:var(--soft);overflow:hidden}
 :is(#fsa,#fsa-layer) .st-bar i{display:block;height:100%;background:var(--grad);border-radius:99px;transition:width .6s var(--ease)}
@@ -2102,7 +2099,6 @@ const cleanHost=v=>v.trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^w
 /* ── features in testing (off on the site until FS.features lists them) ─────────────────────────────
    studio: vote which font in development comes out first · show: sites made with the fonts, and "my sites" as a gallery */
 const FEAT=FS.features||[];
-const STAGES=['סקיצה','משקלים','ניקוד','כמעט מוכן'];
 const fontFace=n=>(FS.fontFaces&&FS.fontFaces[n])||'inherit';
 /* studio */
 const stVote=()=>{const S=FS.studio;return S&&S.vote?S.fonts.find(f=>f.id===S.vote):null};
@@ -2113,7 +2109,6 @@ V.studio=()=>{const S=FS.studio||{fonts:[]},mine=S.vote,can=!!FS.plan&&S.open!==
   <div class="st-body">
    <div class="st-top"><h3>${ea(f.name)}</h3><span class="st-code">שם עבודה</span></div>
    <p class="st-desc">${ea(f.desc)}</p>
-   <ol class="st-stage" aria-label="שלב: ${STAGES[f.stage]}">${STAGES.map((x,i)=>`<li class="${i<=f.stage?'on':''}">${x}</li>`).join('')}</ol>
    ${res?`<div class="st-res"><span class="st-bar"><i style="width:${f.pct}%"></i></span><b class="num">${f.pct}%</b></div>`:''}
    ${can?`<button class="btn ${mine===f.id?'btn-grad':'btn-line'} st-vote" data-vote="${ea(f.id)}" ${mine===f.id?'aria-pressed="true"':''}>${mine===f.id?'הבחירה שלך':mine?'לבחור בו במקום':'זה הפונט שלי'}</button>`:''}
   </div></article>`).join('')}</div>
