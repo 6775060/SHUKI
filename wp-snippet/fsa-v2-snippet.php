@@ -1483,6 +1483,27 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .st-cta span{color:var(--muted);font-size:14px;flex:1;min-width:200px}
 :is(#fsa,#fsa-layer) .st-cta .btn{border-radius:99px;height:42px}
 :is(#fsa,#fsa-layer) .st-note{margin-top:16px}
+:is(#fsa,#fsa-layer) .st-skip{justify-self:start;font-size:14px}
+:is(#fsa,#fsa-layer) .st-sum{margin-top:26px;display:grid;grid-template-columns:200px minmax(0,1fr) auto;gap:22px;align-items:center;padding:18px;border-radius:18px;border:1px solid #E6D9FB;background:var(--card);box-shadow:0 0 0 3px #F6F0FF}
+:is(#fsa,#fsa-layer) .st-sum.folding{animation:stFold .5s var(--ease)}
+@keyframes stFold{from{opacity:0;transform:scaleY(1.6);transform-origin:top}to{opacity:1;transform:none}}
+:is(#fsa,#fsa-layer) .st-sum-pick{aspect-ratio:2/1;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#EFE8FF,#FDE7F6);display:grid;place-items:center;font-size:30px;color:#2A1F4F}
+:is(#fsa,#fsa-layer) .st-sum-pick img{width:100%;height:100%;object-fit:cover;display:block}
+:is(#fsa,#fsa-layer) .st-sum-main{display:grid;gap:4px;min-width:0}
+:is(#fsa,#fsa-layer) .st-sum-k{font-size:13px;color:var(--muted)}
+:is(#fsa,#fsa-layer) .st-sum-name{font-size:22px;font-weight:700;line-height:1.2}
+:is(#fsa,#fsa-layer) .st-sum-res{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:5px;max-width:360px}
+:is(#fsa,#fsa-layer) .st-sum-res li{display:grid;grid-template-columns:72px 1fr 40px;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+:is(#fsa,#fsa-layer) .st-sum-res li.mine{color:var(--ink);font-weight:600}
+:is(#fsa,#fsa-layer) .st-sum-res .st-bar{height:6px}
+:is(#fsa,#fsa-layer) .st-sum-res li:not(.mine) .st-bar i{background:#D9CDEE}
+:is(#fsa,#fsa-layer) .st-sum-res b{text-align:end;font-weight:inherit}
+:is(#fsa,#fsa-layer) .st-sum-why{margin:6px 0 0;font-size:14px;color:var(--muted)}
+:is(#fsa,#fsa-layer) .st-sum-acts{display:flex;flex-direction:column;align-items:center;gap:8px}
+:is(#fsa,#fsa-layer) .st-sum-acts .btn{border-radius:99px;height:40px;background:var(--card);border:1px solid #D9C8F5}
+:is(#fsa,#fsa-layer) .st-sum-acts .linkbtn{font-size:13px}
+@media (max-width:760px){:is(#fsa,#fsa-layer) .st-sum{grid-template-columns:120px minmax(0,1fr);gap:14px}:is(#fsa,#fsa-layer) .st-sum-acts{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;justify-content:flex-start}:is(#fsa,#fsa-layer) .st-sum-pick{font-size:20px}}
+@media (max-width:420px){:is(#fsa,#fsa-layer) .st-sum{grid-template-columns:minmax(0,1fr)}:is(#fsa,#fsa-layer) .st-sum-pick{max-width:220px}}
 :is(#fsa,#fsa-layer) .st-teaser{display:flex;align-items:center;gap:14px;margin:-18px 0 30px;padding:12px 14px 12px 12px;border-radius:14px;background:#FAF6FE;border:1px solid #F1E8FB}
 :is(#fsa,#fsa-layer) .st-dot{display:flex;flex:none}
 :is(#fsa,#fsa-layer) .st-dot i{font-style:normal;width:38px;height:44px;display:grid;place-items:center;background:var(--card);border-radius:10px;font-size:24px;color:var(--violet);box-shadow:0 2px 0 #E3D3FA;margin-inline-start:-8px;transform:rotate(-4deg)}
@@ -2106,7 +2127,18 @@ const FEAT=FS.features||[];
 const fontFace=n=>(FS.fontFaces&&FS.fontFaces[n])||'inherit';
 /* studio */
 const stVote=()=>{const S=FS.studio;return S&&S.vote?S.fonts.find(f=>f.id===S.vote):null};
+/* after voting (and the optional answer) the page folds into one summary: the choice, everyone's percentages, the answer; "לשנות בחירה" opens it again */
+function studioSummary(S){const v=stVote();
+ return `<div class="st-sum${state.stFold?' folding':''}">
+  <div class="st-sum-pick">${v.img?`<img src="${ea(v.img)}" alt="">`:`<span style="font-family:${ea(v.family||'inherit')}">${ea(v.sample)}</span>`}</div>
+  <div class="st-sum-main"><span class="st-sum-k">הבחירה שלך</span><b class="st-sum-name">${ea(v.name)}</b>
+   <ul class="st-sum-res">${S.fonts.map(f=>`<li class="${f.id===v.id?'mine':''}"><span>${ea(f.name)}</span><span class="st-bar"><i style="width:${f.pct}%"></i></span><b class="num">${f.pct}%</b></li>`).join('')}</ul>
+   ${S.why?`<p class="st-sum-why">כתבת: "${ea(S.why)}"</p>`:''}</div>
+  <div class="st-sum-acts"><button class="btn btn-line" data-stopen="1">לשנות בחירה</button>${S.why?'':'<button class="linkbtn" data-stopen="why">להוסיף מה היית מעצב/ת</button>'}</div>
+ </div>`}
 V.studio=()=>{const S=FS.studio||{fonts:[]},mine=S.vote,can=!!FS.plan&&S.open!==false,res=!!mine||!can;
+ if(mine&&can&&!state.stOpen)return `<div class="head-row"><div><h1 class="h1">בסטודיו</h1><p class="sub">תודה! הבחירה שלך נשמרה. כשהפונט יוצא, תקבל/י כאן הודעה.</p></div>${S.closes?`<span class="st-close">${ICON.clock||''}ההצבעה נסגרת ב־${ea(S.closes)}</span>`:''}</div>${studioSummary(S)}
+ <p class="hint st-note">ההצבעה עוזרת לנו להחליט מה ייצא קודם. ההחלטה הסופית היא של הסטודיו.</p>`;
  return `<div class="head-row"><div><h1 class="h1">בסטודיו</h1><p class="sub">${S.fonts.length} פונטים בעבודה עכשיו. איזה מהם תרצו לקבל ראשון?</p></div>${S.closes?`<span class="st-close">${ICON.clock||''}ההצבעה נסגרת ב־${ea(S.closes)}</span>`:''}</div>
  <div class="st-grid">${S.fonts.map(f=>`<article class="st-card${mine===f.id?' mine':''}">
   ${f.img?`<div class="st-spec st-img"><img src="${ea(f.img)}" alt="דוגמה של ${ea(f.name)}: ${ea(f.sample||'')} ${ea(f.sampleEn||'')}"></div>`:`<div class="st-spec" style="font-family:${ea(f.family||'inherit')}" aria-label="דוגמה: ${ea(f.sample)}"><span>${ea(f.sample)}${f.sampleEn?`<small dir="ltr">${ea(f.sampleEn)}</small>`:''}</span></div>`}
@@ -2116,7 +2148,7 @@ V.studio=()=>{const S=FS.studio||{fonts:[]},mine=S.vote,can=!!FS.plan&&S.open!==
    ${res?`<div class="st-res"><span class="st-bar"><i style="width:${f.pct}%"></i></span><b class="num">${f.pct}%</b></div>`:''}
    ${can?`<button class="btn ${mine===f.id?'btn-grad':'btn-line'} st-vote" data-vote="${ea(f.id)}" ${mine===f.id?'aria-pressed="true"':''}>${mine===f.id?'הבחירה שלך':mine?'לבחור בו במקום':'זה הפונט שלי'}</button>`:''}
   </div></article>`).join('')}</div>
- ${mine&&can?`<form class="st-why" id="stWhy"><label for="stWhyIn">מה היית מעצב/ת עם ${ea(stVote().name)}? <span class="hint">(רשות)</span></label><div class="st-why-row"><input id="stWhyIn" maxlength="140" value="${ea(S.why||'')}" placeholder="למשל: מיתוג לבית קפה, כותרות למגזין"><button class="btn btn-grad">שליחה</button></div></form>`:''}
+ ${mine&&can?`<form class="st-why" id="stWhy"><label for="stWhyIn">מה היית מעצב/ת עם ${ea(stVote().name)}? <span class="hint">(רשות)</span></label><div class="st-why-row"><input id="stWhyIn" maxlength="140" value="${ea(S.why||'')}" placeholder="למשל: מיתוג לבית קפה, כותרות למגזין"><button class="btn btn-grad">שליחה</button></div><button type="button" class="linkbtn st-skip" data-stdone="1">סיום בלי תשובה</button></form>`:''}
  ${!can?`<div class="st-cta"><b>מנויים בוחרים מה יוצא ראשון.</b><span>במינוי מקבלים את כל הפונטים, וגם קול בבחירת הפונט הבא.</span><button class="btn btn-grad" data-view="subs">למינויים</button></div>`:''}
  <p class="hint st-note">ההצבעה עוזרת לנו להחליט מה ייצא קודם. ההחלטה הסופית היא של הסטודיו. ${can?'האחוזים מוצגים אחרי שבוחרים.':''} כשהפונט יוצא, ${can?'מי שבחר בו מקבל כאן הודעה.':'הוא נכנס למינוי.'}</p>`};
 function studioTeaser(){if(!FEAT.includes('studio')||!FS.studio||!FS.plan||state.stHide)return '';const v=stVote(),n=FS.studio.fonts.length;
@@ -2292,8 +2324,10 @@ document.addEventListener('click',e=>{
   domApi('del',{id:s[4]}).then(()=>{render();toast(`${s[2]} הוסר והמקום במכסה התפנה`)}).catch(x=>{t.disabled=false;toast(x.message)});return}
  if(t.dataset.go2){state.sub.subs='reg';goPage(t.dataset.go2);return}
  if(t.id==='logout'){openBye();return}
- if(t.dataset.vote){const id=t.dataset.vote;if(FS.studio.vote===id)return;t.disabled=true;postApi('fsa_v2_vote',{font:id}).then(r=>{Object.assign(FS.studio,r);render();toast('הבחירה נשמרה. אפשר לשנות עד שההצבעה נסגרת.')}).catch(x=>{t.disabled=false;toast(x.message)});return}
+ if(t.dataset.vote){const id=t.dataset.vote;if(FS.studio.vote===id)return;t.disabled=true;postApi('fsa_v2_vote',{font:id}).then(r=>{Object.assign(FS.studio,r);state.stOpen=true;const nb=document.querySelector('#fsa .side button[data-view="studio"]');if(nb)nb.classList.remove('has-dot');render();toast('הבחירה נשמרה. אפשר לשנות עד שההצבעה נסגרת.')}).catch(x=>{t.disabled=false;toast(x.message)});return}
  if(t.dataset.sthide){state.stHide=1;render();return}
+ if(t.dataset.stopen){state.stOpen=true;render();if(t.dataset.stopen==='why')setTimeout(()=>{const i=$('#stWhyIn');if(i){i.scrollIntoView({behavior:'smooth',block:'center'});i.focus({preventScroll:true})}},60);return}
+ if(t.dataset.stdone){state.stOpen=false;state.stFold=1;render();state.stFold=0;return}
  if(t.dataset.showf!==undefined){state.showF=t.dataset.showf;render();return}
  if(t.dataset.myf!==undefined){state.myF=t.dataset.myf;render();return}
  if(t.dataset.dommode){state.domMode=t.dataset.dommode;render();return}
@@ -2306,7 +2340,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('submit',e=>{
  const f=e.target;if(!f.closest('#fsa,#fsa-layer'))return;e.preventDefault();if(f.id==='pform'){saveProfile(f);return}
- if(f.id==='stWhy'){const w=$('#stWhyIn').value.trim();postApi('fsa_v2_vote',{font:FS.studio.vote,why:w}).then(r=>{Object.assign(FS.studio,r);toast('תודה! קראנו.')}).catch(x=>toast(x.message));return}
+ if(f.id==='stWhy'){const w=$('#stWhyIn').value.trim();postApi('fsa_v2_vote',{font:FS.studio.vote,why:w}).then(r=>{Object.assign(FS.studio,r);state.stOpen=false;state.stFold=1;render();state.stFold=0;scrollTo({top:0,behavior:'smooth'});toast(w?'תודה! קראנו.':'הבחירה נשמרה')}).catch(x=>toast(x.message));return}
  if(f.dataset.subadd){
   const host=cleanHost($('#sd2').value),picked=[...f.querySelectorAll('.fp-menu input:checked')].map(i=>i.value),err=$('#sdErr');
   const msg=!host||!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)?'צריך להזין כתובת אתר תקינה, למשל studio.co.il':!picked.length?'צריך לבחור לפחות פונט אחד':'';
