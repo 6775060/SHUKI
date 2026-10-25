@@ -258,6 +258,77 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     res.json({ ok: true, changed: recategorize() });
   });
 
+  // ---- reviews: "I don't know what this charge is" ----
+  api.post('/transactions/:id/review', (req, res) => {
+    const b = z.object({ note: z.string().max(500).optional() }).parse(req.body);
+    db.prepare(
+      "UPDATE transactions SET review_status = 'open', review_note = ?, review_resolution = NULL, review_opened_at = datetime('now'), review_closed_at = NULL WHERE id = ?",
+    ).run(b.note?.trim() || null, Number(req.params.id));
+    res.json({ ok: true });
+  });
+
+  api.patch('/reviews/:id', (req, res) => {
+    const b = z
+      .object({
+        status: z.enum(['open', 'done']).optional(),
+        resolution: z.enum(['ok', 'refund', 'disputed', 'cancelled']).optional(),
+        note: z.string().max(500).nullable().optional(),
+        categoryId: z.number().int().optional(),
+      })
+      .parse(req.body);
+    const id = Number(req.params.id);
+    transaction(db, () => {
+      if (b.note !== undefined) db.prepare('UPDATE transactions SET review_note = ? WHERE id = ?').run(b.note?.trim() || null, id);
+      if (b.categoryId !== undefined) db.prepare('UPDATE transactions SET category_id = ?, category_locked = 1 WHERE id = ?').run(b.categoryId, id);
+      if (b.status === 'done')
+        db.prepare("UPDATE transactions SET review_status = 'done', review_resolution = ?, review_closed_at = datetime('now') WHERE id = ?").run(b.resolution ?? 'ok', id);
+      if (b.status === 'open') db.prepare("UPDATE transactions SET review_status = 'open', review_resolution = NULL, review_closed_at = NULL WHERE id = ?").run(id);
+    });
+    res.json({ ok: true });
+  });
+
+  api.delete('/reviews/:id', (req, res) => {
+    db.prepare('UPDATE transactions SET review_status = NULL, review_note = NULL, review_resolution = NULL, review_opened_at = NULL, review_closed_at = NULL WHERE id = ?').run(Number(req.params.id));
+    res.json({ ok: true });
+  });
+
+  api.get('/reviews', (_req, res) => {
+    const rows = db
+      .prepare(
+        `SELECT t.id, t.date, t.processed_date AS processedDate, t.amount, t.original_amount AS originalAmount, t.original_currency AS originalCurrency,
+           t.description, t.memo, t.installment_number AS installmentNumber, t.installment_total AS installmentTotal, t.identifier,
+           t.category_id AS categoryId, c.name AS categoryName, t.scope, a.label AS accountLabel, a.kind AS accountKind, a.company_id AS companyId,
+           t.review_status AS status, t.review_note AS note, t.review_resolution AS resolution, t.review_opened_at AS openedAt, t.review_closed_at AS closedAt
+         FROM transactions t JOIN accounts a ON a.id = t.account_id LEFT JOIN categories c ON c.id = t.category_id
+         WHERE t.review_status IS NOT NULL ORDER BY t.review_status = 'open' DESC, t.date DESC`,
+      )
+      .all() as { id: number; description: string; amount: number; date: string }[];
+    // Clues for each charge: has this business charged before, and how often?
+    const all = db.prepare('SELECT id, date, amount, description FROM transactions').all() as { id: number; date: string; amount: number; description: string }[];
+    const byKey = new Map<string, { id: number; date: string; amount: number }[]>();
+    for (const t of all) {
+      const k = merchantKey(t.description);
+      if (!k) continue;
+      byKey.set(k, [...(byKey.get(k) ?? []), t]);
+    }
+    res.json(
+      rows.map((r) => {
+        const others = (byKey.get(merchantKey(r.description)) ?? []).filter((x) => x.id !== r.id).sort((a, b) => a.date.localeCompare(b.date));
+        const months = new Set(others.map((x) => x.date.slice(0, 7)));
+        return {
+          ...r,
+          history: {
+            count: others.length,
+            first: others[0]?.date ?? null,
+            last: others[others.length - 1]?.date ?? null,
+            sameAmount: others.filter((x) => Math.abs(x.amount - r.amount) < 0.5).length,
+            months: months.size,
+          },
+        };
+      }),
+    );
+  });
+
   // ---- "this business is always this category" ----
   const merchantMatches = (key: string) =>
     (db.prepare('SELECT id, description, amount FROM transactions').all() as { id: number; description: string; amount: number }[]).filter(
@@ -395,6 +466,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
         `SELECT t.id, t.date, t.amount, t.original_amount AS originalAmount, t.original_currency AS originalCurrency,
            t.description, t.memo, t.status, t.installment_number AS installmentNumber, t.installment_total AS installmentTotal,
            t.category_id AS categoryId, c.name AS categoryName, c.kind AS categoryKind, t.scope, t.note, t.source,
+           t.review_status AS reviewStatus,
            a.id AS accountId, a.label AS accountLabel, a.kind AS accountKind
          FROM transactions t JOIN accounts a ON a.id = t.account_id LEFT JOIN categories c ON c.id = t.category_id
          ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
@@ -506,6 +578,11 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
       cards: cardBills(db, today),
       businessTips: business.hasBusiness ? businessData(db, month, today).tips.filter((t) => t.relevance === 'high').slice(0, 2) : [],
       uncategorized,
+      reviews: (db.prepare("SELECT COUNT(*) AS n, COALESCE(SUM(-amount), 0) AS total, MIN(review_opened_at) AS oldest FROM transactions WHERE review_status = 'open'").get() as {
+        n: number;
+        total: number;
+        oldest: string | null;
+      }),
     });
   });
 

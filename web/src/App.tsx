@@ -10,9 +10,10 @@ import { Insights } from './pages/Insights';
 import { Funds } from './pages/Funds';
 import { Business } from './pages/Business';
 import { Settings } from './pages/Settings';
+import { Reviews } from './pages/Reviews';
 import { applyFont, type FontSetting } from './font';
 
-export type Page = 'dashboard' | 'insights' | 'funds' | 'business' | 'transactions' | 'connections' | 'import' | 'rules' | 'settings';
+export type Page = 'dashboard' | 'insights' | 'funds' | 'business' | 'transactions' | 'reviews' | 'connections' | 'import' | 'rules' | 'settings';
 
 const NAV: { id: Page; label: string }[] = [
   { id: 'dashboard', label: 'בהירות' },
@@ -20,6 +21,7 @@ const NAV: { id: Page; label: string }[] = [
   { id: 'funds', label: 'קופות' },
   { id: 'business', label: 'עסק' },
   { id: 'transactions', label: 'תנועות' },
+  { id: 'reviews', label: 'לבירור' },
   { id: 'connections', label: 'חיבורים' },
   { id: 'import', label: 'ייבוא קובץ' },
   { id: 'rules', label: 'קטגוריות' },
@@ -106,6 +108,7 @@ export function App() {
         {page === 'funds' && <Funds />}
         {page === 'business' && <Business nav={nav} />}
         {page === 'transactions' && <Transactions nav={nav} />}
+        {page === 'reviews' && <Reviews />}
         {page === 'connections' && <Connections />}
         {page === 'import' && <Import />}
         {page === 'rules' && <Rules />}

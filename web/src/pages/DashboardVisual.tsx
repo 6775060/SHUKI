@@ -90,6 +90,18 @@ export function buildFocus(d: InsightsData, s: Summary, nav: Nav): Focus[] {
     });
   }
 
+  if (d.reviews?.n) {
+    const old = d.reviews.oldest ? Math.round((Date.now() - Date.parse(`${d.reviews.oldest.replace(' ', 'T')}Z`)) / 86400000) : 0;
+    out.push({
+      level: old > 14 ? 'warning' : 'info',
+      icon: '❓',
+      title: `${d.reviews.n} חיובים מחכים לבירור (${money(d.reviews.total)})`,
+      action: old > 14 ? `הוותיק שבהם מחכה ${old} ימים. לבירור עסקה יש מועד אחרון – כדאי לסגור השבוע.` : 'כשיש עשר דקות פנויות – לעבור עליהם עם הרמזים שבלשונית.',
+      go: () => nav.go('reviews'),
+      goLabel: 'לבירורים',
+    });
+  }
+
   const attention = d.insights.find((i) => i.tone === 'attention' && !/מינוס/.test(i.title));
   if (attention) out.push({ level: 'warning', icon: attention.icon, title: attention.title, action: attention.body });
 
@@ -158,6 +170,7 @@ export function VisualDashboard({ d, s, nav, onDetail }: { d: InsightsData; s: S
   if (buffer) lights.push({ label: 'כרית ביטחון', level: buffer.score >= 70 ? 'good' : buffer.score >= 40 ? 'warning' : 'critical', text: buffer.score >= 70 ? 'יציבה' : 'בבנייה' });
   lights.push({ label: 'קופות', level: d.funds.length ? 'good' : 'warning', text: d.funds.length ? `${d.funds.length} פעילות` : 'עוד לא הוגדרו' });
   if (d.uncategorized > 0) lights.push({ label: 'סיווג', level: 'warning', text: `${d.uncategorized} מחכות` });
+  if (d.reviews?.n) lights.push({ label: 'לבירור', level: 'warning', text: `${d.reviews.n} פתוחים` });
 
   return (
     <div className="stack visual">

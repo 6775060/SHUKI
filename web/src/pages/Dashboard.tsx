@@ -103,6 +103,11 @@ export function Dashboard({ nav }: { nav: Nav }) {
           {data.uncategorized} לסיווג
         </button>
       )}
+      {data.reviews?.n > 0 && (
+        <button className="chip warm-chip" onClick={() => nav.go('reviews')}>
+          ❓ {data.reviews.n} לבירור
+        </button>
+      )}
       <span className="spacer" />
       <CalmButton cycle={cy} />
     </div>

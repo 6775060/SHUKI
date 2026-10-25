@@ -178,6 +178,14 @@ const MIGRATIONS: string[] = [
   INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'מתנה', id, 0, 1 FROM categories WHERE slug = 'gifts';
   INSERT INTO rules (pattern, category_id, priority, is_default) SELECT 'מתנות', id, 0, 1 FROM categories WHERE slug = 'gifts';
   `,
+  `
+  -- Charges the user doesn't recognize, moved aside for checking.
+  ALTER TABLE transactions ADD COLUMN review_status TEXT CHECK (review_status IN ('open', 'done'));
+  ALTER TABLE transactions ADD COLUMN review_note TEXT;
+  ALTER TABLE transactions ADD COLUMN review_resolution TEXT;
+  ALTER TABLE transactions ADD COLUMN review_opened_at TEXT;
+  ALTER TABLE transactions ADD COLUMN review_closed_at TEXT;
+  `,
 ];
 
 export function openDb(dataDir: string, filename = 'shefa.db'): DB {

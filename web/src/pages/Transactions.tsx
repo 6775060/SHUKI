@@ -15,6 +15,7 @@ export function Transactions({ nav }: { nav: Nav }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [assign, setAssign] = useState<{ txn: Txn; categoryId: number } | null>(null);
+  const [reviewFor, setReviewFor] = useState<Txn | null>(null);
 
   useEffect(() => {
     api<Category[]>('/categories').then(setCategories);
@@ -107,6 +108,16 @@ export function Transactions({ nav }: { nav: Nav }) {
         </label>
       </div>
 
+      {reviewFor && (
+        <ReviewDialog
+          txn={reviewFor}
+          onClose={() => setReviewFor(null)}
+          onDone={() => {
+            setTxns((list) => list.map((x) => (x.id === reviewFor.id ? { ...x, reviewStatus: 'open' } : x)));
+            setReviewFor(null);
+          }}
+        />
+      )}
       {assign && (
         <AssignDialog
           txn={assign.txn}
@@ -127,7 +138,10 @@ export function Transactions({ nav }: { nav: Nav }) {
               <tr key={t.id} className={t.categoryKind === 'transfer' ? 'dim' : ''}>
                 <td className="nowrap muted">{date(t.date)}</td>
                 <td className="desc">
-                  <div>{t.description}</div>
+                  <div>
+                    {t.description}
+                    {t.reviewStatus === 'open' && <span className="badge warm">בבירור</span>}
+                  </div>
                   <div className="sub">
                     {t.accountLabel}
                     {t.installmentTotal ? ` · תשלום ${t.installmentNumber} מתוך ${t.installmentTotal}` : ''}
@@ -153,6 +167,13 @@ export function Transactions({ nav }: { nav: Nav }) {
                   </button>
                 </td>
                 <td className={`amount nowrap ${t.amount > 0 ? 'pos' : ''}`}>{moneyExact(t.amount)}</td>
+                <td>
+                  {t.reviewStatus !== 'open' && (
+                    <button className="review-btn" onClick={() => setReviewFor(t)} title="לא מזהה את החיוב? להעביר לבירור" aria-label={`להעביר לבירור: ${t.description}`}>
+                      ❓ לבירור
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -216,6 +237,37 @@ function AssignDialog({ txn, category, onClose, onDone }: { txn: Txn; category: 
           </button>
           <button className="primary" onClick={save} disabled={busy || !info}>
             {busy ? 'רגע…' : 'שמירה'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewDialog({ txn, onClose, onDone }: { txn: Txn; onClose: () => void; onDone: () => void }) {
+  const [note, setNote] = useState('');
+  const save = async () => {
+    await api(`/transactions/${txn.id}/review`, { method: 'POST', json: { note } });
+    onDone();
+  };
+  return (
+    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="review-title" onClick={onClose}>
+      <div className="calm-card" onClick={(e) => e.stopPropagation()}>
+        <h3 id="review-title">להעביר לבירור</h3>
+        <div>
+          <b>{txn.description}</b> · {moneyExact(txn.amount)} · {date(txn.date)}
+        </div>
+        <label>
+          מה לא ברור? (לא חובה)
+          <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="למשל: לא מכיר את השם, הסכום נראה גבוה…" autoFocus />
+        </label>
+        <p className="sub">החיוב יחכה בלשונית "לבירור" עם רמזים לזיהוי, עד שתסגור אותו.</p>
+        <div className="row between">
+          <button className="ghost" onClick={onClose}>
+            ביטול
+          </button>
+          <button className="primary" onClick={save}>
+            להעביר לבירור
           </button>
         </div>
       </div>

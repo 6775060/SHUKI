@@ -89,6 +89,7 @@ export interface Txn {
   accountId: number;
   accountLabel: string;
   accountKind: string;
+  reviewStatus?: 'open' | 'done' | null;
 }
 
 export interface Institution {
@@ -211,6 +212,33 @@ export interface InsightsData {
   cycle: CycleView | null;
   cards: CardBill[];
   businessTips: Tip[];
+  reviews: { n: number; total: number; oldest: string | null };
+}
+
+export interface Review {
+  id: number;
+  date: string;
+  processedDate: string | null;
+  amount: number;
+  originalAmount: number | null;
+  originalCurrency: string | null;
+  description: string;
+  memo: string | null;
+  installmentNumber: number | null;
+  installmentTotal: number | null;
+  identifier: string | null;
+  categoryId: number | null;
+  categoryName: string | null;
+  scope: string;
+  accountLabel: string;
+  accountKind: string;
+  companyId: string | null;
+  status: 'open' | 'done';
+  note: string | null;
+  resolution: 'ok' | 'refund' | 'disputed' | 'cancelled' | null;
+  openedAt: string;
+  closedAt: string | null;
+  history: { count: number; first: string | null; last: string | null; sameAmount: number; months: number };
 }
 
 export interface CycleView {
