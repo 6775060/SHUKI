@@ -1,0 +1,312 @@
+import type { InsightsData, Summary } from '../api';
+import { date, money } from '../format';
+import { Donut, Gauge, ScoreRing, type Slice } from '../charts';
+import type { Nav } from '../App';
+
+// The visual home view: a few shapes instead of many numbers, with the one to
+// three things that matter most right now pinned on top. Every shape opens
+// the detail behind it.
+
+type Level = 'critical' | 'warning' | 'good' | 'info';
+
+interface Focus {
+  level: Level;
+  icon: string;
+  title: string;
+  action: string;
+  go?: () => void;
+  goLabel?: string;
+}
+
+const LEVEL_LABEL: Record<Level, string> = { critical: 'דחוף', warning: 'לתשומת לב', good: 'מצוין', info: 'הצעד הבא' };
+
+export function buildFocus(d: InsightsData, s: Summary, nav: Nav): Focus[] {
+  const out: Focus[] = [];
+  const cy = d.cycle;
+  const home = s.balances.filter((b) => b.kind === 'bank').reduce((sum, b) => sum + (b.balance ?? 0), 0);
+
+  if (d.forecast?.firstNegative) {
+    out.push({
+      level: 'critical',
+      icon: '🧭',
+      title: `היתרה עלולה לרדת למינוס בסביבות ${date(d.forecast.firstNegative).slice(0, 5)}`,
+      action: 'עכשיו, כשרואים מראש: להקדים גבייה מלקוח, או לדחות הוצאה גדולה לחודש הבא.',
+      go: () => nav.go('dashboard', { view: 'detail' }),
+      goLabel: 'לתחזית',
+    });
+  }
+
+  for (const c of d.cards) {
+    if (c.nextDate && c.daysUntil !== null && c.daysUntil <= 7 && c.amount > home * 0.8) {
+      out.push({
+        level: 'critical',
+        icon: '💳',
+        title: `${c.label}: חיוב ${money(c.amount)} בעוד ${c.daysUntil} ימים`,
+        action: `בחשבונות יש ${money(home)}. כדאי לוודא שיש כיסוי לפני ${date(c.nextDate).slice(0, 5)}.`,
+      });
+    }
+  }
+
+  if (cy && cy.forecastEnd < 0) {
+    out.push({
+      level: cy.forecastEnd < -cy.income.expected * 0.1 ? 'critical' : 'warning',
+      icon: '📉',
+      title: `החודש צפוי להיגמר ב-${money(-cy.forecastEnd)} מינוס`,
+      action: `הצעד: להחזיק את ההוצאות המשתנות על ${money(Math.max(0, cy.week.budget))} השבוע. הקבועות והקופות כבר בחשבון.`,
+      go: () => nav.go('transactions', { month: d.month }),
+      goLabel: 'לאן הולך הכסף',
+    });
+  }
+
+  if (cy && cy.week.left < 0) {
+    out.push({
+      level: 'warning',
+      icon: '🛒',
+      title: `השבוע יצאו ${money(-cy.week.left)} מעבר לתקציב`,
+      action: 'עד מוצאי שבת רק הכרחי. ביום ראשון מתחיל שבוע חדש ונקי – בלי חוב מהשבוע הזה.',
+    });
+  }
+
+  const tip = d.businessTips[0];
+  if (tip) {
+    out.push({
+      level: 'info',
+      icon: tip.icon,
+      title: tip.title,
+      action: tip.why,
+      go: () => nav.go('business', { month: d.month }),
+      goLabel: 'לעסק',
+    });
+  }
+
+  if (d.funds.length === 0) {
+    out.push({
+      level: 'info',
+      icon: '🏺',
+      title: 'להגדיר קופות להוצאות שנתיות',
+      action: 'ארנונה, חגים, שיניים – קצת כל חודש, וההוצאה מגיעה כשהיא כבר מתוכננת.',
+      go: () => nav.go('funds'),
+      goLabel: 'לקופות',
+    });
+  }
+
+  const attention = d.insights.find((i) => i.tone === 'attention' && !/מינוס/.test(i.title));
+  if (attention) out.push({ level: 'warning', icon: attention.icon, title: attention.title, action: attention.body });
+
+  if (!out.some((f) => f.level === 'critical' || f.level === 'warning')) {
+    out.unshift({
+      level: 'good',
+      icon: '🌤️',
+      title: cy ? `הכול מכוסה. השבוע נשארו ${money(Math.max(0, cy.week.left))}` : 'החודש מאוזן',
+      action: cy && cy.week.joy > 0 ? `כולל ${money(cy.week.joy)} לשמחות קטנות. אפשר ליהנות בלב שלם.` : 'ההשתדלות עובדת. להמשיך כך.',
+    });
+  }
+
+  const rank: Record<Level, number> = { critical: 0, warning: 1, good: 2, info: 3 };
+  return out.sort((a, b) => rank[a.level] - rank[b.level]).slice(0, 3);
+}
+
+const SLOTS = ['slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5', 'slot-6'];
+
+export function VisualDashboard({ d, s, nav, onDetail }: { d: InsightsData; s: Summary; nav: Nav; onDetail: () => void }) {
+  const focus = buildFocus(d, s, nav);
+  const cy = d.cycle;
+
+  // Where this month's income goes.
+  const flow: Slice[] = cy
+    ? [
+        { key: 'fixed', label: 'קבועות', value: cy.fixed.monthly, cls: 'slot-1' },
+        { key: 'inst', label: 'תשלומים', value: cy.installments, cls: 'slot-2' },
+        { key: 'funds', label: 'קופות', value: cy.funds, cls: 'slot-3', onClick: () => nav.go('funds') },
+        { key: 'var', label: 'משתנות (צפי)', value: cy.projectedVariable, cls: 'slot-4', onClick: () => nav.go('transactions', { month: d.month }) },
+        { key: 'joy', label: 'שמחות קטנות', value: cy.joy, cls: 'slot-5' },
+        { key: 'free', label: 'פנוי', value: Math.max(0, cy.forecastEnd), cls: 'slot-free' },
+      ].filter((x) => x.value > 0)
+    : [];
+
+  // What the money went on, by group: top five, the rest folded into "other".
+  const groups = new Map<string, { total: number; topId: number; topTotal: number }>();
+  for (const c of d.categories) {
+    if (c.total <= 0) continue;
+    const g = groups.get(c.grp) ?? { total: 0, topId: c.categoryId, topTotal: 0 };
+    g.total += c.total;
+    if (c.total > g.topTotal) {
+      g.topId = c.categoryId;
+      g.topTotal = c.total;
+    }
+    groups.set(c.grp, g);
+  }
+  const sorted = [...groups.entries()].sort((a, b) => b[1].total - a[1].total);
+  const spend: Slice[] = sorted.slice(0, 5).map(([name, g], i) => ({
+    key: name,
+    label: name,
+    value: Math.round(g.total),
+    cls: SLOTS[i],
+    onClick: () => nav.go('transactions', { month: d.month, categoryId: String(g.topId) }),
+  }));
+  const rest = sorted.slice(5).reduce((sum, [, g]) => sum + g.total, 0);
+  if (rest > 0) spend.push({ key: 'other', label: 'אחר', value: Math.round(rest), cls: 'slot-other' });
+  const spendTotal = spend.reduce((sum, x) => sum + x.value, 0);
+
+  const weekTone = !cy ? 'ok' : cy.week.left < 0 ? 'over' : cy.week.spent > cy.week.budget * 0.8 ? 'warn' : 'ok';
+  const weakest = d.health ? [...d.health.parts].sort((a, b) => a.score - b.score).slice(0, 2) : [];
+
+  const lights: { label: string; level: Level; text: string }[] = [];
+  if (cy) lights.push({ label: 'החודש התזרימי', level: cy.forecastEnd >= 0 ? 'good' : cy.forecastEnd > -cy.income.expected * 0.1 ? 'warning' : 'critical', text: cy.forecastEnd >= 0 ? 'בפלוס' : 'צפי מינוס' });
+  if (d.forecast) lights.push({ label: '60 הימים הבאים', level: d.forecast.firstNegative ? 'critical' : 'good', text: d.forecast.firstNegative ? 'נקודת מינוס' : 'בלי מינוס' });
+  const buffer = d.health?.parts.find((p) => p.key === 'buffer');
+  if (buffer) lights.push({ label: 'כרית ביטחון', level: buffer.score >= 70 ? 'good' : buffer.score >= 40 ? 'warning' : 'critical', text: buffer.score >= 70 ? 'יציבה' : 'בבנייה' });
+  lights.push({ label: 'קופות', level: d.funds.length ? 'good' : 'warning', text: d.funds.length ? `${d.funds.length} פעילות` : 'עוד לא הוגדרו' });
+  if (d.uncategorized > 0) lights.push({ label: 'סיווג', level: 'warning', text: `${d.uncategorized} מחכות` });
+
+  return (
+    <div className="stack visual">
+      <section aria-label="המיקוד שלך עכשיו">
+        <h3 className="section-title">המיקוד שלך עכשיו</h3>
+        <div className="focus">
+          {focus.map((f, i) => (
+            <article key={i} className={`focus-card ${f.level}`}>
+              <div className="focus-top">
+                <span className="focus-icon" aria-hidden>
+                  {f.icon}
+                </span>
+                <span className={`status-pill ${f.level}`}>
+                  <StatusIcon level={f.level} /> {LEVEL_LABEL[f.level]}
+                </span>
+              </div>
+              <h4>{f.title}</h4>
+              <p>{f.action}</p>
+              {f.go && (
+                <button className="link small" onClick={f.go}>
+                  {f.goLabel} ←
+                </button>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <div className="lights" role="list" aria-label="מצב במבט אחד">
+        {lights.map((l) => (
+          <div key={l.label} className={`light ${l.level}`} role="listitem">
+            <StatusIcon level={l.level} />
+            <span className="light-label">{l.label}</span>
+            <b>{l.text}</b>
+          </div>
+        ))}
+      </div>
+
+      <div className="visual-grid">
+        {cy && (
+          <section className="card vcard">
+            <h3>השבוע</h3>
+            <Gauge used={cy.week.spent} total={cy.week.budget} label="נשארו השבוע" tone={weekTone} />
+            <div className="vcard-foot">
+              <span>
+                יצא {money(cy.week.spent)} מתוך {money(Math.max(0, cy.week.budget))}
+              </span>
+              {cy.week.joy > 0 && <span className="joy-chip">🥐 {money(cy.week.joy)} לשמחות קטנות</span>}
+            </div>
+          </section>
+        )}
+
+        {cy && flow.length > 0 && (
+          <section className="card vcard">
+            <h3>לאן הולכת ההכנסה החודש</h3>
+            <Donut slices={flow} center={`${cy.forecastEnd >= 0 ? '+' : '−'}${money(Math.abs(cy.forecastEnd))}`} sub="צפי לסוף החודש" />
+          </section>
+        )}
+
+        {spend.length > 0 && (
+          <section className="card vcard">
+            <h3>על מה הלך הכסף של הבית</h3>
+            <Donut slices={spend} center={money(spendTotal)} sub="החודש" />
+          </section>
+        )}
+
+        {d.health && (
+          <section className="card vcard">
+            <h3>מדד היציבות</h3>
+            <ScoreRing score={d.health.score} size={150} />
+            <div className="health-label center-text">{d.health.label}</div>
+            <div className="vcard-foot">
+              {weakest.map((p) => (
+                <span key={p.key} className="chip-soft" title={p.detail}>
+                  לחזק: {p.label}
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {d.funds.length > 0 && (
+          <section className="card vcard">
+            <h3>הקופות שלי</h3>
+            <div className="fund-rings">
+              {d.funds.slice(0, 6).map((f) => (
+                <button key={f.id} className="fund-ring" onClick={() => nav.go('funds')} title={`${f.name}: ${money(f.spentThisYear)} מתוך ${money(f.annualAmount)}`}>
+                  <MiniRing frac={f.annualAmount ? f.spentThisYear / f.annualAmount : 0} icon={f.icon ?? '🏺'} />
+                  <span className="small">{f.name}</span>
+                  <span className="muted small">{money(f.monthly)}/חודש</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {d.cards.length > 0 && (
+          <section className="card vcard">
+            <h3>חיובי האשראי הבאים</h3>
+            <div className="card-bars">
+              {d.cards.map((c) => {
+                const max = Math.max(...d.cards.map((x) => x.amount), 1);
+                return (
+                  <div key={c.accountId} className="card-bar">
+                    <div className="row between small">
+                      <span>{c.label}</span>
+                      <span className="muted">{c.nextDate ? `בעוד ${c.daysUntil} ימים` : '—'}</span>
+                    </div>
+                    <div className="card-track">
+                      <div className="card-fill" style={{ width: `${(c.amount / max) * 100}%` }} />
+                    </div>
+                    <b>{money(c.amount)}</b>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </div>
+
+      <div className="detail-cta">
+        <button className="ghost" onClick={onDetail}>
+          להעמקה: כל הגרפים והמספרים ←
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StatusIcon({ level }: { level: Level }) {
+  const icon = { critical: '!', warning: '▲', good: '✓', info: 'i' }[level];
+  return (
+    <span className={`status-icon ${level}`} aria-hidden>
+      {icon}
+    </span>
+  );
+}
+
+function MiniRing({ frac, icon }: { frac: number; icon: string }) {
+  const r = 26;
+  const c = 2 * Math.PI * r;
+  const f = Math.min(1, Math.max(0, frac));
+  return (
+    <svg width={64} height={64} viewBox="0 0 64 64" aria-hidden className={frac > 1 ? 'mini-ring over' : 'mini-ring'}>
+      <circle cx={32} cy={32} r={r} className="gauge-track" strokeWidth={6} />
+      <circle cx={32} cy={32} r={r} className="gauge-fill" strokeWidth={6} strokeDasharray={c} strokeDashoffset={c * (1 - f)} transform="rotate(-90 32 32)" />
+      <text x={32} y={38} textAnchor="middle" fontSize={20}>
+        {icon}
+      </text>
+    </svg>
+  );
+}

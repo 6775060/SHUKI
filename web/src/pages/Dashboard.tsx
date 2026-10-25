@@ -5,6 +5,17 @@ import { CalendarHeat, CategoryCompareChart, ForecastChart, IncomeExpenseChart, 
 import { InsightCards } from './Insights';
 import { CalmButton } from './Calm';
 import type { Nav } from '../App';
+import { VisualDashboard } from './DashboardVisual';
+
+type View = 'visual' | 'detail';
+
+function savedView(): View {
+  try {
+    return localStorage.getItem('shefa-view') === 'detail' ? 'detail' : 'visual';
+  } catch {
+    return 'visual';
+  }
+}
 
 const shortMonth = (m: string) => {
   const [y, mo] = m.split('-').map(Number);
@@ -17,6 +28,20 @@ export function Dashboard({ nav }: { nav: Nav }) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(false);
   const [reload, setReload] = useState(0);
+  const [view, setViewState] = useState<View>((nav.params.view as View) ?? savedView());
+  const setView = (v: View) => {
+    setViewState(v);
+    try {
+      localStorage.setItem('shefa-view', v);
+    } catch {
+      /* private mode */
+    }
+    window.scrollTo(0, 0);
+  };
+
+  useEffect(() => {
+    if (nav.params.view === 'detail' || nav.params.view === 'visual') setViewState(nav.params.view);
+  }, [nav.params.view]);
 
   useEffect(() => {
     setLoading(true);
@@ -56,24 +81,45 @@ export function Dashboard({ nav }: { nav: Nav }) {
     .slice(0, 5);
   const homeBalances = summary.balances.filter((b) => b.kind === 'bank');
 
+  const filters = (
+    <div className="filters">
+      <select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="בחירת חודש">
+        {months.map((m) => (
+          <option key={m} value={m}>
+            {monthLabel(m)}
+          </option>
+        ))}
+      </select>
+      <div className="seg-toggle" role="group" aria-label="סוג תצוגה">
+        <button className={view === 'visual' ? 'on' : ''} aria-pressed={view === 'visual'} onClick={() => setView('visual')}>
+          ◔ ויזואלי
+        </button>
+        <button className={view === 'detail' ? 'on' : ''} aria-pressed={view === 'detail'} onClick={() => setView('detail')}>
+          ☰ מפורט
+        </button>
+      </div>
+      {data.uncategorized > 0 && (
+        <button className="chip" onClick={() => nav.go('transactions', { month, uncategorized: '1' })}>
+          {data.uncategorized} לסיווג
+        </button>
+      )}
+      <span className="spacer" />
+      <CalmButton cycle={cy} />
+    </div>
+  );
+
+  if (view === 'visual') {
+    return (
+      <div className={`stack dash ${loading ? 'refetch' : ''}`}>
+        {filters}
+        <VisualDashboard d={data} s={summary} nav={nav} onDetail={() => setView('detail')} />
+      </div>
+    );
+  }
+
   return (
     <div className={`stack dash ${loading ? 'refetch' : ''}`}>
-      <div className="filters">
-        <select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="בחירת חודש">
-          {months.map((m) => (
-            <option key={m} value={m}>
-              {monthLabel(m)}
-            </option>
-          ))}
-        </select>
-        {data.uncategorized > 0 && (
-          <button className="chip" onClick={() => nav.go('transactions', { month, uncategorized: '1' })}>
-            {data.uncategorized} לסיווג
-          </button>
-        )}
-        <span className="spacer" />
-        <CalmButton cycle={cy} />
-      </div>
+      {filters}
 
       {/* hero: this week */}
       <div className="hero-row">

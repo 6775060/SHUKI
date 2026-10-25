@@ -504,3 +504,120 @@ export function ScoreRing({ score, size = 132 }: { score: number; size?: number 
     </svg>
   );
 }
+
+// ---------- donut (part-to-whole, ≤ 6 slices + "other") ----------
+
+export interface Slice {
+  key: string;
+  label: string;
+  value: number;
+  cls: string; // color class (slot-1 … slot-6, slot-other, slot-free)
+  onClick?: () => void;
+}
+
+function arcPath(cx: number, cy: number, r0: number, r1: number, a0: number, a1: number): string {
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  const p = (r: number, a: number) => `${(cx + r * Math.sin(a)).toFixed(2)},${(cy - r * Math.cos(a)).toFixed(2)}`;
+  return `M${p(r1, a0)} A${r1},${r1} 0 ${large} 1 ${p(r1, a1)} L${p(r0, a1)} A${r0},${r0} 0 ${large} 0 ${p(r0, a0)} Z`;
+}
+
+export function Donut({ slices, size = 200, center, sub }: { slices: Slice[]; size?: number; center: string; sub?: string }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const total = slices.reduce((s, x) => s + Math.max(0, x.value), 0) || 1;
+  const cx = size / 2;
+  const r1 = size / 2 - 4;
+  const r0 = r1 * 0.64;
+  const gap = 0.012 * Math.PI; // 2px-ish surface gap between slices
+  let a = 0;
+  const arcs = slices
+    .filter((s) => s.value > 0)
+    .map((s) => {
+      const span = (s.value / total) * Math.PI * 2;
+      const start = a;
+      a += span;
+      return { s, a0: start + (span > gap * 2 ? gap / 2 : 0), a1: a - (span > gap * 2 ? gap / 2 : 0) };
+    });
+  const h = hover !== null ? arcs[hover] : null;
+
+  return (
+    <div className="donut">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`${center} ${sub ?? ''}`}>
+        {arcs.length === 1 ? (
+          <circle cx={cx} cy={cx} r={(r0 + r1) / 2} strokeWidth={r1 - r0} fill="none" className={`${arcs[0].s.cls} donut-ring`} />
+        ) : (
+          arcs.map((x, i) => (
+            <path
+              key={x.s.key}
+              d={arcPath(cx, cx, hover === i ? r0 - 2 : r0, hover === i ? r1 + 3 : r1, x.a0, x.a1)}
+              className={`${x.s.cls} donut-slice ${x.s.onClick ? 'clickable' : ''}`}
+              tabIndex={0}
+              onPointerEnter={() => setHover(i)}
+              onPointerLeave={() => setHover(null)}
+              onFocus={() => setHover(i)}
+              onBlur={() => setHover(null)}
+              onClick={x.s.onClick}
+              onKeyDown={(e) => e.key === 'Enter' && x.s.onClick?.()}
+            />
+          ))
+        )}
+        <text x={cx} y={cx - 6} textAnchor="middle" className="donut-center">
+          {h ? money(h.s.value) : center}
+        </text>
+        <text x={cx} y={cx + 16} textAnchor="middle" className="donut-sub">
+          {h ? `${h.s.label} · ${Math.round((h.s.value / total) * 100)}%` : sub}
+        </text>
+      </svg>
+      <ul className="donut-legend">
+        {slices.map((s) => (
+          <li
+            key={s.key}
+            className={hover !== null && arcs[hover]?.s.key === s.key ? 'on' : ''}
+            onPointerEnter={() => setHover(arcs.findIndex((x) => x.s.key === s.key))}
+            onPointerLeave={() => setHover(null)}
+          >
+            {s.onClick ? (
+              <button className="legend-btn" onClick={s.onClick}>
+                <i className={`key rect ${s.cls}`} /> {s.label}
+              </button>
+            ) : (
+              <span>
+                <i className={`key rect ${s.cls}`} /> {s.label}
+              </span>
+            )}
+            <b>{money(s.value)}</b>
+            <span className="muted small">{Math.round((Math.max(0, s.value) / total) * 100)}%</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ---------- gauge ring: how much of a budget is used ----------
+
+export function Gauge({ used, total, size = 168, label, tone }: { used: number; total: number; size?: number; label: string; tone: 'ok' | 'warn' | 'over' }) {
+  const r = size / 2 - 12;
+  const c = 2 * Math.PI * r;
+  const frac = total > 0 ? Math.min(1, Math.max(0, used / total)) : 1;
+  const left = total - used;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`${label}: נשארו ${money(Math.max(0, left))}`} className={`gauge ${tone}`}>
+      <circle cx={size / 2} cy={size / 2} r={r} className="gauge-track" />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        className="gauge-fill"
+        strokeDasharray={c}
+        strokeDashoffset={c * (1 - frac)}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+      <text x="50%" y="44%" textAnchor="middle" className="gauge-value">
+        {money(Math.max(0, left))}
+      </text>
+      <text x="50%" y="60%" textAnchor="middle" className="gauge-label">
+        {left >= 0 ? label : 'מעבר לתקציב'}
+      </text>
+    </svg>
+  );
+}
