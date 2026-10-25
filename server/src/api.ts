@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './config.js';
-import { FONT_TYPES, isVariableFont } from './fonts.js';
+import { FONT_TYPES, isVariableFont, weightRange } from './fonts.js';
 import type { SQLInputValue } from 'node:sqlite';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
@@ -558,8 +558,9 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
 
   // ---- your own font ----
   const fontDir = path.join(config.dataDir, 'fonts');
-  function fontSetting(): { file: string | null; family: string | null; name: string | null; variable: boolean } {
+  function fontSetting(): { file: string | null; family: string | null; name: string | null; variable: boolean; weights: string | null } {
     return {
+      weights: getMeta(db, 'font_weights') ?? null,
       file: getMeta(db, 'font_file') ?? null,
       family: getMeta(db, 'font_family') ?? null,
       name: getMeta(db, 'font_name') ?? null,
@@ -583,6 +584,9 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     setMeta(db, 'font_file', file);
     setMeta(db, 'font_name', path.basename(q.filename, path.extname(q.filename)).slice(0, 60));
     setMeta(db, 'font_variable', isVariableFont(buf, ext, q.filename) ? '1' : '0');
+    const range = weightRange(buf, ext);
+    if (range) setMeta(db, 'font_weights', `${range[0]} ${range[1]}`);
+    else db.prepare("DELETE FROM meta WHERE key = 'font_weights'").run();
     db.prepare("DELETE FROM meta WHERE key = 'font_family'").run();
     res.json(fontSetting());
   });
@@ -596,7 +600,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
 
   api.delete('/settings/font', (_req, res) => {
     if (fs.existsSync(fontDir)) for (const f of fs.readdirSync(fontDir)) fs.rmSync(path.join(fontDir, f));
-    db.prepare("DELETE FROM meta WHERE key IN ('font_file', 'font_family', 'font_name', 'font_variable')").run();
+    db.prepare("DELETE FROM meta WHERE key IN ('font_file', 'font_family', 'font_name', 'font_variable', 'font_weights')").run();
     res.json(fontSetting());
   });
 

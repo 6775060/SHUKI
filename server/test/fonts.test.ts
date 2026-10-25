@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { FONT_TYPES, isVariableFont } from '../src/fonts.js';
+import { FONT_TYPES, isVariableFont, weightRange } from '../src/fonts.js';
 
 // A minimal sfnt header listing the given table tags.
 function sfnt(tags: string[]): Buffer {
@@ -36,5 +36,26 @@ describe('font checks', () => {
 
   it('rejects files that are not fonts', () => {
     expect(FONT_TYPES.ttf(Buffer.from('date,amount\n1,2'))).toBe(false);
+  });
+});
+
+describe('weight range', () => {
+  it('reads the wght axis of a variable font', () => {
+    // sfnt with one table (fvar) holding one wght axis 100..800.
+    const b = Buffer.alloc(12 + 16 + 16 + 20);
+    b.writeUInt32BE(0x00010000, 0);
+    b.writeUInt16BE(1, 4);
+    b.write('fvar', 12, 'latin1');
+    b.writeUInt32BE(28, 20); // table offset
+    const f = 28;
+    b.writeUInt16BE(16, f + 4); // axes array offset
+    b.writeUInt16BE(1, f + 8); // axis count
+    b.writeUInt16BE(20, f + 10); // axis size
+    b.write('wght', f + 16, 'latin1');
+    b.writeInt32BE(100 * 65536, f + 20);
+    b.writeInt32BE(400 * 65536, f + 24);
+    b.writeInt32BE(800 * 65536, f + 28);
+    expect(weightRange(b, 'ttf')).toEqual([100, 800]);
+    expect(weightRange(sfnt(['glyf']), 'ttf')).toBeNull();
   });
 });
