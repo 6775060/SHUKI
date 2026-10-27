@@ -36,6 +36,7 @@ import { businessData, parseDocsFile, saveDocs, syncSumit, type DocSource } from
 import { categoryCleanups, categorySuggestions } from './suggest.js';
 import { parseSavingsFile, saveSavings, savingsView } from './savings.js';
 import { syncAlerts } from './sync-health.js';
+import { disableRemote, enableRemote, remoteStatus } from './remote.js';
 
 interface Deps {
   db: DB;
@@ -811,6 +812,11 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     db.prepare("DELETE FROM meta WHERE key IN ('font_file', 'font_family', 'font_name', 'font_variable', 'font_weights')").run();
     res.json(fontSetting());
   });
+
+  // ---- phone access (Tailscale) ----
+  api.get('/remote', async (_req, res) => res.json(await remoteStatus(db)));
+  api.post('/remote/enable', async (_req, res) => res.json(await enableRemote(db, config.port)));
+  api.post('/remote/disable', async (_req, res) => res.json(await disableRemote(db)));
 
   api.put('/settings', (req, res) => {
     const b = z

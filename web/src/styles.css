@@ -2698,3 +2698,18 @@ textarea {
     overflow-y: auto;
   }
 }
+
+.phone-url {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+}
+
+.phone-url b {
+  font-size: 17px;
+  word-break: break-all;
+}

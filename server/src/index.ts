@@ -10,6 +10,7 @@ import { SyncService } from './sync.js';
 import { createApi } from './api.js';
 import { getMeta } from './db.js';
 import { syncSumit } from './business.js';
+import { remoteHost } from './remote.js';
 
 const dataDir = ensureDataDir();
 const db = openDb(dataDir);
@@ -36,7 +37,8 @@ const app = express();
 app.disable('x-powered-by');
 app.use((req, res, next) => {
   const host = (req.hostname ?? '').toLowerCase();
-  if (!config.allowedHosts.includes(host)) {
+  // Besides localhost, only the computer's own Tailscale address, once phone access is on.
+  if (!config.allowedHosts.includes(host) && host !== remoteHost(db)) {
     res.status(403).end();
     return;
   }

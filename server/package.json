@@ -1,6 +1,6 @@
 {
   "name": "shefa-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "שפע ובהירות – שרת מקומי",
   "scripts": {
     "start": "tsx --disable-warning=ExperimentalWarning src/index.ts",

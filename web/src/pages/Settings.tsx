@@ -49,6 +49,8 @@ export function Settings() {
     <div className="stack">
       <h2 className="title">הגדרות</h2>
 
+      <PhoneAccess />
+
       <section className="card form">
         <h3>הפונט שלי</h3>
         <p className="sub">הממשק כולו יוצג בפונט שתבחר. הקובץ נשמר רק במחשב הזה.</p>
@@ -92,5 +94,122 @@ export function Settings() {
         {error && <div className="error">{error}</div>}
       </section>
     </div>
+  );
+}
+
+interface RemoteStatus {
+  installed: boolean;
+  running: boolean;
+  enabled: boolean;
+  url: string | null;
+  error?: string;
+}
+
+// Opening the system from the phone, through the user's own Tailscale network.
+function PhoneAccess() {
+  const [st, setSt] = useState<RemoteStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const load = () => api<RemoteStatus>('/remote').then(setSt);
+  useEffect(() => {
+    load();
+  }, []);
+  const call = async (path: string) => {
+    setBusy(true);
+    setSt(await api<RemoteStatus>(path, { method: 'POST' }));
+    setBusy(false);
+  };
+  const fromPhone = location.hostname.endsWith('.ts.net');
+
+  return (
+    <section className="card form">
+      <h3>📱 גישה מהטלפון</h3>
+      <p className="sub">
+        דרך Tailscale – רשת פרטית ומוצפנת בין המחשב לטלפון שלך. הנתונים נשארים במחשב בבית, אף אחד אחר לא יכול להגיע למערכת, והכניסה תמיד עם סיסמת-העל.
+      </p>
+      {!st && <div className="muted">בודק…</div>}
+
+      {st && !st.installed && !st.enabled && (
+        <ol className="howto">
+          <li>
+            במחשב: להתקין את Tailscale מהאתר <b>tailscale.com/download</b> ולהתחבר (אפשר עם חשבון Google).
+          </li>
+          <li>בטלפון: להתקין את האפליקציה Tailscale מחנות האפליקציות ולהתחבר לאותו חשבון.</li>
+          <li>
+            לחזור לכאן וללחוץ{' '}
+            <button className="link" onClick={load}>
+              בדיקה שוב
+            </button>
+            .
+          </li>
+        </ol>
+      )}
+
+      {st && st.installed && !st.running && !st.enabled && (
+        <p>
+          Tailscale מותקן במחשב אבל לא מחובר. לפתוח אותו (הסמל ליד השעון) ולהתחבר, ואז{' '}
+          <button className="link" onClick={load}>
+            לבדוק שוב
+          </button>
+          .
+        </p>
+      )}
+
+      {st && st.running && !st.enabled && (
+        <div className="row wrap">
+          <button className="primary" disabled={busy} onClick={() => call('/remote/enable')}>
+            {busy ? 'רגע…' : 'הפעלת גישה מהטלפון'}
+          </button>
+        </div>
+      )}
+
+      {st?.error && st.error !== 'NOT_RUNNING' && st.error !== 'NOT_INSTALLED' && (
+        <div className="error small">
+          Tailscale ענה:{' '}
+          {st.error.split(/(https:\/\/\S+)/).map((part, i) =>
+            part.startsWith('https://') ? (
+              <a key={i} href={part} target="_blank" rel="noreferrer">
+                {part}
+              </a>
+            ) : (
+              part
+            ),
+          )}
+          <div className="muted">בפעם הראשונה Tailscale מבקש לאשר HTTPS ברשת שלך – פותחים את הקישור, מאשרים, ולוחצים שוב "הפעלה".</div>
+        </div>
+      )}
+
+      {st?.enabled && st.url && (
+        <>
+          <div className="phone-url">
+            <span className="muted small">הכתובת לטלפון:</span>
+            <b dir="ltr">{st.url}</b>
+            <button
+              className="ghost small"
+              onClick={async () => {
+                await navigator.clipboard?.writeText(st.url!).catch(() => {});
+                setCopied(true);
+              }}
+            >
+              {copied ? 'הועתק ✓' : 'העתקה'}
+            </button>
+          </div>
+          <ol className="howto">
+            <li>בטלפון: לוודא ש-Tailscale מחובר (מתג דולק באפליקציה).</li>
+            <li>לפתוח את הכתובת ב-Chrome. הכי פשוט: לשלוח אותה לעצמך בוואטסאפ ולהקיש עליה.</li>
+            <li>להזין את סיסמת-העל.</li>
+            <li>בתפריט ⋮ של Chrome: "הוספה למסך הבית" – ומעכשיו זה נפתח כמו אפליקציה.</li>
+          </ol>
+          <p className="sub">המחשב בבית צריך להיות דלוק – כמו לסנכרון היומי.</p>
+          {fromPhone ? (
+            <div className="muted small">אתה מחובר עכשיו דרך הטלפון.</div>
+          ) : (
+            <button className="link small" disabled={busy} onClick={() => call('/remote/disable')}>
+              כיבוי הגישה מהטלפון
+            </button>
+          )}
+        </>
+      )}
+    </section>
   );
 }
