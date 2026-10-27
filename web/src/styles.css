@@ -2253,3 +2253,68 @@ textarea {
   margin: 4px 0;
   color: var(--text-2);
 }
+
+/* ---------- bulk selection (transactions) ---------- */
+.select-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.txns td.pick {
+  width: 28px;
+  padding-inline-end: 0;
+}
+
+.txns input[type='checkbox'],
+.select-head input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.txns tr.picked td {
+  background: var(--accent-soft);
+}
+
+.bulk-bar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
+
+.bulk-cat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bulk-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+}
+
+.notice.toast {
+  position: fixed;
+  bottom: 20px;
+  inset-inline: 16px;
+  margin: 0 auto;
+  max-width: 560px;
+  z-index: 30;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}

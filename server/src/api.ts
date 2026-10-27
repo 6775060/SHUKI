@@ -381,6 +381,49 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     res.json({ changed: list.length, key });
   });
 
+  // Several transactions at once. With remember, each of their merchants gets
+  // a rule, so past and future charges from the same place follow.
+  api.post('/transactions/bulk-assign', (req, res) => {
+    const b = z
+      .object({ ids: z.array(z.number().int()).min(1).max(2000), categoryId: z.number().int().optional(), scope: scope.optional(), remember: z.boolean().default(false) })
+      .parse(req.body);
+    if (b.categoryId === undefined && !b.scope) {
+      res.status(400).json({ error: 'NOTHING_TO_DO' });
+      return;
+    }
+    if (b.categoryId !== undefined && !db.prepare('SELECT 1 FROM categories WHERE id = ?').get(b.categoryId)) {
+      res.status(400).json({ error: 'UNKNOWN_CATEGORY' });
+      return;
+    }
+    const picked = new Set(b.ids);
+    const all = db.prepare('SELECT id, description FROM transactions').all() as { id: number; description: string }[];
+    const keys = new Set<string>();
+    const ids = new Set<number>(b.ids);
+    if (b.categoryId !== undefined && b.remember) {
+      for (const t of all) if (picked.has(t.id)) keys.add(merchantKey(t.description));
+      keys.delete('');
+      for (const t of all) if (keys.has(merchantKey(t.description))) ids.add(t.id);
+    }
+    transaction(db, () => {
+      if (b.categoryId !== undefined) {
+        const upd = db.prepare('UPDATE transactions SET category_id = ?, category_locked = 1 WHERE id = ?');
+        for (const id of ids) upd.run(b.categoryId, id);
+        const del = db.prepare("DELETE FROM rules WHERE match = 'merchant' AND pattern = ?");
+        const ins = db.prepare("INSERT INTO rules (pattern, category_id, match) VALUES (?, ?, 'merchant')");
+        for (const k of keys) {
+          del.run(k);
+          ins.run(k, b.categoryId);
+        }
+      }
+      if (b.scope) {
+        const upd = db.prepare('UPDATE transactions SET scope = ?, category_locked = 1 WHERE id = ?');
+        for (const id of picked) upd.run(b.scope, id);
+      }
+    });
+    if (keys.size) categorizer.reload();
+    res.json({ changed: ids.size, rules: keys.size });
+  });
+
   api.get('/rules', (_req, res) => {
     res.json(
       db

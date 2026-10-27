@@ -16,6 +16,9 @@ export function Transactions({ nav }: { nav: Nav }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [assign, setAssign] = useState<{ txn: Txn; categoryId: number } | null>(null);
   const [reviewFor, setReviewFor] = useState<Txn | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [lastClicked, setLastClicked] = useState<number | null>(null);
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     api<Category[]>('/categories').then(setCategories);
@@ -30,8 +33,26 @@ export function Transactions({ nav }: { nav: Nav }) {
     if (scope) q.set('scope', scope);
     if (search.trim()) q.set('search', search.trim());
     if (onlyUncat) q.set('uncategorized', '1');
-    api<Txn[]>(`/transactions?${q}`).then(setTxns);
+    api<Txn[]>(`/transactions?${q}`).then((list) => {
+      setTxns(list);
+      setSelected((sel) => new Set(list.filter((t) => sel.has(t.id)).map((t) => t.id)));
+    });
   };
+
+  // Shift-click selects everything between the last click and this one.
+  const toggle = (idx: number, shift: boolean) => {
+    const id = txns[idx].id;
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const on = !prev.has(id);
+      const [a, b] = shift && lastClicked !== null ? [Math.min(lastClicked, idx), Math.max(lastClicked, idx)] : [idx, idx];
+      for (let i = a; i <= b; i++) (on ? next.add(txns[i].id) : next.delete(txns[i].id));
+      return next;
+    });
+    setLastClicked(idx);
+  };
+  const allOn = txns.length > 0 && txns.every((t) => selected.has(t.id));
+  const picked = txns.filter((t) => selected.has(t.id));
   useEffect(load, [month, accountId, categoryId, scope, onlyUncat]);
 
   const groups = useMemo(() => {
@@ -130,12 +151,36 @@ export function Transactions({ nav }: { nav: Nav }) {
         />
       )}
 
+      {notice && (
+        <div className="notice toast" role="status">
+          {notice}
+        </div>
+      )}
+
       <div className="card flush">
         {txns.length === 0 && <div className="muted pad">אין תנועות להצגה.</div>}
+        {txns.length > 0 && (
+          <div className="select-head">
+            <label className="check">
+              <input type="checkbox" checked={allOn} onChange={() => setSelected(allOn ? new Set() : new Set(txns.map((t) => t.id)))} />
+              בחירת כל {txns.length} התנועות שברשימה
+            </label>
+            <span className="muted small">טיפ: לסמן אחת, ללחוץ Shift ולסמן אחרת – וכל מה שביניהן ייבחר.</span>
+          </div>
+        )}
         <table className="txns">
           <tbody>
-            {txns.map((t) => (
-              <tr key={t.id} className={t.categoryKind === 'transfer' ? 'dim' : ''}>
+            {txns.map((t, i) => (
+              <tr key={t.id} className={`${t.categoryKind === 'transfer' ? 'dim' : ''} ${selected.has(t.id) ? 'picked' : ''}`}>
+                <td className="pick">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(t.id)}
+                    onChange={() => {}}
+                    onClick={(e) => toggle(i, e.shiftKey)}
+                    aria-label={`לבחור: ${t.description}`}
+                  />
+                </td>
                 <td className="nowrap muted">{date(t.date)}</td>
                 <td className="desc">
                   <div>
@@ -179,6 +224,88 @@ export function Transactions({ nav }: { nav: Nav }) {
           </tbody>
         </table>
       </div>
+
+      {picked.length > 0 && (
+        <BulkBar
+          picked={picked}
+          categories={categories}
+          onCreated={(c) => setCategories((list) => [...list, c])}
+          onClear={() => setSelected(new Set())}
+          onDone={(msg) => {
+            setSelected(new Set());
+            setNotice(msg);
+            setTimeout(() => setNotice(''), 6000);
+            load();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function BulkBar({
+  picked,
+  categories,
+  onCreated,
+  onClear,
+  onDone,
+}: {
+  picked: Txn[];
+  categories: Category[];
+  onCreated: (c: Category) => void;
+  onClear: () => void;
+  onDone: (msg: string) => void;
+}) {
+  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [remember, setRemember] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const total = picked.reduce((s, t) => s + t.amount, 0);
+  const category = categories.find((c) => c.id === categoryId);
+
+  const send = async (json: { categoryId?: number; scope?: 'private' | 'business'; remember?: boolean }, msg: (r: { changed: number; rules: number }) => string) => {
+    setBusy(true);
+    try {
+      const r = await api<{ changed: number; rules: number }>('/transactions/bulk-assign', { method: 'POST', json: { ids: picked.map((t) => t.id), ...json } });
+      onDone(msg(r));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="bulk-bar" role="region" aria-label="פעולה על התנועות שנבחרו">
+      <div className="bulk-count">
+        <b>נבחרו {picked.length}</b> <span className="muted small">({moneyExact(total)})</span>
+      </div>
+      <div className="bulk-cat">
+        <span className="small">לסווג ל:</span>
+        <CategoryPicker categories={categories} value={categoryId} onPick={setCategoryId} onCreated={onCreated} />
+      </div>
+      <label className="check small" title="כל חיוב מבתי העסק האלה – גם מהעבר וגם בעתיד – ייכנס לקטגוריה הזו אוטומטית">
+        <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+        לזכור גם לחיובים הבאים מאותם בתי עסק
+      </label>
+      <button
+        className="primary"
+        disabled={!category || busy}
+        onClick={() =>
+          send({ categoryId: categoryId!, remember }, (r) =>
+            `סווגו ${r.changed} תנועות ל${category!.name}.${r.rules ? ` נוספו ${r.rules} כללים – מעכשיו זה יקרה לבד.` : ''}`,
+          )
+        }
+      >
+        {busy ? 'רגע…' : 'סיווג'}
+      </button>
+      <span className="bulk-sep" aria-hidden />
+      <button className="ghost small" disabled={busy} onClick={() => send({ scope: 'private' }, (r) => `${r.changed} תנועות סומנו כפרטי.`)}>
+        פרטי
+      </button>
+      <button className="ghost small" disabled={busy} onClick={() => send({ scope: 'business' }, (r) => `${r.changed} תנועות סומנו כעסקי.`)}>
+        עסקי
+      </button>
+      <button className="link small" onClick={onClear}>
+        ביטול הבחירה
+      </button>
     </div>
   );
 }
