@@ -161,27 +161,27 @@ export function Savings() {
               <tbody>
                 {v.accounts.map((a) => (
                   <tr key={a.id} className={a.status === 'inactive' ? 'dim' : ''}>
-                    <td>
+                    <td className="sv-provider">
                       <b>{a.provider}</b>
                       <div className="sub">
                         {a.accountNumber}
                         {a.track ? ` · ${a.track}` : ''}
                       </div>
                     </td>
-                    <td>
+                    <td className="sv-type">
                       {LABEL[a.product]}
                       {a.status === 'inactive' && <span className="badge warm">לא פעיל</span>}
                     </td>
-                    <td className="nowrap">
+                    <td className="nowrap sv-balance">
                       <b>{money(a.balance)}</b>
                     </td>
-                    <td className="nowrap">{a.monthlyDeposit ? money(a.monthlyDeposit) : '—'}</td>
-                    <td className="nowrap">
+                    <td className="nowrap" data-label="הפקדה חודשית">{a.monthlyDeposit ? money(a.monthlyDeposit) : '—'}</td>
+                    <td className="nowrap" data-label="דמי ניהול">
                       {a.feeBalancePct !== null ? `${a.feeBalancePct}% מצבירה` : '—'}
                       {a.feeDepositPct !== null ? <div className="sub">{a.feeDepositPct}% מהפקדה</div> : null}
                     </td>
-                    <td className="nowrap muted">{a.balanceDate ? date(a.balanceDate) : '—'}</td>
-                    <td className="nowrap">
+                    <td className="nowrap muted" data-label="מעודכן ל-">{a.balanceDate ? date(a.balanceDate) : '—'}</td>
+                    <td className="nowrap sv-edit">
                       <button className="link small" onClick={() => setEditing({ ...a })}>
                         עריכה
                       </button>

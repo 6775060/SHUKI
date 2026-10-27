@@ -30,6 +30,14 @@ const NAV: { id: Page; label: string }[] = [
   { id: 'settings', label: 'הגדרות' },
 ];
 
+// On a phone: the four screens used most, at the thumb; the rest under "עוד".
+const MOBILE_NAV: { id: Page; label: string; icon: string }[] = [
+  { id: 'dashboard', label: 'בהירות', icon: '◐' },
+  { id: 'transactions', label: 'תנועות', icon: '☰' },
+  { id: 'reviews', label: 'לבירור', icon: '?' },
+  { id: 'savings', label: 'חסכונות', icon: '₪' },
+];
+
 export interface Nav {
   go: (page: Page, params?: Record<string, string>) => void;
   params: Record<string, string>;
@@ -40,6 +48,7 @@ export function App() {
   const [page, setPage] = useState<Page>('dashboard');
   const [params, setParams] = useState<Record<string, string>>({});
   const [syncAlerts, setSyncAlerts] = useState<SyncAlert[]>([]);
+  const [more, setMore] = useState(false);
 
   useEffect(() => {
     setOnLocked(() => setState('locked'));
@@ -67,6 +76,7 @@ export function App() {
   const go: Nav['go'] = (p, prm = {}) => {
     setPage(p);
     setParams(prm);
+    setMore(false);
     window.scrollTo(0, 0);
   };
 
@@ -108,7 +118,7 @@ export function App() {
             </button>
           ))}
         </nav>
-        <button className="ghost small" onClick={lock} title="נעילה">
+        <button className="ghost small lock-btn" onClick={lock} title="נעילה">
           🔒 נעילה
         </button>
       </header>
@@ -126,6 +136,39 @@ export function App() {
         {page === 'rules' && <Rules />}
         {page === 'settings' && <Settings />}
       </main>
+
+      <nav className="bottom-nav" aria-label="ניווט">
+        {MOBILE_NAV.map((n) => (
+          <button key={n.id} className={page === n.id ? 'on' : ''} aria-current={page === n.id ? 'page' : undefined} onClick={() => go(n.id)}>
+            <span className="bn-icon" aria-hidden>
+              {n.icon}
+            </span>
+            {n.label}
+          </button>
+        ))}
+        <button className={more || !MOBILE_NAV.some((n) => n.id === page) ? 'on' : ''} aria-expanded={more} onClick={() => setMore(!more)}>
+          <span className="bn-icon" aria-hidden>
+            ⋯
+          </span>
+          עוד
+        </button>
+      </nav>
+
+      {more && (
+        <div className="sheet-overlay" onClick={() => setMore(false)}>
+          <div className="sheet" role="dialog" aria-label="עוד מסכים" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-grip" aria-hidden />
+            {NAV.filter((n) => !MOBILE_NAV.some((m) => m.id === n.id)).map((n) => (
+              <button key={n.id} className={page === n.id ? 'sheet-item on' : 'sheet-item'} onClick={() => go(n.id)}>
+                {n.label}
+              </button>
+            ))}
+            <button className="sheet-item muted" onClick={lock}>
+              🔒 נעילה
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

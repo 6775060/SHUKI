@@ -177,7 +177,7 @@ export function Transactions({ nav }: { nav: Nav }) {
               <input type="checkbox" checked={allOn} onChange={() => setSelected(allOn ? new Set() : new Set(txns.map((t) => t.id)))} />
               בחירת כל {txns.length} התנועות שברשימה
             </label>
-            <span className="muted small">טיפ: לסמן אחת, ללחוץ Shift ולסמן אחרת – וכל מה שביניהן ייבחר.</span>
+            <span className="muted small desktop-only">טיפ: לסמן אחת, ללחוץ Shift ולסמן אחרת – וכל מה שביניהן ייבחר.</span>
           </div>
         )}
         <table className="txns">
@@ -193,7 +193,7 @@ export function Transactions({ nav }: { nav: Nav }) {
                     aria-label={`לבחור: ${t.description}`}
                   />
                 </td>
-                <td className="nowrap muted">{date(t.date)}</td>
+                <td className="nowrap muted t-date">{date(t.date)}</td>
                 <td className="desc">
                   <div>
                     {t.description}
@@ -206,7 +206,7 @@ export function Transactions({ nav }: { nav: Nav }) {
                     {t.originalCurrency && t.originalCurrency !== 'ILS' ? ` · ${t.originalAmount} ${t.originalCurrency}` : ''}
                   </div>
                 </td>
-                <td>
+                <td className="t-cat">
                   <CategoryPicker
                     categories={categories}
                     value={t.categoryId}
@@ -214,7 +214,7 @@ export function Transactions({ nav }: { nav: Nav }) {
                     onCreated={(c) => setCategories((list) => [...list, c])}
                   />
                 </td>
-                <td>
+                <td className="t-scope">
                   <button
                     className={t.scope === 'business' ? 'pill biz' : 'pill'}
                     onClick={() => update(t, { scope: t.scope === 'business' ? 'private' : 'business' })}
@@ -223,8 +223,8 @@ export function Transactions({ nav }: { nav: Nav }) {
                     {t.scope === 'business' ? 'עסקי' : 'פרטי'}
                   </button>
                 </td>
-                <td className={`amount nowrap ${t.amount > 0 ? 'pos' : ''}`}>{moneyExact(t.amount)}</td>
-                <td>
+                <td className={`amount nowrap t-amount ${t.amount > 0 ? 'pos' : ''}`}>{moneyExact(t.amount)}</td>
+                <td className="t-review">
                   {t.reviewStatus !== 'open' && (
                     <button className="review-btn" onClick={() => setReviewFor(t)} title="לא מזהה את החיוב? להעביר לבירור" aria-label={`להעביר לבירור: ${t.description}`}>
                       ❓ לבירור
