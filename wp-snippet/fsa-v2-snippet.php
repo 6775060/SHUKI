@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '95' );
+define( 'FSA_V2_BUILD', '97' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -20,7 +20,7 @@ define( 'FSA_V2_LIVE_USERS', '' );
 // guard three site-wide scripts (purchase window, header greeting, feedback button) that throw on pages without their element. false = leave the pages untouched
 define( 'FSA_V2_FIX_SITE_JS', true );
 // features in testing: '' = only admins and the test account see "בסטודיו" and the sites view in "דומיינים"; 'studio,show' = every customer
-define( 'FSA_V2_FEATURES', '' );
+define( 'FSA_V2_FEATURES', 'studio' );
 // real pictures of the customers' sites: once an hour the site asks this screenshot service for a few sites without a picture and keeps the picture
 // in uploads/fsa-sites/ (the service receives only the site address; visitors never load from it). '' = no pictures, a drawn sketch instead
 define( 'FSA_V2_SHOTS', 'https://s.wordpress.com/mshots/v1/{url}?w=1280&h=800' );
@@ -231,8 +231,10 @@ function fsa_v2_eft_table() {
 	return $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) === $t ? $t : '';
 }
 function fsa_v2_domain_limit( $plan ) {
-	return 'extra' === $plan ? 0 : ( in_array( $plan, array( 'web', 'barter' ), true ) ? 3 : -1 ); // 0 = unlimited, -1 = no domains in this plan
+	return 'extra' === $plan ? 0 : ( in_array( $plan, array( 'web', 'barter', 'acad' ), true ) ? 3 : -1 ); // 0 = unlimited, -1 = no domains in this plan
 }
+// academic counts its 3 domains per calendar year; the others per month
+function fsa_v2_domain_yearly( $plan ) { return 'acad' === $plan; }
 function fsa_v2_domains( $uid ) {
 	global $wpdb;
 	$t = fsa_v2_eft_table();
@@ -271,7 +273,8 @@ function fsa_v2_dom_ajax() {
 	list( $plan ) = fsa_v2_plan_info( wp_get_current_user() );
 	$limit = fsa_v2_domain_limit( $plan );
 	if ( $limit < 0 ) $err( 'המינוי שלך לא כולל רישום דומיינים.' );
-	if ( $limit ) $limit += fsa_v2_bonus_sub( $uid, (int) current_time( 'Y' ), (int) current_time( 'n' ) ) + fsa_v2_deal_extra( $uid );
+	$yearly = fsa_v2_domain_yearly( $plan );
+	if ( $limit && ! $yearly ) $limit += fsa_v2_bonus_sub( $uid, (int) current_time( 'Y' ), (int) current_time( 'n' ) ) + fsa_v2_deal_extra( $uid );
 	$op = isset( $_POST['op'] ) ? sanitize_key( $_POST['op'] ) : '';
 	$y = (int) current_time( 'Y' ); $m = (int) current_time( 'n' );
 	$id = isset( $_POST['id'] ) ? (int) $_POST['id'] : 0;
@@ -289,15 +292,17 @@ function fsa_v2_dom_ajax() {
 	$mine = $id ? $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `$t` WHERE id = %d AND user_id = %d", $id, $uid ) ) : null;
 	if ( 'edit' === $op || 'del' === $op ) {
 		if ( ! $mine ) $err( 'הדומיין לא נמצא.' );
-		if ( (int) $mine->year !== $y || (int) $mine->month !== $m ) $err( 'דומיין מחודש קודם סגור לעריכה.' );
+		if ( (int) $mine->year !== $y || ( ! $yearly && (int) $mine->month !== $m ) ) $err( $yearly ? 'דומיין משנה קודמת סגור לעריכה.' : 'דומיין מחודש קודם סגור לעריכה.' );
 	}
-	$dup = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM `$t` WHERE user_id = %d AND year = %d AND month = %d AND domain_url = %s AND id <> %d", $uid, $y, $m, $host, $id ) );
-	if ( 'del' !== $op && $dup ) $err( 'הדומיין הזה כבר רשום החודש.' );
+	$dup = $yearly ? $wpdb->get_var( $wpdb->prepare( "SELECT id FROM `$t` WHERE user_id = %d AND year = %d AND domain_url = %s AND id <> %d", $uid, $y, $host, $id ) )
+		: $wpdb->get_var( $wpdb->prepare( "SELECT id FROM `$t` WHERE user_id = %d AND year = %d AND month = %d AND domain_url = %s AND id <> %d", $uid, $y, $m, $host, $id ) );
+	if ( 'del' !== $op && $dup ) $err( $yearly ? 'הדומיין הזה כבר רשום השנה.' : 'הדומיין הזה כבר רשום החודש.' );
 	if ( 'add' === $op ) {
 		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT domain_slot, domain_url FROM `$t` WHERE user_id = %d AND year = %d AND month = %d", $uid, $y, $m ) );
 		$used = 0; $free = 0; $max = 0;
 		foreach ( $rows as $r ) { $max = max( $max, (int) $r->domain_slot ); if ( '' !== $r->domain_url ) $used++; elseif ( ! $free ) $free = (int) $r->domain_slot; }
-		if ( $limit && $used >= $limit ) $err( 'ניצלת את הדומיינים של החודש.' );
+		if ( $yearly ) $used = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `$t` WHERE user_id = %d AND year = %d AND domain_url <> ''", $uid, $y ) );
+		if ( $limit && $used >= $limit ) $err( $yearly ? 'ניצלת את 3 הדומיינים של השנה.' : 'ניצלת את הדומיינים של החודש.' );
 		if ( ! $free ) { for ( $k = 1; $k <= max( $max, 0 ) + 1; $k++ ) { if ( ! in_array( $k, array_map( 'intval', wp_list_pluck( $rows, 'domain_slot' ) ), true ) ) { $free = $k; break; } } }
 		$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM `$t` WHERE user_id = %d AND year = %d AND month = %d AND domain_slot = %d", $uid, $y, $m, $free ) );
 		$data = array( 'domain_name' => $name, 'domain_url' => $host, 'font_name' => implode( ', ', $fonts ) );
@@ -421,7 +426,7 @@ function fsa_v2_addon_ajax() {
 	$key  = isset( $_POST['key'] ) ? (string) (int) $_POST['key'] : '';
 	if ( 'sub' === $kind ) {
 		list( $plan ) = fsa_v2_plan_info( wp_get_current_user() );
-		if ( fsa_v2_domain_limit( $plan ) <= 0 ) $err( 'הרחבת מכסה זמינה למינוי וובסטופ.' );
+		if ( fsa_v2_domain_limit( $plan ) <= 0 || fsa_v2_domain_yearly( $plan ) ) $err( 'הרחבת מכסה זמינה למינוי וובסטופ.' );
 	} elseif ( ! fsa_v2_user_web_lic( $uid, $key ) ) {
 		$err( 'הרישיון הזה לא כולל רישום אתרים.' );
 	}
@@ -626,7 +631,7 @@ function fsa_v2_data() {
 		'plan' => $plan, 'planStart' => $start, 'nextPay' => '', 'card' => '',
 		'fonts' => $fonts, 'lic' => $lic, 'orders' => $orders,
 		'user' => fsa_v2_user_fields( $u ),
-		'features' => ( $feat = fsa_v2_features() ), 'studio' => in_array( 'studio', $feat, true ) ? fsa_v2_studio_for( $uid ) : null,
+		'features' => ( $feat = fsa_v2_features() ), 'studio' => in_array( 'studio', $feat, true ) && ( $plan || current_user_can( 'manage_options' ) ) ? fsa_v2_studio_for( $uid ) : null, // the vote is for subscribers only
 		'snaps' => in_array( 'show', $feat, true ) ? fsa_v2_user_snaps( $uid ) : array(),
 		'shareUrl' => in_array( 'show', $feat, true ) ? add_query_arg( 'fsa_sites', fsa_v2_share_token( $uid ), home_url( '/' ) ) : '',
 		'links' => array(
@@ -695,7 +700,9 @@ function fsa_v2_deal_fields( $u ) {
 	list( $plan ) = fsa_v2_plan_info( $u );
 	$base = fsa_v2_domain_limit( $plan );
 	$on = fsa_v2_deal_extra( $u->ID );
-	if ( $base > 0 ) {
+	if ( fsa_v2_domain_yearly( $plan ) ) {
+		$sum = 'מינוי אקדמיק: 3 דומיינים בשנה. ההסדר חל רק על מינויים חודשיים.';
+	} elseif ( $base > 0 ) {
 		$sum = $base . ' מהמינוי' . ( $on ? ' + ' . $on . ' הסדר' : '' ) . ' = ' . ( $base + $on ) . ' דומיינים בחודש';
 		if ( $n > 0 && ! $on ) $sum .= ' (ההסדר הסתיים)';
 	} else {
@@ -869,16 +876,18 @@ function fsa_v2_user_snaps( $uid ) {
 function fsa_v2_fetch_snap( $host ) {
 	if ( ! FSA_V2_SHOTS || ! $host ) return '';
 	$r = wp_remote_get( str_replace( '{url}', rawurlencode( 'https://' . $host . '/' ), FSA_V2_SHOTS ), array( 'timeout' => 25, 'redirection' => 3 ) );
-	if ( is_wp_error( $r ) || 200 !== (int) wp_remote_retrieve_response_code( $r ) ) return '';
+	$GLOBALS['fsa_v2_snap_err'] = '';
+	if ( is_wp_error( $r ) ) { $GLOBALS['fsa_v2_snap_err'] = 'השירות לא ענה: ' . $r->get_error_message(); return ''; }
+	if ( 200 !== (int) wp_remote_retrieve_response_code( $r ) ) { $GLOBALS['fsa_v2_snap_err'] = 'השירות החזיר קוד ' . (int) wp_remote_retrieve_response_code( $r ); return ''; }
 	$bin  = (string) wp_remote_retrieve_body( $r );
 	$info = strlen( $bin ) < 8 * 1024 * 1024 && function_exists( 'getimagesizefromstring' ) ? @getimagesizefromstring( $bin ) : false;
-	if ( ! $info || ! in_array( $info[2], array( IMAGETYPE_JPEG, IMAGETYPE_PNG ), true ) || $info[0] < 600 ) return '';
+	if ( ! $info || ! in_array( $info[2], array( IMAGETYPE_JPEG, IMAGETYPE_PNG ), true ) || $info[0] < 600 ) { $GLOBALS['fsa_v2_snap_err'] = 'התמונה עוד בהכנה אצל השירות'; return ''; }
 	$dir = wp_upload_dir();
 	if ( ! empty( $dir['error'] ) ) return '';
 	$path = trailingslashit( $dir['basedir'] ) . 'fsa-sites';
 	wp_mkdir_p( $path );
 	$name = sanitize_file_name( $host ) . '-' . substr( md5( $host . microtime() ), 0, 6 ) . ( IMAGETYPE_PNG === $info[2] ? '.png' : '.jpg' );
-	if ( false === file_put_contents( $path . '/' . $name, $bin ) ) return '';
+	if ( false === file_put_contents( $path . '/' . $name, $bin ) ) { $GLOBALS['fsa_v2_snap_err'] = 'לא הצלחתי לשמור בתיקיית ההעלאות'; return ''; }
 	$ed = function_exists( 'wp_get_image_editor' ) ? wp_get_image_editor( $path . '/' . $name ) : null; // keep it light: 800px wide is enough for a card
 	if ( $ed && ! is_wp_error( $ed ) ) { $ed->resize( 800, 500, true ); $ed->set_quality( 80 ); $ed->save( $path . '/' . $name ); }
 	return trailingslashit( $dir['baseurl'] ) . 'fsa-sites/' . $name;
@@ -886,16 +895,18 @@ function fsa_v2_fetch_snap( $host ) {
 // the hourly round: up to $max sites without a picture; a site that fails 6 times (down, blocked) is left as a sketch
 function fsa_v2_snap_run( $max = 8 ) {
 	if ( ! FSA_V2_SHOTS ) return;
-	$snaps = fsa_v2_snaps(); $n = 0;
+	$snaps = fsa_v2_snaps(); $n = 0; $log = array( 't' => current_time( 'd.m.Y H:i' ), 'asked' => 0, 'got' => 0, 'err' => '' );
 	$hosts = array_unique( array_merge( wp_list_pluck( fsa_v2_showcase_all(), 'host' ), array_keys( fsa_v2_all_sites() ) ) );
 	foreach ( $hosts as $h ) {
 		$x = isset( $snaps[ $h ] ) ? $snaps[ $h ] : array( 'u' => '', 'n' => 0, 't' => 0 );
 		if ( $x['u'] || $x['n'] >= 6 ) continue;
 		if ( ++$n > $max ) break;
 		$x['u'] = fsa_v2_fetch_snap( $h ); $x['n']++; $x['t'] = time();
-		$snaps[ $h ] = $x;
+		$snaps[ $h ] = $x; $log['asked']++;
+		if ( $x['u'] ) $log['got']++; elseif ( ! empty( $GLOBALS['fsa_v2_snap_err'] ) ) $log['err'] = $h . ': ' . $GLOBALS['fsa_v2_snap_err'];
 	}
 	update_option( 'fsa_v2_snaps', $snaps, false );
+	update_option( 'fsa_v2_snap_log', $log, false ); // shown on the approval screen
 }
 add_action( 'fsa_v2_snaps', 'fsa_v2_snap_run' );
 add_action( 'init', function () {
@@ -996,6 +1007,7 @@ function fsa_v2_show_save() {
 	if ( 'del' === $op ) { // off the gallery; a customer's site does not come back to the queue
 		foreach ( $list as $k => $x ) if ( $x['host'] === $host ) { unset( $list[ $k ] ); if ( ! empty( $x['uid'] ) ) $no[] = $host; }
 	}
+	if ( 'snaprun' === $op ) fsa_v2_snap_run(); // a round now, instead of waiting for the hour
 	if ( 'snap' === $op && $host ) { // a new picture now (e.g. the site was redesigned)
 		$snaps = fsa_v2_snaps(); $u = fsa_v2_fetch_snap( $host );
 		$snaps[ $host ] = array( 'u' => $u ? $u : ( $snaps[ $host ]['u'] ?? '' ), 'n' => 0, 't' => time() );
@@ -1003,7 +1015,7 @@ function fsa_v2_show_save() {
 	}
 	update_option( 'fsa_v2_showcase', array_values( array_filter( $list, function ( $x ) { return ! empty( $x['ok'] ); } ) ), false ); // drops old "waiting" requests
 	update_option( 'fsa_v2_showcase_no', array_values( array_unique( $no ) ), false );
-	wp_safe_redirect( admin_url( 'admin.php?page=fsa-studio&tab=show&saved=' . ( 'snap' === $op && empty( $u ) ? 'wait' : '1' ) ) );
+	wp_safe_redirect( admin_url( 'admin.php?page=fsa-studio&tab=show&saved=' . ( 'snap' === $op && empty( $u ) ? 'wait&why=' . rawurlencode( (string) ( $GLOBALS['fsa_v2_snap_err'] ?? '' ) ) : '1' ) ) );
 	exit;
 }
 add_action( 'admin_post_fsa_v2_studio_csv', function () {
@@ -1021,7 +1033,7 @@ function fsa_v2_studio_admin() {
 	$tab = isset( $_GET['tab'] ) && 'show' === $_GET['tab'] ? 'show' : 'studio';
 	$s = fsa_v2_studio(); $t = fsa_v2_studio_tally( $s['round'] ); $tot = array_sum( $t );
 	echo '<div class="wrap" dir="rtl"><h1>פונטשוק · בסטודיו</h1>';
-	if ( isset( $_GET['saved'] ) ) echo 'wait' === $_GET['saved'] ? '<div class="notice notice-warning is-dismissible"><p>שירות הצילום עוד מכין את התמונה. נסו שוב בעוד דקה.</p></div>' : '<div class="notice notice-success is-dismissible"><p>נשמר.</p></div>';
+	if ( isset( $_GET['saved'] ) ) echo 'wait' === $_GET['saved'] ? '<div class="notice notice-warning is-dismissible"><p>לא התקבלה תמונה' . ( ! empty( $_GET['why'] ) ? ': ' . esc_html( sanitize_text_field( wp_unslash( $_GET['why'] ) ) ) : '' ) . '. אם היא בהכנה, נסו שוב בעוד דקה.</p></div>' : '<div class="notice notice-success is-dismissible"><p>נשמר.</p></div>';
 	echo '<nav class="nav-tab-wrapper"><a class="nav-tab' . ( 'studio' === $tab ? ' nav-tab-active' : '' ) . '" href="' . esc_url( admin_url( 'admin.php?page=fsa-studio' ) ) . '">ההצבעה</a><a class="nav-tab' . ( 'show' === $tab ? ' nav-tab-active' : '' ) . '" href="' . esc_url( admin_url( 'admin.php?page=fsa-studio&tab=show' ) ) . '">גלריה</a></nav>';
 	echo '<p style="max-width:70ch">' . ( FSA_V2_FEATURES ? 'פעיל ללקוחות: ' . esc_html( FSA_V2_FEATURES ) . '.' : 'כרגע רק מנהלים ו־claude-test רואים את זה באזור האישי. כדי לפתוח ללקוחות: בראש הסניפט, FSA_V2_FEATURES = \'studio,show\'.' ) . '</p>';
 	if ( 'show' === $tab ) { fsa_v2_show_admin(); echo '</div>'; return; }
@@ -1067,10 +1079,12 @@ function fsa_v2_show_admin() {
 	$pic = function ( $host, $img = '' ) { $u = $img ? $img : fsa_v2_snap( $host ); return $u ? '<img src="' . esc_url( $u ) . '" alt="" loading="lazy" style="width:150px;aspect-ratio:16/10;object-fit:cover;object-position:top;border-radius:4px;border:1px solid #DCDCDE;display:block">' : '<span style="display:grid;place-items:center;width:150px;aspect-ratio:16/10;border-radius:4px;background:#F0F0F1;color:#787C82;font-size:12px">' . ( FSA_V2_SHOTS ? 'התמונה בהכנה' : 'אין תמונה' ) . '</span>'; };
 	$site = function ( $x, $host ) { return '<b>' . esc_html( $x['name'] ) . '</b><br><a href="https://' . esc_attr( $host ) . '" target="_blank" rel="noopener" dir="ltr">' . esc_html( $host ) . '</a>'; };
 	echo '<h2>ממתינים לאישור (' . count( $q ) . ')</h2><p style="max-width:70ch">כל אתר שלקוח רושם, במינוי או ברישיון שקנה, מגיע לכאן. מה שמאשרים עולה לגלריה; "לא להציג" מוציא אותו מהרשימה. התמונות נלקחות מהאתרים עצמם, כמה בכל שעה.</p>';
+	$lg = get_option( 'fsa_v2_snap_log' );
+	echo '<p>' . ( FSA_V2_SHOTS ? ( is_array( $lg ) ? 'סבב צילומים אחרון: ' . esc_html( $lg['t'] ) . ' · נשלחו ' . (int) $lg['asked'] . ' · התקבלו ' . (int) $lg['got'] . ( $lg['err'] ? ' · ' . esc_html( $lg['err'] ) : '' ) : 'עוד לא היה סבב צילומים (הוא רץ פעם בשעה, כשיש כניסות לאתר).' ) . ' ' . $form( 'snaprun', '', 'סבב צילומים עכשיו' ) : 'הצילום האוטומטי כבוי (FSA_V2_SHOTS).' ) . '</p>';
 	echo '<table class="widefat striped"><thead><tr><th style="width:160px">תמונה</th><th>אתר</th><th>פונטים</th><th>שנה</th><th>לקוח</th><th></th></tr></thead><tbody>';
 	foreach ( array_slice( $q, ( $page - 1 ) * $per, $per, true ) as $h => $x ) { $u = get_userdata( $x['uid'] );
 		echo '<tr><td>' . $pic( $h ) . '</td><td>' . $site( $x, $h ) . '</td><td>' . esc_html( implode( ', ', $x['fonts'] ) ) . '</td><td>' . esc_html( $x['year'] ) . '</td><td>' . esc_html( $u ? $u->user_email : '' ) . '</td><td>'
-			. $form( 'ok', $h, 'אישור', '<input name="by" placeholder="עיצוב (לא חובה)" style="width:130px"> <input type="url" name="img" placeholder="תמונה אחרת (קישור)" dir="ltr" style="width:150px"> ' ) . ' ' . $form( 'no', $h, 'לא להציג' ) . '</td></tr>'; }
+ 			. ( FSA_V2_SHOTS ? $form( 'snap', $h, 'צילום' ) . ' ' : '' ) . $form( 'ok', $h, 'אישור', '<input name="by" placeholder="עיצוב (לא חובה)" style="width:130px"> <input type="url" name="img" placeholder="תמונה אחרת (קישור)" dir="ltr" style="width:150px"> ' ) . ' ' . $form( 'no', $h, 'לא להציג' ) . '</td></tr>'; }
 	if ( ! $q ) echo '<tr><td colspan="6">אין אתרים שממתינים.</td></tr>';
 	echo '</tbody></table>';
 	if ( count( $q ) > $per ) { echo '<p>'; for ( $i = 1; $i <= ceil( count( $q ) / $per ); $i++ ) echo $i === $page ? '<b>' . $i . '</b> ' : '<a href="' . esc_url( admin_url( 'admin.php?page=fsa-studio&tab=show&p=' . $i ) ) . '">' . $i . '</a> '; echo '</p>'; }
@@ -1727,7 +1741,10 @@ add_shortcode( 'fs_account_v2', function () {
 @media (prefers-reduced-motion:reduce){:is(#fsa,#fsa-layer),:is(#fsa,#fsa-layer) *{animation:none!important;transition:none!important}}
 :is(#fsa,#fsa-layer) .modal{z-index:100000}
 :is(#fsa,#fsa-layer) .toast{z-index:100001}
-:is(#fsa,#fsa-layer) .live-note{margin:0 4px 10px;font-size:12px;color:var(--muted)}
+:is(#fsa,#fsa-layer) .live-note{margin:0 4px;font-size:12px;color:var(--muted)}
+/* greeting on the right, "back to the previous area" on the left, one line */
+:is(#fsa,#fsa-layer) .top-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px;margin:0 0 14px}
+:is(#fsa,#fsa-layer) .top-row .hello{margin:0 4px}
 :is(#fsa,#fsa-layer) .empty{padding:30px 0;color:var(--muted)}
 :is(#fsa,#fsa-layer) .dl-only-h{margin:36px 0 14px}
 :is(#fsa,#fsa-layer) .offers{display:grid;grid-auto-rows:1fr;gap:14px;margin-top:26px}
@@ -1752,6 +1769,13 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .offer .of-cta.btn-line{background:#fff;border:1px solid var(--ink);color:var(--ink)}
 :is(#fsa,#fsa-layer) .cmp{margin-top:56px}
 :is(#fsa,#fsa-layer) .cmp h2{font-size:24px;font-weight:700;margin:0;padding-bottom:16px;border-bottom:1px solid var(--ink)}
+/* the comparison is folded until asked for */
+:is(#fsa,#fsa-layer) .cmp-tg{all:unset;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%}
+:is(#fsa,#fsa-layer) .cmp-tg .icon{width:22px;height:22px;color:var(--muted);transition:transform .6s var(--ease),color .3s var(--ease)}
+:is(#fsa,#fsa-layer) .cmp-tg:hover .icon,:is(#fsa,#fsa-layer) .cmp-tg[aria-expanded="true"] .icon{color:var(--violet)}
+:is(#fsa,#fsa-layer) .cmp-tg[aria-expanded="true"] .icon{transform:rotate(180deg)}
+:is(#fsa,#fsa-layer) .cmp-tg:focus-visible{outline:2px solid var(--violet);outline-offset:4px;border-radius:4px}
+:is(#fsa,#fsa-layer) .cmp-body.open>div{padding-top:0}
 :is(#fsa,#fsa-layer) .cmp table{width:100%;border-collapse:collapse;font-size:14px;position:relative;z-index:1;table-layout:fixed}
 :is(#fsa,#fsa-layer) .cmp th{font-size:19px;font-weight:700;padding:30px 10px 22px;text-align:center;white-space:nowrap;width:20%;background:none;border:0;color:var(--ink)}
 :is(#fsa,#fsa-layer) .cmp th:first-child{width:auto}
@@ -1955,8 +1979,10 @@ html body.fsa-v2{overflow-x:clip}
 FSACSS;
 	$html = <<<'FSAHTML'
 <div id="fsa"><main class="page">
+  <div class="top-row">
   <p class="hello x-new" data-new="ברכה עדינה"><span id="greet">ערב טוב</span>, <b id="fsaName"></b> <span class="smiley" aria-hidden="true"><svg viewBox="0 0 24 24"><g class="sm-face"><circle class="sm-ring" cx="12" cy="12" r="10"/><ellipse class="sm-cheek" cx="7.2" cy="14" rx="1.6" ry="1"/><ellipse class="sm-cheek" cx="16.8" cy="14" rx="1.6" ry="1"/><ellipse class="sm-eye sm-eye-l" cx="9" cy="10.2" rx=".75" ry="1.2"/><ellipse class="sm-eye sm-eye-r" cx="15" cy="10.2" rx=".75" ry="1.2"/><path class="sm-mouth" d="M9 15.4c.85.63 1.88 1 3 1s2.15-.37 3-1"/><path class="sm-grin" d="M8 14h8c0 2.4-1.8 4-4 4s-4-1.6-4-4Z"/></g></svg><i class="sm-spark s1"></i><i class="sm-spark s2"></i><i class="sm-spark s3"></i></span></p>
-<p class="live-note" id="fsaNote">תצוגה מקדימה של האזור האישי החדש · גלוי רק למנהלים · דומיינים ותעודות יחוברו בשלב הבא</p>
+  <p class="live-note" id="fsaNote">תצוגה מקדימה של האזור האישי החדש · גלוי רק למנהלים · דומיינים ותעודות יחוברו בשלב הבא</p>
+  </div>
   <div class="shell">
     <nav class="side" aria-label="אזור אישי">
       <button data-view="subs">המינוי שלי</button>
@@ -2029,16 +2055,18 @@ const SUBS={
  app:{name:'רכישה בודדת',en:'App license',logo:'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNTEwLjcyIDUxMC43MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjEuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS4xIEJ1aWxkIDEzNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiB1cmwoI2xpbmVhci1ncmFkaWVudDEpOwogICAgICB9CgogICAgICAuc3QxIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICAgIHN0cm9rZTogdXJsKCNsaW5lYXItZ3JhZGllbnQpOwogICAgICAgIHN0cm9rZS13aWR0aDogOXB4OwogICAgICB9CiAgICA8L3N0eWxlPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJsaW5lYXItZ3JhZGllbnQiIHgxPSIzODMuMDYiIHkxPSI0NzUuNzEiIHgyPSIxMjcuNjYiIHkyPSIzMy4zNCIgZ3JhZGllbnRUcmFuc2Zvcm09InRyYW5zbGF0ZSgwIDUwOS44OSkgc2NhbGUoMSAtMSkiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmY5YThiIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2UzMTY2ZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0ibGluZWFyLWdyYWRpZW50MSIgeDE9IjM2Mi42OSIgeTE9IjE4OC42OSIgeDI9IjEzNi41MyIgeTI9IjM5OS44MyIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjlhOGIiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIuODUiIHN0b3AtY29sb3I9IiNlMzE2NmYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxjaXJjbGUgY2xhc3M9InN0MSIgY3g9IjI1NS4zNiIgY3k9IjI1NS4zNiIgcj0iMjUwLjg2Ii8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTM0MC44NCwyOTAuODFjMC00NC4xOCw1Ljk4LTEyMC4yMyw4LjA5LTE2MC4xNGwtNDYuMzUtMjEuMzMtMi4zMy0uMDUtNC43Miw5OC43OC0uOTkuMDZjLTIyLjg4LTMxLjk3LTQzLjQ1LTQyLjA3LTc1LjAxLTQyLjA3LTU3LjE5LDAtOTQuNjYsNTEuNjctOTQuNjYsMTE1LjYxczM5LjM1LDEwMy43OSw5MC44NiwxMDMuNzljMzQuODcsMCw1NC40NS0xNS41NSw3Ny44Ny00OS44OSwzLjYyLDE5LjczLDcuMzcsMzUuODQsMTEuMjUsNDcuNDVoNTEuMjhsLjExLTIuMDNjLTEwLjI3LTMwLjA4LTE1LjQtNTkuOC0xNS40LTkwLjE4Wk0yMjMuMjEsMzQzLjMzYy0yOS4zOCwwLTQ4LjQ2LTIyLjM3LTQ4LjQ2LTY2LDAtNDkuNjcsMjguMDgtNzIuNzEsNTIuMjgtNzMuNzQsNTAuMjItMi4xMiw2NC45NCw1OC44Nyw2NC43OSw3NS43OS0yOS44NCw0OS42My00OC40NCw2My45NS02OC42MSw2My45NVoiLz4KPC9zdmc+'}
 };
 /* domains registered under the SUBSCRIPTION (quota belongs to the plan, not to a font) */
-const PLAN={web:{n:3,label:'וובסטופ',desc:'מינוי לאתרים ולדסקטופ'},extra:{n:0,label:'אקסטרה',desc:'מינוי לאתרים לדסקטופ ולאפליקציה'},desk:{n:0,label:'דסקטופ',desc:'מינוי דסקטופ'},acad:{n:0,label:'אקדמיק',desc:'מינוי לסטודנטים'},barter:{n:3,label:'בארטר',desc:'מינוי לאתרים ולדסקטופ'}};
+const PLAN={web:{n:3,label:'וובסטופ',desc:'מינוי לאתרים ולדסקטופ'},extra:{n:0,label:'אקסטרה',desc:'מינוי לאתרים לדסקטופ ולאפליקציה'},desk:{n:0,label:'דסקטופ',desc:'מינוי דסקטופ'},acad:{n:3,label:'אקדמיק',desc:'מינוי לסטודנטים'},barter:{n:3,label:'בארטר',desc:'מינוי לאתרים ולדסקטופ'}};
 /* older months = history (closed & kept, scrollable back through the years) */
 const OLDDOM=[['22.09.2026','סטודיו לוי','studio-levi.co.il','טאלנט'],['20.09.2026','חנות הבד','bad.co.il','אומץ'],['04.08.2026','קמפיין קיץ','summer-sale.co.il','דיסקברי'],['11.07.2026','גן ילדים שקד','shaked-kids.co.il','פריימריז, פורטו'],['02.05.2026','משרד עו״ד כהן','cohen-law.co.il','יזכור פרו'],['18.02.2026','מאפיית הכפר','hakfar.co.il','אומץ, טאלנט'],['09.12.2025','עמותת אור','or-org.org.il','פורטו'],['21.10.2025','סטודיו מור','mor-studio.co.il','דיסקברי, טאלנט'],['05.06.2025','כנס עיצוב 2025','design-conf.co.il','פריימריז'],['14.03.2025','קפה גינה','gina-cafe.co.il','אומץ'],['30.11.2024','חנות הספרים','books-il.co.il','יזכור פרו, פורטו'],['08.07.2024','מגזין אדריכלות','arch-mag.co.il','טאלנט']];
 const SUBDOM={web:[['03.10.2026','סטודיו דיין','studio-dayan.co.il','פורטו, טאלנט'],['14.10.2026','מגזין עגלה','agala.co.il','דיסקברי, פורטו'],...OLDDOM.map(r=>r.slice())],extra:[['03.10.2026','סטודיו דיין','studio-dayan.co.il','פורטו, טאלנט'],['14.10.2026','מגזין עגלה','agala.co.il','דיסקברי, פורטו'],['12.10.2026','אדריכלות בע״מ','fontshok.co.il','פורטו'],...OLDDOM.map(r=>r.slice())]};
 const MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 let BONUS=0,EXTRA=0,ADDON_P=79;
 /* registration cycle: domains registered in the current cycle (1.10–31.10.2026) can still be edited; older ones are locked */
-const _n=new Date();const CYCLE={start:new Date(_n.getFullYear(),_n.getMonth(),1),end:new Date(_n.getFullYear(),_n.getMonth()+1,1),label:MONTHS[_n.getMonth()]};
+const _n=new Date(),YEARLY=(window.FS_DATA||{}).plan==='acad';/* academic: 3 domains a calendar year, editable until the end of the year */
+const CYCLE=YEARLY?{start:new Date(_n.getFullYear(),0,1),end:new Date(_n.getFullYear()+1,0,1),label:String(_n.getFullYear())}:{start:new Date(_n.getFullYear(),_n.getMonth(),1),end:new Date(_n.getFullYear(),_n.getMonth()+1,1),label:MONTHS[_n.getMonth()]};
+const PER=YEARLY?{now:'השנה',every:'בכל שנה',of:'של השנה',nowT:`השנה · ${_n.getFullYear()}`}:{now:'החודש',every:'בכל חודש',of:'של החודש',nowT:`החודש · ${MONTHS[_n.getMonth()]} ${_n.getFullYear()}`};
 /* next quota renewal, from the registration cycle (Stage 2: quota.resets from the API) */
-const nextReset=()=>`${CYCLE.end.getDate()} ב${MONTHS[CYCLE.end.getMonth()]}`;
+const nextReset=()=>`${CYCLE.end.getDate()} ב${MONTHS[CYCLE.end.getMonth()]}${YEARLY?' '+CYCLE.end.getFullYear():''}`;
 const parseD=s=>{const [d,m,y]=s.split('.').map(Number);return new Date(y,m-1,d)};
 const canEdit=s=>{const d=parseD(s);return d>=CYCLE.start&&d<CYCLE.end};
 /* row actions.
@@ -2049,7 +2077,7 @@ function rowActs(key,date,certSpec,delAttr){
  const cert=`<button class="ibtn" aria-label="תעודת רישיון" data-cert="${certSpec}">${ICON.cert}</button>`;
  if(key.startsWith('dom:')){const p=key.split(':');if(licFixed(+p[1],+p[2]))return `<div class="acts"><span class="ibtn locked" title="נרשם בזמן הרכישה: קבוע" aria-label="קבוע">${ICON.lock}</span><button class="ibtn" aria-label="תעודת רישיון" data-cert="${certSpec}">${ICON.cert}</button><span class="ibtn ph" aria-hidden="true"></span></div>`}
  if(!open)return `<div class="acts"><span class="ibtn locked" title="נרשם בחודש קודם: הדומיין סגור ונשמר, לא ניתן לערוך או להסיר" aria-label="נעול">${ICON.lock}</span>${cert}<span class="ibtn ph" aria-hidden="true"></span></div>`;
- const tip=key.startsWith('dom:')?'עריכת הדומיין':`אפשר לערוך עד סוף חודש ${CYCLE.label}`;
+ const tip=key.startsWith('dom:')?'עריכת הדומיין':(YEARLY?`אפשר לערוך עד סוף ${CYCLE.label}`:`אפשר לערוך עד סוף חודש ${CYCLE.label}`);
  return `<div class="acts"><button class="ibtn" aria-label="עריכת הדומיין" title="${tip}" data-edit="${key}">${ICON.edit}</button>${cert}<button class="ibtn" aria-label="הסרת הדומיין" ${delAttr}>${ICON.trash}</button></div>`;
 }
 const editCells=(name,host)=>`<td><input class="ed ed-name" value="${name}" aria-label="שם האתר"></td><td><input class="ed ed-host" dir="ltr" value="${host}" aria-label="כתובת האתר"></td>`;
@@ -2079,11 +2107,11 @@ const HISTORY=[{f:'דיסקברי',w:'לייט',sub:'web',site:['04.08.2026','ק
 const CERT_TEXT={
  extra:l=>`רישיון זה מכסה את הדומיין הרשום במסגרת מינוי אקסטרה, הכולל רישום דומיינים ללא הגבלה, אתרים, אפליקציות ודסקטופ. הרישיון בתוקף כל עוד המינוי פעיל.`,
  web:l=>`רישיון זה מכסה את הדומיין הרשום בלבד, במסגרת מכסת ${l.n} דומיינים חודשיים במינוי וובסטופ. השימוש מותר לעיצוב ממשק משתמש (UI) ולהטמעה באתר שכתובתו מצוינת לעיל, כל עוד המינוי פעיל.`,
- desk:l=>`רישיון דסקטופ לפונט הרשום: התקנה במחשבי בעל הרישיון ועיצוב תוצרי דסקטופ, פלט ו־UI. הרישיון אינו כולל הטמעה באתרים או באפליקציות.`,
- acad:l=>`רישיון אקדמיק לשימוש במסגרת הלימודים ותיק העבודות של בעל הרישיון, בהתאם לתנאי המינוי לסטודנטים.`,
+ desk:l=>`רישיון דסקטופ לפונט הרשום, לשימוש בשולחן העבודה בלבד: התקנה במחשבי בעל הרישיון ועיצוב תוצרים גרפיים, פלט, תנועה ו־UI/UX. הרישיון אינו כולל הטמעה באתרים, באפליקציות או בתשדירים.`,
+ acad:l=>`רישיון אקדמיק לשימוש במסגרת הלימודים ותיק העבודות של בעל הרישיון. רישיון זה מכסה את הדומיין הרשום, במסגרת מכסה של 3 דומיינים בשנה, כל עוד המינוי פעיל.`,
  buy:l=>`רישיון וובפונט לפונט שנרכש, למכסה של עד ${l.n||3} דומיינים. השימוש מותר לעיצוב ממשק משתמש (UI) ולהטמעה באתר שכתובתו מצוינת לעיל. הרישיון לצמיתות.`,
  app:l=>`רישיון אפליקציה לפונט הרשום: הטמעה באפליקציה של בעל הרישיון, בהתאם לתנאי הרישיון שנרכש.`,
- barter:l=>`רישיון בארטר הניתן במסגרת שיתוף פעולה לפי הסיכום האישי עם פונטשוק, בכפוף למתן קרדיט בדף היוצרים.`
+ barter:l=>`רישיון בארטר, הניתן במסגרת הסכם חליפין או שיתוף פעולה אסטרטגי עם פונטשוק. היקף השימוש כמו במינוי וובסטופ: דסקטופ, פלט, תנועה ו־UI/UX, והטמעה בדומיין הרשום במסגרת מכסת ${l.n||3} דומיינים בחודש. הרישיון בתוקף כל עוד ההסכם בתוקף ובכפוף לתנאיו, לרבות מתן קרדיט לפונטשוק כפי שסוכם.`
 };
 const ORDERS=[
  {id:'11479',d:'20.11.2025',items:[['וובסטופ · חידוש חודשי',319],['דומיין נוסף',79]],st:'הושלם'},
@@ -2104,7 +2132,7 @@ Object.keys(SUBDOM).forEach(k=>SUBDOM[k]=[]);HISTORY.length=0;
 /* the subscription's domains come from the site (the Easy Font Table records): [date, name, address, fonts, id] */
 SUBDOM[FS.plan||'web']=(FS.domains||[]).map(r=>r.slice());
 const DOMF=(FS.domainFonts&&FS.domainFonts.length)?FS.domainFonts:FAMILY.map(f=>f[0]);
-const DOM_PLANS=['web','extra','barter'];
+const DOM_PLANS=['web','extra','barter','acad'];
 BONUS=FS.bonus||0;EXTRA=FS.extra||0;ADDON_P=+FS.addonPrice||79;
 /* a site on a purchased licence: [date, name, address, id]; id '' = registered at checkout, fixed */
 const licFixed=(i,j)=>{const s=(LIC[i]&&LIC[i].sites[j])||[];return s.length>3&&!s[3]};
@@ -2173,10 +2201,10 @@ const noPlan=()=>`<div class="head-row"><div><h1 class="h1">המינוי שלי<
   <div class="of-price">${offerPrice(o)?`<b class="num">₪${offerPrice(o)}</b><small>לחודש, כולל מע״מ</small>`:'<small>המחיר בעמוד המינויים</small>'}</div>
   <a class="btn ${offerPrice(o)?'btn-grad':'btn-line'} of-cta" href="${ea(offerHref(o))}">${o.cta}</a>
  </div>`).join('')}</div>
- <section class="cmp" id="cmp"><h2>השוואת המינויים</h2><div class="tbl-wrap cmp-in"><i class="web-col" aria-hidden="true"></i><table>
+ <section class="cmp" id="cmp"><h2><button class="cmp-tg" data-cmp="1" aria-expanded="${!!state.cmpOpen}" aria-controls="cmpBody">השוואת המינויים${ICON.chev}</button></h2><div class="hist-body cmp-body ${state.cmpOpen?'open':''}" id="cmpBody"><div><div class="tbl-wrap cmp-in"><i class="web-col" aria-hidden="true"></i><table>
   <thead><tr><th></th>${CMP_COLS.map(k=>`<th>${PLAN[k].label} <img class="cmp-sym" src="${SYM[k]}" alt=""></th>`).join('')}</tr></thead>
   <tbody>${CMP.map(r=>r[0]==='grp'?`<tr class="grp"><td>${r[1]}</td><td></td><td></td><td></td></tr>`:`<tr><td><b>${r[0]}</b> - ${r[1]}</td>${[2,3,4].map(i=>`<td>${cmpCell(r[i])}</td>`).join('')}</tr>`).join('')}<tr class="cmp-end"><td></td><td></td><td></td><td></td></tr></tbody>
- </table></div></section>
+ </table></div></div></div></section>
  <a class="of-more" href="${PRICING}">כל הפרטים על המינויים והרישיונות</a>`;
 const _subs=V.subs;V.subs=tab=>{if(!FS.plan)return noPlan();const h=_subs(tab),t=studioTeaser();if(!t)return h;const i=h.search(/<div class="tabs"|<h2 class="h2-sec dl-only-h"/);return i<0?h:h.slice(0,i)+t+h.slice(i)};
 /* font-update note: sits under the download table ("כל הפונטים לאתרים / לדסקטופ") */
@@ -2194,8 +2222,8 @@ function subsDomains(){
  return `${demo}
  <div class="dom-head">
    <div><b style="font-size:18px">דומיינים במינוי ${p.label}</b>
-   <div class="hint" style="margin:2px 0 0">${lim?`ניתן לרשום ${p.n+EXTRA} דומיינים בכל חודש${BONUS?` + ${BONUS} נוספים שנרכשו`:''}. מתחדש ב־${nextReset()}.`:'רישום דומיינים ללא הגבלה, כל עוד המינוי פעיל.'}</div></div>
-   ${lim?`<div class="usage"><span class="num"><b>${used}</b> מתוך ${lim} החודש</span><span class="track"><i style="width:${Math.min(100,used/lim*100)}%;background:${full?'var(--bad)':used/lim>=.66?'var(--warn)':'var(--ok)'}"></i></span></div>`:'<span class="chip">ללא הגבלה</span>'}
+   <div class="hint" style="margin:2px 0 0">${lim?`ניתן לרשום ${p.n+EXTRA} דומיינים ${PER.every}${BONUS?` + ${BONUS} נוספים שנרכשו`:''}. מתחדש ב־${nextReset()}.`:'רישום דומיינים ללא הגבלה, כל עוד המינוי פעיל.'}</div></div>
+   ${lim?`<div class="usage"><span class="num"><b>${used}</b> מתוך ${lim} ${PER.now}</span><span class="track"><i style="width:${Math.min(100,used/lim*100)}%;background:${full?'var(--bad)':used/lim>=.66?'var(--warn)':'var(--ok)'}"></i></span></div>`:'<span class="chip">ללא הגבלה</span>'}
  </div>
  <div class="box dom-box sub-reg ${state.regOpen?'reg-on reg-done':''}">
    ${full?quotaFullPlan():`<button class="btn btn-grad reg-open" data-regopen="1" aria-expanded="${!!state.regOpen}" aria-controls="regFold">${ICON.plus} רישום דומיין חדש</button>
@@ -2209,14 +2237,14 @@ function subsDomains(){
    </form><p class="form-err" id="sdErr" hidden></p></div></div>`}
  </div>
  <div class="tbl-wrap"><table class="tbl dom-tbl reg-tbl">${DOM_THEAD}<tbody>
- ${list.map(subRow).filter(r=>canEdit(r.s[0])).sort((a,b)=>parseD(b.s[0])-parseD(a.s[0])).map(domRow).join('')||`<tr><td colspan="5" class="hint" style="padding:18px 0">עוד לא נרשמו דומיינים החודש</td></tr>`}
+ ${list.map(subRow).filter(r=>canEdit(r.s[0])).sort((a,b)=>parseD(b.s[0])-parseD(a.s[0])).map(domRow).join('')||`<tr><td colspan="5" class="hint" style="padding:18px 0">עוד לא נרשמו דומיינים ${PER.now}</td></tr>`}
  </tbody></table></div>
  <p class="hint lock-note lock-end">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</p>`;
 }
 function quotaFullPlan(){
  return `<div class="quota-line">
-  <div class="msg"><b>ניצלת את ${PLAN[state.plan].n+EXTRA+BONUS} הדומיינים של החודש</b><span>מתחדש ב־${nextReset()}.${FS.addon?' צריך עוד עכשיו?':''}</span></div>
-  ${FS.addon?`<button class="btn btn-grad" data-planaddon="1">דומיין נוסף · ₪${ADDON_P}</button>`:''}
+  <div class="msg"><b>ניצלת את ${PLAN[state.plan].n+EXTRA+BONUS} הדומיינים ${PER.of}</b><span>מתחדש ב־${nextReset()}.${FS.addon&&!YEARLY?' צריך עוד עכשיו?':''}</span></div>
+  ${FS.addon&&!YEARLY?`<button class="btn btn-grad" data-planaddon="1">דומיין נוסף · ₪${ADDON_P}</button>`:''}
   <a class="linkbtn" href="https://fontshok.co.il/מחירון-רישיונות-ומנויים/">או שדרוג לאקסטרה</a>
  </div>`;
 }
@@ -2368,9 +2396,9 @@ V.dom=()=>{
  return `
  <div class="head-row"><div><h1 class="h1">דומיינים</h1><p class="sub">כל האתרים שלך במקום אחד. רישום אתר חדש נעשה במינוי או בפונט שרכשת.</p></div>
   <div class="head-act"><button class="btn btn-grad" data-go2="subs" aria-label="רישום אתר במינוי" title="רישום אתר במינוי">${ICON.plus}<span class="ha-l">רישום אתר במינוי</span></button></div></div>
- <h2 class="h2-sec sec-row">החודש · ${CYCLE.label} ${_n.getFullYear()}<span class="sec-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</span><button class="sec-add" data-go2="subs" aria-label="רישום אתר במינוי" title="רישום אתר במינוי">${ICON.plus}</button></h2>
+ <h2 class="h2-sec sec-row">${PER.nowT}<span class="sec-note">${ICON.lock} אפשר לערוך או להסיר עד סוף ${CYCLE.label}.</span><button class="sec-add" data-go2="subs" aria-label="רישום אתר במינוי" title="רישום אתר במינוי">${ICON.plus}</button></h2>
  <div class="tbl-wrap"><table class="tbl dom-tbl">${thead}<tbody>
- ${now.map(row).join('')||`<tr><td colspan="5" class="hint">עוד לא נרשמו דומיינים החודש</td></tr>`}
+ ${now.map(row).join('')||`<tr><td colspan="5" class="hint">עוד לא נרשמו דומיינים ${PER.now}</td></tr>`}
  </tbody></table></div>
  <button class="hist-toggle" data-hist="1" aria-expanded="${!!state.histOpen}" aria-controls="histBody">${ICON.chev}<span class="h2-sec" style="margin:0">היסטוריית דומיינים <span class="hint" style="margin:0;font-weight:400">${past.length} דומיינים</span></span></button>
  <div class="hist-body ${state.histOpen?'open':''}" id="histBody"><div><div class="tbl-wrap hist-scroll"><table class="tbl dom-tbl">${thead}<tbody>${hist}</tbody></table></div></div></div>`;
@@ -2576,7 +2604,7 @@ function byeFacts(){
  const f=[],p=FS.plan&&PLAN[FS.plan];
  if(p&&FAMILY.length)f.push(`<b>${FAMILY.length} משפחות פונטים</b> במינוי ${p.label} מחכות להורדה`);
  if(p&&DOM_PLANS.includes(FS.plan)){const lim=p.n?p.n+EXTRA+BONUS:0,used=(SUBDOM[FS.plan]||[]).filter(x=>canEdit(x[0])).length,left=Math.max(lim-used,0);
-  f.push(!lim?'רישום דומיינים <b>ללא הגבלה</b>, כל עוד המינוי פעיל':left?`נשארו לך <b>${left===1?'דומיין אחד':left+' דומיינים'}</b> לרשום החודש. הם לא עוברים לחודש הבא`:`ניצלת את הדומיינים של ${CYCLE.label}. המכסה מתחדשת ב־${nextReset()}`)}
+  f.push(!lim?'רישום דומיינים <b>ללא הגבלה</b>, כל עוד המינוי פעיל':left?`נשארו לך <b>${left===1?'דומיין אחד':left+' דומיינים'}</b> לרשום ${PER.now}. הם לא עוברים ${YEARLY?'לשנה הבאה':'לחודש הבא'}`:`ניצלת את הדומיינים של ${CYCLE.label}. המכסה מתחדשת ב־${nextReset()}`)}
  if(LIC.length){const n=licGroups().length;f.push(`<b>${n===1?'פונט אחד':n+' פונטים'}</b> שקנית, עם הקבצים והתעודות שלהם`)}
  if(!p)f.push('עוד אין לך מינוי. במינוי מקבלים את כל הפונטים להורדה');
  if(FEAT.includes('studio')&&FS.studio&&p&&!FS.studio.vote)f.unshift(`עוד לא בחרת איזה פונט <b>ייצא ראשון</b> מהסטודיו`);
@@ -2623,6 +2651,7 @@ document.addEventListener('click',e=>{
  if(t.dataset.licf){state.licFilter=t.dataset.licf==='all'?'':t.dataset.licf;state.open.lic=-1;render();return}
  if(t.dataset.regclose){state.regOpen=false;const box=t.closest('.sub-reg');box.classList.remove('reg-done');box.classList.remove('reg-on');const ob=box.querySelector('.reg-open');ob.setAttribute('aria-expanded','false');ob.focus({preventScroll:true});save();return}
  if(t.dataset.regopen){state.regOpen=true;t.setAttribute('aria-expanded','true');const rb=t.closest('.sub-reg');rb.classList.add('reg-on');setTimeout(()=>{rb.classList.contains('reg-on')&&rb.classList.add('reg-done');fitPh()},460);fitPh();setTimeout(()=>$('#sd2')&&$('#sd2').focus({preventScroll:true}),420);save();return}
+ if(t.dataset.cmp){state.cmpOpen=!state.cmpOpen;t.setAttribute('aria-expanded',state.cmpOpen);$('#cmpBody').classList.toggle('open',state.cmpOpen);return}
  if(t.dataset.hist){state.histOpen=!state.histOpen;t.setAttribute('aria-expanded',state.histOpen);$('#histBody').classList.toggle('open',state.histOpen);return}
  if(t.dataset.go){e.preventDefault();if(t.dataset.go==='dom')state.histOpen=true;goPage(t.dataset.go);return}
  if(t.dataset.subtab){state.sub[state.view]=t.dataset.subtab;render({page:true});return}

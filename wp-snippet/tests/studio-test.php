@@ -44,8 +44,8 @@ $fail = 0; $t = function ( $ok, $m ) use ( &$fail ) { echo ( $ok ? 'ok   ' : 'FA
 $call = function ( $fn, $post ) { $_POST = $post; try { $fn(); } catch ( Done $d ) { return $d; } catch ( Exception $e ) { return (object) array( 'ok' => 'x', 'data' => array( 'message' => $e->getMessage() ) ); } return null; };
 $vote = function ( $f, $why = null ) use ( $call ) { $p = array( 'font' => $f ); if ( null !== $why ) $p['why'] = $why; return $call( 'fsa_v2_vote_ajax', $p ); };
 
-// off for customers until FSA_V2_FEATURES lists them; admins / the test account always
-$t( array() === fsa_v2_features(), 'features are off for a customer by default' );
+// FSA_V2_FEATURES = 'studio': every customer gets the studio; the sites view stays for admins / the test account
+$t( array( 'studio' ) === fsa_v2_features(), 'customers get the studio, not the sites view' );
 $GLOBALS['admin'] = true; $t( array( 'studio', 'show' ) === fsa_v2_features(), 'an admin sees them (to check before launch)' );
 $t( ! $vote( 'a' )->ok, 'no vote before the owner set up the fonts' );
 // the owner saves three fonts from the admin screen, one with a picture made in the browser
@@ -58,8 +58,7 @@ $t( false !== strpos( $s['fonts'][0]['img'], '/up/fsa-studio-' ) && '' === $s['f
 $t( 1 === count( $GLOBALS['ups'] ), 'one file uploaded' );
 $GLOBALS['admin'] = false; $GLOBALS['opt']['fsa_v2_studio'] = $s;
 // customers vote (features on for everyone now)
-$t( ! $vote( 'a' )->ok, 'with the features off, a customer cannot vote' );
-$GLOBALS['admin'] = true; // stands in for "features on" below (fsa_v2_features() lets admins in); plan rules still apply
+$GLOBALS['admin'] = true; // admins too; plan rules still apply
 $r = $vote( 'a' ); $t( $r->ok && 'a' === $r->data['vote'] && 100 === $r->data['fonts'][0]['pct'], 'a Webstop subscriber votes; 100% for the only vote' );
 $GLOBALS['cur'] = 8; $r = $vote( 'b', 'כותרות לספר' ); $t( $r->ok && 50 === $r->data['fonts'][0]['pct'] && 50 === $r->data['fonts'][1]['pct'] && 'כותרות לספר' === $r->data['why'], 'second subscriber: 50/50 and the answer is kept' );
 $r = $vote( 'c' ); $t( $r->ok && 0 === $r->data['fonts'][1]['pct'] && 50 === $r->data['fonts'][2]['pct'], 'changing the vote moves it (one vote per customer)' );
@@ -98,8 +97,10 @@ $GLOBALS['admin'] = false;
 $GLOBALS['opt']['fsa_v2_showcase_no'] = array();
 $GLOBALS['shot'] = $jpg( 400, 300 ); fsa_v2_snap_run();
 $t( 3 === count( $GLOBALS['asked'] ) && false !== strpos( $GLOBALS['asked'][0], rawurlencode( 'https://lavana.co.il/' ) ) && '' === fsa_v2_snap( 'lavana.co.il' ), 'service still making it: no picture yet' );
+$lg = $GLOBALS['opt']['fsa_v2_snap_log']; $t( 3 === $lg['asked'] && 0 === $lg['got'] && false !== strpos( $lg['err'], 'בהכנה' ), 'the round is logged for the approval screen, with the reason' );
 $GLOBALS['shot'] = $jpg( 1280, 800 ); fsa_v2_snap_run();
 $u = fsa_v2_snap( 'studio.co.il' ); $t( 0 === strpos( $u, 'https://site/up/fsa-sites/studio.co.il-' ) && is_file( sys_get_temp_dir() . '/fsa-up/fsa-sites/' . basename( $u ) ), 'real picture kept on the site' );
+$t( $GLOBALS['opt']['fsa_v2_snap_log']['got'] >= 1, 'the log counts the pictures that arrived' );
 $GLOBALS['asked'] = array(); fsa_v2_snap_run(); $t( array() === $GLOBALS['asked'], 'sites with a picture are not asked again' );
 $t( array( 'studio.co.il' => $u ) === fsa_v2_user_snaps( 7 ), 'the customer gets the pictures of their own sites' );
 $t( $u === fsa_v2_showcase_public()[0]['img'] || 'lavana.co.il' === fsa_v2_showcase_public()[0]['host'], 'gallery uses the picture' );

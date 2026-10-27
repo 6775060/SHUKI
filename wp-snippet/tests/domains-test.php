@@ -21,7 +21,7 @@ class FakeDB {
 	function prepare( $q, ...$a ) { $i = 0; return preg_replace_callback( '/%[dsf]/', function ( $m ) use ( &$i, $a ) { $v = $a[ $i++ ]; return '%d' === $m[0] ? (int) $v : "'" . addslashes( $v ) . "'"; }, $q ); }
 	private function where( $q ) { preg_match( '/WHERE (.*?)(ORDER BY|$)/s', $q, $m ); $conds = $m ? preg_split( '/\s+AND\s+/', trim( $m[1] ) ) : array();
 		return array_values( array_filter( $this->rows, function ( $r ) use ( $conds ) { foreach ( $conds as $c ) { if ( ! preg_match( "/(\w+)\s*(<>|=)\s*'?(.*?)'?$/", trim( $c ), $x ) ) continue; $v = stripslashes( $x[3] ); $eq = (string) $r[ $x[1] ] === $v; if ( '=' === $x[2] ? ! $eq : $eq ) return false; } return true; } ) ); }
-	function get_var( $q ) { if ( 0 === strpos( $q, 'SHOW TABLES' ) ) return 'wp_easy_font_domains'; $r = $this->where( $q ); return $r ? $r[0]['id'] : null; }
+	function get_var( $q ) { if ( 0 === strpos( $q, 'SHOW TABLES' ) ) return 'wp_easy_font_domains'; $r = $this->where( $q ); if ( false !== strpos( $q, 'COUNT(*)' ) ) return count( $r ); return $r ? $r[0]['id'] : null; }
 	function get_row( $q ) { $r = $this->where( $q ); return $r ? (object) $r[0] : null; }
 	function get_results( $q ) { $r = $this->where( $q ); usort( $r, function ( $a, $b ) { return [ $b['year'], $b['month'], $a['domain_slot'] ] <=> [ $a['year'], $a['month'], $b['domain_slot'] ]; } ); return array_map( function ( $x ) { return (object) $x; }, $r ); }
 	function insert( $t, $d ) { foreach ( $this->rows as $r ) if ( $r['user_id'] == $d['user_id'] && $r['year'] == $d['year'] && $r['month'] == $d['month'] && $r['domain_slot'] == $d['domain_slot'] ) return false; $d['id'] = $this->next++; $d['created_at'] = sprintf( '%d-%02d-05 10:00:00', $d['year'], $d['month'] ); $this->rows[] = $d; return 1; }
@@ -82,4 +82,15 @@ $GLOBALS['user']->roles = array( 'customer', 'member-webstop' ); $GLOBALS['nonce
 $GLOBALS['nonce_ok'] = true; $GLOBALS['user']->user_login = 'someone'; $GLOBALS['user']->ID = 8; $GLOBALS['user']->roles = array( 'customer', 'member-webstop' );
 $t( $add( 'z.co.il' )->ok, 'open to subscribers: any Webstop subscriber can register' );
 $GLOBALS['user']->roles = array( 'customer' ); $t( ! $add( 'zz.co.il' )->ok, 'a customer without a subscription cannot' );
+// academic: 3 domains a calendar year (not a month), no paid add-on
+$GLOBALS['user']->ID = 12; $GLOBALS['user']->roles = array( 'customer', 'member-academic' ); $GLOBALS['now'] = array( 2026, 3 );
+$t( $add( 'a1.co.il' )->ok && $add( 'a2.co.il' )->ok, 'academic: first two domains in March' );
+$GLOBALS['now'] = array( 2026, 10 ); $t( ! $add( 'a1.co.il' )->ok, 'academic: the same address again in the same year is refused' );
+$t( $add( 'a3.co.il' )->ok, 'academic: third domain in October' );
+$r = $add( 'a4.co.il' ); $t( ! $r->ok && false !== strpos( $r->data['message'], 'השנה' ), 'academic: a 4th domain in the same year is refused' );
+$GLOBALS['meta'][12]['fsa_v2_bonus_2026_10'] = 1; $t( ! $add( 'a4.co.il' )->ok, 'academic: a bought monthly add-on does not raise the yearly quota' ); unset( $GLOBALS['meta'][12]['fsa_v2_bonus_2026_10'] );
+$a1 = array_values( array_filter( $wpdb->rows, function ( $r ) { return 'a1.co.il' === $r['domain_url']; } ) )[0]['id'];
+$r = $call( array( 'op' => 'edit', 'id' => $a1, 'host' => 'a1-new.co.il', 'name' => '', 'fonts' => 'פורטו' ) ); $t( $r->ok, 'academic: a domain from March can still be edited in October (same year)' );
+$GLOBALS['now'] = array( 2027, 1 ); $t( $add( 'a4.co.il' )->ok, 'academic: a new year, a new quota' );
+$r = $call( array( 'op' => 'del', 'id' => $a1 ) ); $t( ! $r->ok, 'academic: last year\'s domain is closed' );
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n"; exit( $fail ? 1 : 0 );
