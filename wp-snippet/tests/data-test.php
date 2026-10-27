@@ -33,6 +33,8 @@ function wc_get_customer_available_downloads( $u ) { return array( array( 'produ
 function wc_get_order( $id ) { return null; } function wc_get_orders( $a ) { return array(); } function get_user_meta() { return ''; } function wc_get_page_permalink() { return '/'; } function wc_logout_url() { return '/'; } function get_permalink() { return '/'; }
 class NoTableDB { public $prefix = 'wp_'; function prepare( $q, ...$a ) { return $q; } function get_var( $q ) { return null; } function get_results( $q ) { return array(); } }
 $GLOBALS['wpdb'] = new NoTableDB(); function current_time( $f ) { return array( 'Y' => 2026, 'n' => 10, 'd.m.Y' => '22.10.2026', 'Y-m-d' => '2026-10-22' )[ $f ]; } function admin_url( $p = '' ) { return 'https://fontshok.co.il/wp-admin/' . $p; }
+function get_option( $k, $d = false ) { return $GLOBALS['opt'][ $k ] ?? $d; } function update_user_meta( $u, $k, $v ) { $GLOBALS['umeta'][ $u ][ $k ] = $v; }
+if ( ! function_exists( 'wp_generate_password' ) ) { function wp_generate_password( $n = 12, $s = true, $e = false ) { return substr( str_repeat( 'abcdefgh23456789', 2 ), 0, $n ); } }
 eval( file_get_contents( __DIR__ . '/../fsa-v2-snippet.php' ) );
 
 $fail = 0; $t = function ( $ok, $m ) use ( &$fail ) { echo ( $ok ? 'ok   ' : 'FAIL ' ) . $m . "\n"; if ( ! $ok ) $fail++; };

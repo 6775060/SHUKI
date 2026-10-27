@@ -6,7 +6,8 @@ Repository `6775060/shuki`, branch `claude/fontshok-personal-area-redesign-l4hf6
 - The new personal area runs on the live site at **/my-account/** for **every logged-in customer** (`FSA_V2_LIVE_FOR = 'all'`; plan roles member-webstop, member-extra, member-academic, member-desktop, member-barter), from the Code Snippets snippet **"FS · אזור אישי v2"**. Customers without a subscription see the plan offers; anyone can switch back with "למעבר לאזור האישי הקודם" (`?fsa_old=1`).
 - Source of truth for the site: **`wp-snippet/fsa-v2-snippet.php`** (edit this file directly; the owner pastes the whole file into the snippet and saves).
 - Design source: `prototype/index.html` (published preview: https://claude.ai/artifact/EGyx9pYKP34mdrcTJNQSYh; phone preview: https://claude.ai/artifact/E396PnUhzS2zVH374vazeo).
-- Every change so far is listed in `docs/HANDOFF-snippet.md` (items 1–81).
+- Every change so far is listed in `docs/HANDOFF-snippet.md` (items 1–98). Build 94 (27.10.2026): studio vote + gallery approval queue + real site pictures; studio and the sites view are on only for admins and claude-test (`FSA_V2_FEATURES`).
+- Next for the gallery: a public gallery page outside the personal area, from the approved list (`fsa_v2_showcase_public()`), with font filters like alefalefalef.co.il/designs. Wait for the owner's go.
 
 ## What is live and how it works
 - Data: subscription fonts (ACF `fonts-repeater`), real weights from each font's variable product (`pa_weight` × `pa_license`, per-weight downloads through `?fsa_wdl=`), purchased fonts from WooCommerce downloads, orders + Grow invoices.

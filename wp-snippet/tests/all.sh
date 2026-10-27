@@ -4,7 +4,7 @@
 set -e
 D=$(cd "$(dirname "$0")" && pwd)
 { echo '<?php'; cat "$D/../fsa-v2-snippet.php"; } > "${TMPDIR:-/tmp}/fsa-lint.php" && php -l "${TMPDIR:-/tmp}/fsa-lint.php" >/dev/null && echo "syntax: ok"
-for t in data domains rollout addon profile; do
+for t in data domains rollout addon profile studio; do
 	out=$(php "$D/$t-test.php" 2>&1) || { echo "$out"; echo "$t: FAILED"; exit 1; }
 	echo "$out" | tail -1 | grep -q 'ALL PASSED' || { echo "$out"; echo "$t: FAILED"; exit 1; }
 	echo "$t: ok"

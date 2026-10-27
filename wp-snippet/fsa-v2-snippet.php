@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '93' );
+define( 'FSA_V2_BUILD', '94' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -19,6 +19,11 @@ define( 'FSA_V2_LIVE_FOR', 'all' );
 define( 'FSA_V2_LIVE_USERS', '' );
 // guard three site-wide scripts (purchase window, header greeting, feedback button) that throw on pages without their element. false = leave the pages untouched
 define( 'FSA_V2_FIX_SITE_JS', true );
+// features in testing: '' = only admins and the test account see "בסטודיו" and the sites view in "דומיינים"; 'studio,show' = every customer
+define( 'FSA_V2_FEATURES', '' );
+// real pictures of the customers' sites: once an hour the site asks this screenshot service for a few sites without a picture and keeps the picture
+// in uploads/fsa-sites/ (the service receives only the site address; visitors never load from it). '' = no pictures, a drawn sketch instead
+define( 'FSA_V2_SHOTS', 'https://s.wordpress.com/mshots/v1/{url}?w=1280&h=800' );
 // subscription products, for "בלי מינוי" (price and join link come from the product). Desktop: 0 until its product ID is set
 define( 'FSA_V2_PLAN_PRODUCTS', array( 'web' => 12652, 'extra' => 14162, 'desk' => 0 ) );
 // the ₪79 additional domain: ID of a hidden virtual WooCommerce product. 0 = not offered yet (the button says "next stage")
@@ -621,6 +626,9 @@ function fsa_v2_data() {
 		'plan' => $plan, 'planStart' => $start, 'nextPay' => '', 'card' => '',
 		'fonts' => $fonts, 'lic' => $lic, 'orders' => $orders,
 		'user' => fsa_v2_user_fields( $u ),
+		'features' => ( $feat = fsa_v2_features() ), 'studio' => in_array( 'studio', $feat, true ) ? fsa_v2_studio_for( $uid ) : null,
+		'snaps' => in_array( 'show', $feat, true ) ? fsa_v2_user_snaps( $uid ) : array(),
+		'shareUrl' => in_array( 'show', $feat, true ) ? add_query_arg( 'fsa_sites', fsa_v2_share_token( $uid ), home_url( '/' ) ) : '',
 		'links' => array(
 			'logout' => function_exists( 'wc_logout_url' ) ? wc_logout_url( home_url() ) : wp_logout_url( home_url() ),
 			'web' => get_permalink( 12652 ), 'extra' => get_permalink( 14162 ), 'desk' => $shop,
@@ -741,6 +749,332 @@ function fsa_v2_fix_site_js( $html ) {
 	// 3. feedback button: only when it exists
 	$html = str_replace( 'document.querySelector(".r-feedback-btn").addEventListener(', '(document.querySelector(".r-feedback-btn")||document.createElement("i")).addEventListener(', $html );
 	return $html;
+}
+
+// 2k. features in testing: "בסטודיו" (subscribers vote which font in development comes out first) and the sites gallery.
+// Admins and the test account always see them (to check before launch); customers only when listed in FSA_V2_FEATURES.
+function fsa_v2_features() {
+	$on = array_filter( array_map( 'trim', explode( ',', FSA_V2_FEATURES ) ) );
+	if ( current_user_can( 'manage_options' ) || fsa_v2_is_tester() ) $on = array( 'studio', 'show' );
+	return array_values( array_intersect( array( 'studio', 'show' ), $on ) );
+}
+function fsa_v2_he_day( $ymd ) {
+	$m = array( 'ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר' );
+	$p = explode( '-', (string) $ymd );
+	return 3 === count( $p ) ? (int) $p[2] . ' ב' . $m[ max( 0, min( 11, (int) $p[1] - 1 ) ) ] : '';
+}
+// the vote as the owner set it (option fsa_v2_studio): round id (votes are kept per round), open, closing day, three fonts
+function fsa_v2_studio() {
+	$s = get_option( 'fsa_v2_studio' );
+	return array_merge( array( 'round' => '', 'open' => false, 'closes' => '', 'fonts' => array() ), is_array( $s ) ? $s : array() );
+}
+function fsa_v2_studio_is_open( $s ) {
+	return $s['open'] && $s['fonts'] && $s['round'] && ( ! $s['closes'] || $s['closes'] >= current_time( 'Y-m-d' ) );
+}
+// votes: user meta fsa_v2_vote_<round> = font id (one per customer), fsa_v2_why_<round> = the optional answer
+function fsa_v2_studio_tally( $round ) {
+	global $wpdb;
+	$out = array();
+	if ( ! $round ) return $out;
+	$rows = $wpdb->get_results( $wpdb->prepare( "SELECT meta_value AS v, COUNT(*) AS n FROM {$wpdb->usermeta} WHERE meta_key = %s GROUP BY meta_value", 'fsa_v2_vote_' . $round ) );
+	foreach ( (array) $rows as $r ) $out[ (string) $r->v ] = (int) $r->n;
+	return $out;
+}
+// what the area shows to this customer
+function fsa_v2_studio_for( $uid ) {
+	$s = fsa_v2_studio();
+	if ( ! $s['fonts'] || ! $s['round'] ) return null;
+	$t = fsa_v2_studio_tally( $s['round'] ); $tot = array_sum( $t );
+	$fonts = array();
+	foreach ( $s['fonts'] as $f ) {
+		$n = (int) ( $t[ $f['id'] ] ?? 0 );
+		$fonts[] = array( 'id' => $f['id'], 'name' => $f['name'], 'desc' => $f['desc'], 'sample' => $f['he'], 'sampleEn' => $f['en'], 'img' => $f['img'], 'pct' => $tot ? (int) round( $n * 100 / $tot ) : 0 );
+	}
+	$vote = $uid ? (string) get_user_meta( $uid, 'fsa_v2_vote_' . $s['round'], true ) : '';
+	return array( 'open' => fsa_v2_studio_is_open( $s ), 'closes' => fsa_v2_he_day( $s['closes'] ), 'vote' => '' !== $vote ? $vote : null, 'why' => '' !== $vote ? (string) get_user_meta( $uid, 'fsa_v2_why_' . $s['round'], true ) : '', 'fonts' => $fonts, 'total' => $tot );
+}
+add_action( 'wp_ajax_fsa_v2_vote', 'fsa_v2_vote_ajax' );
+function fsa_v2_vote_ajax() {
+	$err = function ( $m ) { wp_send_json_error( array( 'message' => $m ) ); };
+	if ( ! fsa_v2_can_view() || ! check_ajax_referer( 'fsa_v2_dom', 'nonce', false ) ) $err( 'פג תוקף העמוד. רעננו ונסו שוב.' );
+	if ( ! in_array( 'studio', fsa_v2_features(), true ) ) $err( 'ההצבעה לא פתוחה כרגע.' );
+	$uid = get_current_user_id();
+	list( $plan ) = fsa_v2_plan_info( wp_get_current_user() );
+	if ( ! $plan ) $err( 'ההצבעה פתוחה למנויים.' );
+	$s = fsa_v2_studio();
+	if ( ! fsa_v2_studio_is_open( $s ) ) $err( 'ההצבעה נסגרה.' );
+	$font = isset( $_POST['font'] ) ? sanitize_key( wp_unslash( $_POST['font'] ) ) : '';
+	if ( ! in_array( $font, wp_list_pluck( $s['fonts'], 'id' ), true ) ) $err( 'הפונט לא נמצא.' );
+	update_user_meta( $uid, 'fsa_v2_vote_' . $s['round'], $font );
+	if ( isset( $_POST['why'] ) ) update_user_meta( $uid, 'fsa_v2_why_' . $s['round'], mb_substr( sanitize_text_field( wp_unslash( $_POST['why'] ) ), 0, 140 ) );
+	$d = fsa_v2_studio_for( $uid );
+	wp_send_json_success( array( 'vote' => $d['vote'], 'why' => $d['why'], 'fonts' => $d['fonts'] ) );
+}
+
+// the gallery (option fsa_v2_showcase): sites made with the fonts. Every site a customer registers waits for the owner, who picks what goes up.
+function fsa_v2_showcase_all() { $l = get_option( 'fsa_v2_showcase' ); return is_array( $l ) ? array_values( $l ) : array(); }
+function fsa_v2_showcase_public() {
+	$out = array();
+	foreach ( fsa_v2_showcase_all() as $x ) if ( ! empty( $x['ok'] ) ) $out[] = array( 'name' => $x['name'], 'host' => $x['host'], 'fonts' => $x['fonts'], 'year' => $x['year'], 'by' => $x['by'], 'img' => $x['img'] ? $x['img'] : fsa_v2_snap( $x['host'] ) );
+	return $out;
+}
+// every site this customer registered (subscription domains + sites on purchased licences): host => [name, fonts, year]
+function fsa_v2_user_sites( $uid ) {
+	$out = array();
+	foreach ( fsa_v2_domains( $uid ) as $r ) {
+		if ( '' === $r[2] || isset( $out[ $r[2] ] ) ) continue;
+		$out[ $r[2] ] = array( 'name' => $r[1] ? $r[1] : $r[2], 'fonts' => array_values( array_filter( array_map( 'trim', explode( ',', (string) $r[3] ) ) ) ), 'year' => substr( (string) $r[0], -4 ) );
+	}
+	foreach ( fsa_v2_lic_sites_all( $uid ) as $key => $sites ) {
+		$p = function_exists( 'wc_get_product' ) ? wc_get_product( (int) $key ) : null; // the licence's font: the variation's parent product
+		$fname = $p ? wp_strip_all_tags( method_exists( $p, 'get_parent_id' ) && $p->get_parent_id() ? get_the_title( $p->get_parent_id() ) : $p->get_name() ) : '';
+		foreach ( (array) $sites as $x ) {
+			$h = isset( $x['host'] ) ? $x['host'] : '';
+			if ( '' === $h || isset( $out[ $h ] ) ) continue;
+			$out[ $h ] = array( 'name' => ! empty( $x['name'] ) ? $x['name'] : $h, 'fonts' => array_values( array_filter( array( $fname ) ) ), 'year' => isset( $x['d'] ) ? substr( (string) $x['d'], -4 ) : '' );
+		}
+	}
+	return $out;
+}
+// every customer's sites, newest first: host => [uid, name, fonts, year] (the first customer who registered the address)
+function fsa_v2_all_sites() {
+	global $wpdb;
+	$out = array();
+	$add = function ( $uid, $host, $name, $fonts, $year ) use ( &$out ) {
+		$raw = (string) $host; $host = fsa_v2_clean_host( $raw );
+		if ( $host && ! isset( $out[ $host ] ) ) $out[ $host ] = array( 'uid' => (int) $uid, 'name' => '' !== (string) $name && $raw !== (string) $name ? (string) $name : $host, 'fonts' => $fonts, 'year' => (string) $year );
+	};
+	$t = fsa_v2_eft_table();
+	if ( $t ) foreach ( (array) $wpdb->get_results( "SELECT user_id, year, domain_name, domain_url, font_name FROM `$t` WHERE domain_url <> '' ORDER BY year DESC, month DESC, id DESC LIMIT 5000" ) as $r )
+		$add( $r->user_id, $r->domain_url, $r->domain_name, array_values( array_filter( array_map( 'trim', explode( ',', (string) $r->font_name ) ) ) ), $r->year );
+	foreach ( (array) $wpdb->get_col( $wpdb->prepare( "SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = %s", 'fsa_v2_lic_sites' ) ) as $uid )
+		foreach ( fsa_v2_user_sites( (int) $uid ) as $h => $x ) $add( $uid, $h, $x['name'], $x['fonts'], $x['year'] );
+	uasort( $out, function ( $a, $b ) { return strcmp( $b['year'], $a['year'] ); } );
+	return $out;
+}
+// waiting for the owner: every customer site that is not in the gallery and was not turned down (option fsa_v2_showcase_no: hosts)
+function fsa_v2_showcase_queue() {
+	$skip = array_flip( array_merge( wp_list_pluck( fsa_v2_showcase_all(), 'host' ), (array) get_option( 'fsa_v2_showcase_no', array() ) ) );
+	return array_diff_key( fsa_v2_all_sites(), $skip );
+}
+// site pictures (option fsa_v2_snaps: host => [u = picture link, n = tries, t = last try])
+function fsa_v2_snaps() { $s = get_option( 'fsa_v2_snaps' ); return is_array( $s ) ? $s : array(); }
+function fsa_v2_snap( $host ) { $s = fsa_v2_snaps(); return ! empty( $s[ $host ]['u'] ) ? $s[ $host ]['u'] : ''; }
+function fsa_v2_user_snaps( $uid ) {
+	$s = fsa_v2_snaps(); $out = array();
+	foreach ( array_keys( fsa_v2_user_sites( $uid ) ) as $h ) if ( ! empty( $s[ $h ]['u'] ) ) $out[ $h ] = $s[ $h ]['u'];
+	return $out;
+}
+// one picture from the service; '' while the service is still making it (it first answers with a small "loading" picture)
+function fsa_v2_fetch_snap( $host ) {
+	if ( ! FSA_V2_SHOTS || ! $host ) return '';
+	$r = wp_remote_get( str_replace( '{url}', rawurlencode( 'https://' . $host . '/' ), FSA_V2_SHOTS ), array( 'timeout' => 25, 'redirection' => 3 ) );
+	if ( is_wp_error( $r ) || 200 !== (int) wp_remote_retrieve_response_code( $r ) ) return '';
+	$bin  = (string) wp_remote_retrieve_body( $r );
+	$info = strlen( $bin ) < 8 * 1024 * 1024 && function_exists( 'getimagesizefromstring' ) ? @getimagesizefromstring( $bin ) : false;
+	if ( ! $info || ! in_array( $info[2], array( IMAGETYPE_JPEG, IMAGETYPE_PNG ), true ) || $info[0] < 600 ) return '';
+	$dir = wp_upload_dir();
+	if ( ! empty( $dir['error'] ) ) return '';
+	$path = trailingslashit( $dir['basedir'] ) . 'fsa-sites';
+	wp_mkdir_p( $path );
+	$name = sanitize_file_name( $host ) . '-' . substr( md5( $host . microtime() ), 0, 6 ) . ( IMAGETYPE_PNG === $info[2] ? '.png' : '.jpg' );
+	if ( false === file_put_contents( $path . '/' . $name, $bin ) ) return '';
+	$ed = function_exists( 'wp_get_image_editor' ) ? wp_get_image_editor( $path . '/' . $name ) : null; // keep it light: 800px wide is enough for a card
+	if ( $ed && ! is_wp_error( $ed ) ) { $ed->resize( 800, 500, true ); $ed->set_quality( 80 ); $ed->save( $path . '/' . $name ); }
+	return trailingslashit( $dir['baseurl'] ) . 'fsa-sites/' . $name;
+}
+// the hourly round: up to $max sites without a picture; a site that fails 6 times (down, blocked) is left as a sketch
+function fsa_v2_snap_run( $max = 8 ) {
+	if ( ! FSA_V2_SHOTS ) return;
+	$snaps = fsa_v2_snaps(); $n = 0;
+	$hosts = array_unique( array_merge( wp_list_pluck( fsa_v2_showcase_all(), 'host' ), array_keys( fsa_v2_all_sites() ) ) );
+	foreach ( $hosts as $h ) {
+		$x = isset( $snaps[ $h ] ) ? $snaps[ $h ] : array( 'u' => '', 'n' => 0, 't' => 0 );
+		if ( $x['u'] || $x['n'] >= 6 ) continue;
+		if ( ++$n > $max ) break;
+		$x['u'] = fsa_v2_fetch_snap( $h ); $x['n']++; $x['t'] = time();
+		$snaps[ $h ] = $x;
+	}
+	update_option( 'fsa_v2_snaps', $snaps, false );
+}
+add_action( 'fsa_v2_snaps', 'fsa_v2_snap_run' );
+add_action( 'init', function () {
+	if ( FSA_V2_SHOTS && function_exists( 'wp_next_scheduled' ) && ! wp_next_scheduled( 'fsa_v2_snaps' ) ) wp_schedule_event( time() + 120, 'hourly', 'fsa_v2_snaps' );
+} );
+// share: a public page with the customer's sites, at /?fsa_sites=<token> (token = user meta, made on first use; no personal details on the page)
+function fsa_v2_share_token( $uid ) {
+	$t = (string) get_user_meta( $uid, 'fsa_v2_share', true );
+	if ( '' === $t ) { $t = strtolower( wp_generate_password( 16, false, false ) ); update_user_meta( $uid, 'fsa_v2_share', $t ); }
+	return $t;
+}
+function fsa_v2_share_user( $token ) {
+	if ( ! preg_match( '/^[a-z0-9]{16}$/', (string) $token ) ) return 0;
+	$u = get_users( array( 'meta_key' => 'fsa_v2_share', 'meta_value' => $token, 'number' => 1, 'fields' => 'ID' ) );
+	return $u ? (int) $u[0] : 0;
+}
+function fsa_v2_site_card_html( $name, $host, $fonts, $year ) {
+	$hue = 0; foreach ( str_split( $host ) as $c ) $hue = ( $hue * 31 + ord( $c ) ) % 360;
+	$shot = ( $img = fsa_v2_snap( $host ) ) ? '<img src="' . esc_url( $img ) . '" alt="" loading="lazy">'
+		: '<span class="sk" style="--hu:' . $hue . '"><span class="sk-h">' . esc_html( $name ) . '</span><span class="sk-p"></span><span class="sk-p s"></span><span class="sk-b"></span></span>';
+	return '<figure class="sc"><a class="mon" href="https://' . esc_attr( $host ) . '" target="_blank" rel="noopener"><span class="scr">' . $shot . '</span></a><span class="stand"><i></i><b></b></span><figcaption><h3>' . esc_html( $name ) . '</h3><dl><dt>' . ( count( $fonts ) > 1 ? 'פונטים' : 'פונט' ) . '</dt><dd>' . esc_html( implode( ', ', $fonts ) ) . '</dd>' . ( $year ? '<dt>שנה</dt><dd>' . esc_html( $year ) . '</dd>' : '' ) . '<dt>כתובת</dt><dd dir="ltr">' . esc_html( $host ) . '</dd></dl></figcaption></figure>';
+}
+add_action( 'template_redirect', function () {
+	if ( ! isset( $_GET['fsa_sites'] ) ) return;
+	$uid = fsa_v2_share_user( sanitize_key( wp_unslash( $_GET['fsa_sites'] ) ) );
+	if ( ! $uid ) return;
+	$sites = fsa_v2_user_sites( $uid );
+	add_filter( 'wp_robots', function ( $r ) { $r['noindex'] = true; $r['nofollow'] = true; return $r; } );
+	get_header();
+	echo '<main class="fsa-sites" dir="rtl"><style>.fsa-sites{max-width:1180px;margin:0 auto;padding:40px 20px 70px;font-family:"Discovery_Fs","Heebo",Arial,sans-serif}.fsa-sites .eb{display:inline-block;border:1.5px solid #151515;padding:2px 12px;font-size:20px;font-weight:300}.fsa-sites h1{font-size:46px;font-weight:800;margin:6px 0 24px;padding-bottom:20px;border-bottom:1px solid #151515}.fsa-sites .g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px 22px}.fsa-sites .sc{margin:0}.fsa-sites .mon{display:block;background:#1F1F22;border-radius:10px;padding:7px}.fsa-sites .scr{display:block;aspect-ratio:16/10;overflow:hidden;border-radius:3px;background:#F8F7FB}.fsa-sites .scr img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}.fsa-sites .stand{display:flex;flex-direction:column;align-items:center}.fsa-sites .stand i{width:22%;height:22px;background:#7E7E83;clip-path:polygon(12% 0,88% 0,100% 100%,0 100%)}.fsa-sites .stand b{width:34%;height:7px;border-radius:5px 5px 2px 2px;background:#6E6E73}.fsa-sites h3{font-size:21px;margin:10px 0 6px}.fsa-sites dl{display:grid;grid-template-columns:auto 1fr;gap:3px 18px;margin:0;font-size:15px}.fsa-sites dt{color:#A8A8A8}.fsa-sites dd{margin:0}.fsa-sites .sk{display:flex;flex-direction:column;justify-content:center;gap:8px;height:100%;padding:0 8%;box-sizing:border-box;background:hsl(var(--hu) 60% 97%)}.fsa-sites .sk-h{font-size:28px;font-weight:700;color:hsl(var(--hu) 55% 30%)}.fsa-sites .sk-p{height:6px;width:70%;border-radius:3px;background:hsl(var(--hu) 25% 84%)}.fsa-sites .sk-p.s{width:50%}.fsa-sites .sk-b{width:70px;height:18px;border-radius:99px;background:hsl(var(--hu) 60% 55%)}.fsa-sites .by{margin-top:40px;color:#6E6E6E}@media(max-width:900px){.fsa-sites .g{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.fsa-sites h1{font-size:34px}.fsa-sites .g{gap:28px 12px}.fsa-sites h3{font-size:17px}.fsa-sites dl{font-size:13px}}</style>';
+	echo '<span class="eb">הפונטים בפעולה</span><h1>' . count( $sites ) . ' אתרים עם פונטים של פונטשוק</h1><div class="g">';
+	foreach ( $sites as $h => $s ) echo fsa_v2_site_card_html( $s['name'], $h, $s['fonts'], $s['year'] );
+	echo '</div><p class="by">פונטים ורישיונות: <a href="' . esc_url( home_url( '/' ) ) . '">פונטשוק</a></p></main>';
+	get_footer();
+	exit;
+}, 4 );
+
+// admin screen "בסטודיו" (Admin menu → בסטודיו): the three fonts of the vote, results, and the gallery
+add_action( 'admin_menu', function () {
+	add_menu_page( 'פונטשוק · בסטודיו', 'בסטודיו', 'manage_options', 'fsa-studio', 'fsa_v2_studio_admin', 'dashicons-art', 58 );
+} );
+add_action( 'admin_post_fsa_v2_studio_save', 'fsa_v2_studio_save' );
+function fsa_v2_studio_save() {
+	if ( ! current_user_can( 'manage_options' ) || ! check_admin_referer( 'fsa_v2_studio' ) ) wp_die( 'אין הרשאה.' );
+	$s   = fsa_v2_studio();
+	$in  = isset( $_POST['f'] ) && is_array( $_POST['f'] ) ? wp_unslash( $_POST['f'] ) : array();
+	$new = ! empty( $_POST['new_round'] ) || ! $s['round'];
+	if ( $new ) $s['round'] = gmdate( 'ymdHis' );
+	$s['open']   = ! empty( $_POST['open'] );
+	$c = isset( $_POST['closes'] ) ? sanitize_text_field( wp_unslash( $_POST['closes'] ) ) : '';
+	$s['closes'] = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $c ) ? $c : '';
+	$fonts = array();
+	foreach ( array( 'a', 'b', 'c' ) as $i => $id ) {
+		$x   = isset( $in[ $i ] ) && is_array( $in[ $i ] ) ? $in[ $i ] : array();
+		$old = $s['fonts'][ $i ] ?? array();
+		$f   = array( 'id' => $id, 'name' => sanitize_text_field( $x['name'] ?? '' ), 'desc' => mb_substr( sanitize_text_field( $x['desc'] ?? '' ), 0, 160 ), 'he' => sanitize_text_field( $x['he'] ?? '' ), 'en' => sanitize_text_field( $x['en'] ?? '' ), 'img' => $old['img'] ?? '' );
+		$img = fsa_v2_studio_image( (string) ( $x['img'] ?? '' ), $s['round'] . '-' . $id );
+		if ( $img ) $f['img'] = $img;
+		if ( '' !== $f['name'] ) $fonts[] = $f;
+	}
+	$s['fonts'] = $fonts;
+	update_option( 'fsa_v2_studio', $s, false );
+	wp_safe_redirect( admin_url( 'admin.php?page=fsa-studio&saved=1' ) );
+	exit;
+}
+// the specimen picture made in the owner's browser (data:image/jpeg;base64,…, 1200×600) → a file in the media library; '' when there is none or it is not a real image
+function fsa_v2_studio_image( $data, $name ) {
+	if ( 0 !== strpos( $data, 'data:image/jpeg;base64,' ) ) return '';
+	$bin = base64_decode( substr( $data, 23 ), true );
+	if ( false === $bin || strlen( $bin ) > 3 * 1024 * 1024 ) return '';
+	$info = function_exists( 'getimagesizefromstring' ) ? @getimagesizefromstring( $bin ) : false;
+	if ( ! $info || IMAGETYPE_JPEG !== $info[2] || $info[0] > 2400 || $info[1] > 1200 ) return '';
+	$up = wp_upload_bits( 'fsa-studio-' . sanitize_file_name( $name ) . '.jpg', null, $bin );
+	if ( ! empty( $up['error'] ) ) return '';
+	$att = wp_insert_attachment( array( 'post_mime_type' => 'image/jpeg', 'post_title' => 'בסטודיו ' . $name, 'post_status' => 'inherit', 'guid' => $up['url'] ), $up['file'] );
+	return $att ? $up['url'] : '';
+}
+add_action( 'admin_post_fsa_v2_show_save', 'fsa_v2_show_save' );
+function fsa_v2_show_save() {
+	if ( ! current_user_can( 'manage_options' ) || ! check_admin_referer( 'fsa_v2_show' ) ) wp_die( 'אין הרשאה.' );
+	$op   = isset( $_POST['op'] ) ? sanitize_key( $_POST['op'] ) : '';
+	$host = fsa_v2_clean_host( isset( $_POST['host'] ) ? wp_unslash( $_POST['host'] ) : '' );
+	$img  = esc_url_raw( wp_unslash( $_POST['img'] ?? '' ) );
+	$by   = sanitize_text_field( wp_unslash( $_POST['by'] ?? '' ) );
+	$list = fsa_v2_showcase_all();
+	$no   = (array) get_option( 'fsa_v2_showcase_no', array() );
+	$q    = fsa_v2_showcase_queue();
+	if ( 'ok' === $op && isset( $q[ $host ] ) ) { // a customer's site goes up
+		$x = $q[ $host ];
+		$list[] = array( 'id' => 'u' . $x['uid'] . '-' . substr( md5( $host ), 0, 8 ), 'uid' => $x['uid'], 'name' => $x['name'], 'host' => $host, 'fonts' => $x['fonts'], 'year' => $x['year'], 'by' => $by, 'img' => $img, 'ok' => true, 't' => current_time( 'Y-m-d' ) );
+	}
+	if ( 'no' === $op && $host ) $no[] = $host; // turned down: leaves the queue
+	if ( 'add' === $op && $host ) {
+		$list[] = array( 'id' => 'o' . substr( md5( $host . microtime() ), 0, 10 ), 'uid' => 0, 'name' => sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) ) ?: $host, 'host' => $host,
+			'fonts' => array_values( array_filter( array_map( 'trim', explode( ',', sanitize_text_field( wp_unslash( $_POST['fonts'] ?? '' ) ) ) ) ) ), 'year' => preg_replace( '/\D/', '', (string) ( $_POST['year'] ?? '' ) ),
+			'by' => $by, 'img' => $img, 'ok' => true, 't' => current_time( 'Y-m-d' ) );
+	}
+	if ( 'del' === $op ) { // off the gallery; a customer's site does not come back to the queue
+		foreach ( $list as $k => $x ) if ( $x['host'] === $host ) { unset( $list[ $k ] ); if ( ! empty( $x['uid'] ) ) $no[] = $host; }
+	}
+	if ( 'snap' === $op && $host ) { // a new picture now (e.g. the site was redesigned)
+		$snaps = fsa_v2_snaps(); $u = fsa_v2_fetch_snap( $host );
+		$snaps[ $host ] = array( 'u' => $u ? $u : ( $snaps[ $host ]['u'] ?? '' ), 'n' => 0, 't' => time() );
+		update_option( 'fsa_v2_snaps', $snaps, false );
+	}
+	update_option( 'fsa_v2_showcase', array_values( array_filter( $list, function ( $x ) { return ! empty( $x['ok'] ); } ) ), false ); // drops old "waiting" requests
+	update_option( 'fsa_v2_showcase_no', array_values( array_unique( $no ) ), false );
+	wp_safe_redirect( admin_url( 'admin.php?page=fsa-studio&tab=show&saved=' . ( 'snap' === $op && empty( $u ) ? 'wait' : '1' ) ) );
+	exit;
+}
+add_action( 'admin_post_fsa_v2_studio_csv', function () {
+	if ( ! current_user_can( 'manage_options' ) || ! check_admin_referer( 'fsa_v2_csv' ) ) wp_die( 'אין הרשאה.' );
+	global $wpdb;
+	$s = fsa_v2_studio(); $names = wp_list_pluck( $s['fonts'], 'name', 'id' );
+	$rows = $wpdb->get_results( $wpdb->prepare( "SELECT v.user_id, v.meta_value AS f, w.meta_value AS why FROM {$wpdb->usermeta} v LEFT JOIN {$wpdb->usermeta} w ON w.user_id = v.user_id AND w.meta_key = %s WHERE v.meta_key = %s", 'fsa_v2_why_' . $s['round'], 'fsa_v2_vote_' . $s['round'] ) );
+	header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename=fsa-studio-' . $s['round'] . '.csv' );
+	$o = fopen( 'php://output', 'w' ); fwrite( $o, "\xEF\xBB\xBF" ); fputcsv( $o, array( 'אימייל', 'פונט', 'מה היה מעצב' ) );
+	foreach ( (array) $rows as $r ) { $u = get_userdata( $r->user_id ); fputcsv( $o, array( $u ? $u->user_email : $r->user_id, $names[ $r->f ] ?? $r->f, (string) $r->why ) ); }
+	exit;
+} );
+function fsa_v2_studio_admin() {
+	if ( ! current_user_can( 'manage_options' ) ) return;
+	$tab = isset( $_GET['tab'] ) && 'show' === $_GET['tab'] ? 'show' : 'studio';
+	$s = fsa_v2_studio(); $t = fsa_v2_studio_tally( $s['round'] ); $tot = array_sum( $t );
+	echo '<div class="wrap" dir="rtl"><h1>פונטשוק · בסטודיו</h1>';
+	if ( isset( $_GET['saved'] ) ) echo 'wait' === $_GET['saved'] ? '<div class="notice notice-warning is-dismissible"><p>שירות הצילום עוד מכין את התמונה. נסו שוב בעוד דקה.</p></div>' : '<div class="notice notice-success is-dismissible"><p>נשמר.</p></div>';
+	echo '<nav class="nav-tab-wrapper"><a class="nav-tab' . ( 'studio' === $tab ? ' nav-tab-active' : '' ) . '" href="' . esc_url( admin_url( 'admin.php?page=fsa-studio' ) ) . '">ההצבעה</a><a class="nav-tab' . ( 'show' === $tab ? ' nav-tab-active' : '' ) . '" href="' . esc_url( admin_url( 'admin.php?page=fsa-studio&tab=show' ) ) . '">גלריה</a></nav>';
+	echo '<p style="max-width:70ch">' . ( FSA_V2_FEATURES ? 'פעיל ללקוחות: ' . esc_html( FSA_V2_FEATURES ) . '.' : 'כרגע רק מנהלים ו־claude-test רואים את זה באזור האישי. כדי לפתוח ללקוחות: בראש הסניפט, FSA_V2_FEATURES = \'studio,show\'.' ) . '</p>';
+	if ( 'show' === $tab ) { fsa_v2_show_admin(); echo '</div>'; return; }
+	echo '<style>.fsa-box{background:#fff;border:1px solid #C3C4C7;border-radius:6px;margin:0 0 16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}.fsa-box h2{grid-column:1/-1;margin:0;padding:10px 16px;border-bottom:1px solid #DCDCDE;font-size:15px}.fsa-f{padding:14px 16px;display:grid;gap:10px}.fsa-f label{display:grid;gap:4px;font-weight:600}.fsa-f .r2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fsa-p{padding:14px 16px;border-inline-start:1px solid #DCDCDE;display:grid;gap:8px;align-content:start}.fsa-p canvas{width:100%;height:auto;border-radius:12px}.fsa-bgs{display:flex;gap:8px}.fsa-bgs button{width:32px;height:32px;border-radius:8px;border:2px solid transparent;cursor:pointer}.fsa-bgs button[aria-pressed=true]{border-color:#2271B1}.fsa-note{color:#646970;font-size:12.5px;margin:0}@media(max-width:900px){.fsa-box{grid-template-columns:1fr}.fsa-p{border:0;border-top:1px solid #DCDCDE}}</style>';
+	echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" id="fsaStudio"><input type="hidden" name="action" value="fsa_v2_studio_save">';
+	wp_nonce_field( 'fsa_v2_studio' );
+	echo '<p><label><input type="checkbox" name="open" value="1"' . checked( $s['open'], true, false ) . '> ההצבעה פתוחה</label> &nbsp; <label>נסגרת ב־ <input type="date" name="closes" value="' . esc_attr( $s['closes'] ) . '"></label> &nbsp; <label><input type="checkbox" name="new_round" value="1"> הצבעה חדשה (הקולות הקודמים לא נספרים)</label></p>';
+	if ( $s['fonts'] ) { echo '<p><b>' . (int) $tot . ' הצביעו.</b> '; foreach ( $s['fonts'] as $f ) echo esc_html( $f['name'] ) . ': ' . (int) ( $t[ $f['id'] ] ?? 0 ) . ' (' . ( $tot ? (int) round( ( $t[ $f['id'] ] ?? 0 ) * 100 / $tot ) : 0 ) . '%) &nbsp; '; echo '<a href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=fsa_v2_studio_csv' ), 'fsa_v2_csv' ) ) . '">הורדת התשובות (CSV)</a></p>'; }
+	foreach ( array( 0, 1, 2 ) as $i ) {
+		$f = $s['fonts'][ $i ] ?? array( 'name' => '', 'desc' => '', 'he' => '', 'en' => '', 'img' => '' );
+		echo '<section class="fsa-box" data-i="' . $i . '"><h2>פונט ' . ( $i + 1 ) . '</h2><div class="fsa-f">'
+			. '<div class="r2"><label>שם עבודה<input type="text" name="f[' . $i . '][name]" value="' . esc_attr( $f['name'] ) . '"></label><label>קובץ משקל (לא עולה לאתר)<input type="file" class="fsa-file" accept=".woff2,.woff,.ttf,.otf"></label></div>'
+			. '<div class="r2"><label>מילה בעברית<input type="text" class="fsa-he" name="f[' . $i . '][he]" value="' . esc_attr( $f['he'] ) . '" maxlength="24"></label><label>מילה באנגלית<input type="text" class="fsa-en" name="f[' . $i . '][en]" value="' . esc_attr( $f['en'] ) . '" maxlength="24" dir="ltr"></label></div>'
+			. '<label>תיאור קצר<textarea name="f[' . $i . '][desc]" maxlength="160" rows="2">' . esc_textarea( $f['desc'] ) . '</textarea></label>'
+			. '<div><b>רקע</b><div class="fsa-bgs"></div></div><input type="hidden" class="fsa-img" name="f[' . $i . '][img]" value=""></div>'
+			. '<div class="fsa-p"><canvas width="1200" height="600"></canvas><p class="fsa-note">' . ( $f['img'] ? 'התמונה הנוכחית למטה. כדי ליצור תמונה חדשה בוחרים שוב את קובץ המשקל.' : 'בוחרים קובץ משקל, והתמונה נוצרת כאן.' ) . '</p>' . ( $f['img'] ? '<img src="' . esc_url( $f['img'] ) . '" alt="" style="width:100%;border-radius:12px">' : '' ) . '</div></section>';
+	}
+	echo '<p><button class="button button-primary">שמירה</button></p></form>';
+	echo <<<'FSAJS'
+<script>(function(){
+const BGS=[['#EFE8FF','#FDE7F6','#2A1F4F'],['#1F1838','#4A2C7A','#FFFFFF'],['#FFFFFF','#F4F1FA','#151515'],['#FFF3C4','#FFD9E8','#3A1E00']];
+document.querySelectorAll('.fsa-box').forEach(box=>{const i=box.dataset.i,c=box.querySelector('canvas'),he=box.querySelector('.fsa-he'),en=box.querySelector('.fsa-en'),out=box.querySelector('.fsa-img'),bgs=box.querySelector('.fsa-bgs');let bg=0,fam='',dirty=false;
+ BGS.forEach((b,j)=>{const x=document.createElement('button');x.type='button';x.style.background=`linear-gradient(135deg,${b[0]},${b[1]})`;x.setAttribute('aria-pressed',j===0);x.setAttribute('aria-label','רקע '+(j+1));x.onclick=()=>{bg=j;bgs.querySelectorAll('button').forEach((y,k)=>y.setAttribute('aria-pressed',k===j));draw()};bgs.appendChild(x)});
+ function draw(){const x=c.getContext('2d'),W=c.width,H=c.height,b=BGS[bg],f=fam?`fsaS${i}`:'sans-serif',g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,b[0]);g.addColorStop(1,b[1]);x.fillStyle=g;x.fillRect(0,0,W,H);x.fillStyle=b[2];x.textAlign='center';x.textBaseline='middle';
+  const fit=(t,max,s,dir)=>{x.direction=dir;do{x.font=`${s}px ${f}`;s-=4}while(x.measureText(t).width>max&&s>20);return s+4};
+  const hs=fit(he.value||' ',W*.84,220,'rtl');x.direction='rtl';x.font=`${hs}px ${f}`;x.fillText(he.value,W/2,H*(en.value?.42:.5));
+  if(en.value){const es=Math.min(fit(en.value,W*.7,Math.round(hs*.42),'ltr'),110);x.direction='ltr';x.globalAlpha=.82;x.font=`${es}px ${f}`;x.fillText(en.value,W/2,H*.42+hs*.62);x.globalAlpha=1}
+  if(dirty)out.value=c.toDataURL('image/jpeg',.88)}
+ he.addEventListener('input',draw);en.addEventListener('input',draw);
+ box.querySelector('.fsa-file').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const ff=new FontFace(`fsaS${i}`,await file.arrayBuffer());await ff.load();document.fonts.add(ff);fam=file.name;dirty=true;draw()}catch(err){alert('לא הצלחתי לקרוא את הקובץ. נסו woff2, woff, ttf או otf של משקל אחד.')}});
+ draw()});
+})();</script>
+FSAJS;
+	echo '</div>';
+}
+function fsa_v2_show_admin() {
+	$list = fsa_v2_showcase_all(); $q = fsa_v2_showcase_queue(); $page = max( 1, (int) ( $_GET['p'] ?? 1 ) ); $per = 40;
+	$form = function ( $op, $host, $label, $extra = '' ) { return '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="hidden" name="action" value="fsa_v2_show_save"><input type="hidden" name="op" value="' . $op . '"><input type="hidden" name="host" value="' . esc_attr( $host ) . '">' . wp_nonce_field( 'fsa_v2_show', '_wpnonce', true, false ) . $extra . '<button class="button' . ( 'ok' === $op ? ' button-primary' : '' ) . '">' . $label . '</button></form>'; };
+	$pic = function ( $host, $img = '' ) { $u = $img ? $img : fsa_v2_snap( $host ); return $u ? '<img src="' . esc_url( $u ) . '" alt="" loading="lazy" style="width:150px;aspect-ratio:16/10;object-fit:cover;object-position:top;border-radius:4px;border:1px solid #DCDCDE;display:block">' : '<span style="display:grid;place-items:center;width:150px;aspect-ratio:16/10;border-radius:4px;background:#F0F0F1;color:#787C82;font-size:12px">' . ( FSA_V2_SHOTS ? 'התמונה בהכנה' : 'אין תמונה' ) . '</span>'; };
+	$site = function ( $x, $host ) { return '<b>' . esc_html( $x['name'] ) . '</b><br><a href="https://' . esc_attr( $host ) . '" target="_blank" rel="noopener" dir="ltr">' . esc_html( $host ) . '</a>'; };
+	echo '<h2>ממתינים לאישור (' . count( $q ) . ')</h2><p style="max-width:70ch">כל אתר שלקוח רושם, במינוי או ברישיון שקנה, מגיע לכאן. מה שמאשרים עולה לגלריה; "לא להציג" מוציא אותו מהרשימה. התמונות נלקחות מהאתרים עצמם, כמה בכל שעה.</p>';
+	echo '<table class="widefat striped"><thead><tr><th style="width:160px">תמונה</th><th>אתר</th><th>פונטים</th><th>שנה</th><th>לקוח</th><th></th></tr></thead><tbody>';
+	foreach ( array_slice( $q, ( $page - 1 ) * $per, $per, true ) as $h => $x ) { $u = get_userdata( $x['uid'] );
+		echo '<tr><td>' . $pic( $h ) . '</td><td>' . $site( $x, $h ) . '</td><td>' . esc_html( implode( ', ', $x['fonts'] ) ) . '</td><td>' . esc_html( $x['year'] ) . '</td><td>' . esc_html( $u ? $u->user_email : '' ) . '</td><td>'
+			. $form( 'ok', $h, 'אישור', '<input name="by" placeholder="עיצוב (לא חובה)" style="width:130px"> <input type="url" name="img" placeholder="תמונה אחרת (קישור)" dir="ltr" style="width:150px"> ' ) . ' ' . $form( 'no', $h, 'לא להציג' ) . '</td></tr>'; }
+	if ( ! $q ) echo '<tr><td colspan="6">אין אתרים שממתינים.</td></tr>';
+	echo '</tbody></table>';
+	if ( count( $q ) > $per ) { echo '<p>'; for ( $i = 1; $i <= ceil( count( $q ) / $per ); $i++ ) echo $i === $page ? '<b>' . $i . '</b> ' : '<a href="' . esc_url( admin_url( 'admin.php?page=fsa-studio&tab=show&p=' . $i ) ) . '">' . $i . '</a> '; echo '</p>'; }
+	echo '<h2>בגלריה (' . count( $list ) . ')</h2><table class="widefat striped"><thead><tr><th style="width:160px">תמונה</th><th>אתר</th><th>פונטים</th><th>שנה</th><th>עיצוב</th><th></th></tr></thead><tbody>';
+	foreach ( $list as $x ) echo '<tr><td>' . $pic( $x['host'], $x['img'] ) . '</td><td>' . $site( $x, $x['host'] ) . '</td><td>' . esc_html( implode( ', ', $x['fonts'] ) ) . '</td><td>' . esc_html( $x['year'] ) . '</td><td>' . esc_html( $x['by'] ) . '</td><td>' . ( FSA_V2_SHOTS && ! $x['img'] ? $form( 'snap', $x['host'], 'צילום חדש' ) . ' ' : '' ) . $form( 'del', $x['host'], 'הסרה' ) . '</td></tr>';
+	if ( ! $list ) echo '<tr><td colspan="6">עוד אין אתרים בגלריה.</td></tr>';
+	echo '</tbody></table><h2>הוספת אתר שלא נרשם באזור האישי</h2><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="fsa_v2_show_save"><input type="hidden" name="op" value="add">' . wp_nonce_field( 'fsa_v2_show', '_wpnonce', true, false )
+		. '<p><input name="name" placeholder="שם האתר" required> <input name="host" placeholder="כתובת (example.co.il)" dir="ltr" required> <input name="fonts" placeholder="פונטים, מופרדים בפסיק"> <input name="year" placeholder="שנה" size="5"> <input name="by" placeholder="עיצוב (לא חובה)"> <input type="url" name="img" placeholder="קישור לתמונה (לא חובה)" dir="ltr"> <button class="button button-primary">הוספה</button></p></form>';
 }
 
 // 3. the shortcode
@@ -1522,9 +1856,6 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .dom-mode{margin:4px 0 22px}
 :is(#fsa,#fsa-layer) .sc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px 22px;margin-top:8px}
 :is(#fsa,#fsa-layer) .sc{margin:0;display:flex;flex-direction:column;gap:10px}
-:is(#fsa,#fsa-layer) .sc-head{border-bottom:1px solid var(--ink);padding-bottom:22px;margin-bottom:6px}
-:is(#fsa,#fsa-layer) .sc-eyebrow{display:inline-block;border:1.5px solid var(--ink);padding:2px 12px;font-size:22px;font-weight:300;line-height:1.3}
-:is(#fsa,#fsa-layer) .sc-title{font-size:56px;font-weight:800;line-height:1.05;margin:6px 0 8px}
 :is(#fsa,#fsa-layer) .sc-mon{display:block;background:#1F1F22;border-radius:10px;padding:7px;text-decoration:none;color:inherit;transition:transform .35s var(--ease),box-shadow .35s var(--ease)}
 :is(#fsa,#fsa-layer) .sc-mon:hover{transform:translateY(-3px);box-shadow:0 16px 30px rgba(31,31,34,.18)}
 :is(#fsa,#fsa-layer) .sc-mon:focus-visible{outline:2px solid var(--violet);outline-offset:3px}
@@ -1551,17 +1882,13 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .sc-meta dt{color:var(--faint);font-weight:400}
 :is(#fsa,#fsa-layer) .sc-meta dd{margin:0;color:var(--ink);min-width:0;overflow-wrap:anywhere}
 :is(#fsa,#fsa-layer) .sc-meta .sc-host{text-align:right;font-size:14px}
-:is(#fsa,#fsa-layer) .sc-acts{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:13px}
+:is(#fsa,#fsa-layer) .sc-meta .sc-font{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+:is(#fsa,#fsa-layer) .sc-share{font-size:13px;flex-shrink:0}
 :is(#fsa,#fsa-layer) .sc-share{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;color:var(--violet);font-weight:600}
 :is(#fsa,#fsa-layer) .sc-share .icon{width:16px;height:16px}
 :is(#fsa,#fsa-layer) .sc-share:focus-visible{outline:2px solid var(--violet);outline-offset:2px;border-radius:4px}
-:is(#fsa,#fsa-layer) .sc-pub{display:inline-flex;align-items:center;gap:6px;color:var(--muted);cursor:pointer;font-weight:400}
-:is(#fsa,#fsa-layer) .sc-pub input{accent-color:var(--violet);width:15px;height:15px;margin:0}
-:is(#fsa,#fsa-layer) .sc-invite{margin-top:30px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:16px 20px;border-radius:14px;background:#FAF6FE;border:1px solid #F1E8FB}
-:is(#fsa,#fsa-layer) .sc-invite span{color:var(--muted);font-size:14px;flex:1;min-width:200px}
-:is(#fsa,#fsa-layer) .sc-invite .btn{border-radius:99px;height:40px;background:var(--card);border:1px solid #D9C8F5}
 @media (max-width:1000px){:is(#fsa,#fsa-layer) .st-grid,:is(#fsa,#fsa-layer) .sc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:620px){:is(#fsa,#fsa-layer) .st-grid{grid-template-columns:minmax(0,1fr)}:is(#fsa,#fsa-layer) .sc-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 12px}:is(#fsa,#fsa-layer) .sc-name{font-size:17px}:is(#fsa,#fsa-layer) .sc-meta{font-size:13px;gap:2px 12px}:is(#fsa,#fsa-layer) .sc-mon{padding:4px;border-radius:7px}:is(#fsa,#fsa-layer) .sc-stand i{height:14px}:is(#fsa,#fsa-layer) .sc-title{font-size:40px}:is(#fsa,#fsa-layer) .sc-eyebrow{font-size:18px}:is(#fsa,#fsa-layer) .sc-acts{flex-direction:column;align-items:flex-start}:is(#fsa,#fsa-layer) .st-teaser{flex-wrap:wrap;margin-top:-22px}:is(#fsa,#fsa-layer) .st-teaser .st-t-txt{flex-basis:calc(100% - 140px)}:is(#fsa,#fsa-layer) .st-teaser .btn{order:5;width:100%}:is(#fsa,#fsa-layer) .st-why-row{flex-direction:column}:is(#fsa,#fsa-layer) .st-spec{height:120px;font-size:40px}}
+@media (max-width:620px){:is(#fsa,#fsa-layer) .st-grid{grid-template-columns:minmax(0,1fr)}:is(#fsa,#fsa-layer) .sc-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 12px}:is(#fsa,#fsa-layer) .sc-name{font-size:17px}:is(#fsa,#fsa-layer) .sc-meta{font-size:13px;gap:2px 12px}:is(#fsa,#fsa-layer) .sc-mon{padding:4px;border-radius:7px}:is(#fsa,#fsa-layer) .sc-stand i{height:14px}:is(#fsa,#fsa-layer) .st-teaser{flex-wrap:wrap;margin-top:-22px}:is(#fsa,#fsa-layer) .st-teaser .st-t-txt{flex-basis:calc(100% - 140px)}:is(#fsa,#fsa-layer) .st-teaser .btn{order:5;width:100%}:is(#fsa,#fsa-layer) .st-why-row{flex-direction:column}:is(#fsa,#fsa-layer) .st-spec{height:120px;font-size:40px}}
 :is(#fsa,#fsa-layer) .bye-sheet{max-width:440px;overflow:hidden;border-radius:22px;text-align:center}
 :is(#fsa,#fsa-layer) .bye-art{display:flex;justify-content:center;gap:8px;padding:30px 20px 22px;background:linear-gradient(135deg,#EFE8FF,#FDE7F6)}
 :is(#fsa,#fsa-layer) .bye-t{width:48px;height:56px;display:grid;place-items:center;background:#fff;border-radius:12px;font-size:30px;font-weight:700;line-height:1;color:var(--violet);box-shadow:0 3px 0 #E3D3FA,0 8px 18px rgba(91,63,255,.12);transform:rotate(calc((var(--i) - 1.5) * 4deg));animation:byeBob 2.6s ease-in-out infinite;animation-delay:calc(var(--i) * .18s)}
@@ -1632,7 +1959,6 @@ FSACSS;
       <button data-view="lic">פונטים שלי</button>
       <button data-view="studio" hidden>בסטודיו</button>
       <button data-view="dom">דומיינים</button>
-      <button data-view="show" hidden>גלריה</button>
       <button data-view="orders">הזמנות</button>
       <button data-view="profile">פרופיל</button>
       <span class="sep"></span>
@@ -2107,9 +2433,9 @@ function cert(l,site){
 
 /* state & router */
 let state={view:'subs',plan:'web',sub:{subs:'dl',lic:'list',profile:'me'},open:{lic:-1,orders:-1}};
-try{const s=JSON.parse(localStorage.getItem('fsa-v2')||'null');if(s&&(V[s.view]||['studio','show'].includes(s.view)))state=Object.assign(state,s)}catch(e){}
+try{const s=JSON.parse(localStorage.getItem('fsa-v2')||'null');if(s&&(V[s.view]||s.view==='studio'))state=Object.assign(state,s)}catch(e){}
 state.open={lic:-1,orders:-1};
-{const hv=location.hash.slice(1);if(V[hv]||['studio','show'].includes(hv))state.view=hv;if(['studio','show'].includes(state.view)&&!(FS.features||[]).includes(state.view))state.view='subs';if(hv==='subdom'){state.view='subs';state.sub.subs='reg'}
+{const hv=location.hash.slice(1);if(V[hv]||hv==='studio')state.view=hv;if(state.view==='show')state.view='dom';if(state.view==='studio'&&!(FS.features||[]).includes('studio'))state.view='subs';if(hv==='subdom'){state.view='subs';state.sub.subs='reg'}
  /* #order-123 (from the old "view order" links and the order e-mails): the orders list with that order open */
  const om=/^order-(\d+)$/.exec(hv);if(om){state.view='orders';const i=ORDERS.findIndex(o=>String(o.id)===om[1]);state.open.orders=i}}state.plan=FS.plan||'web';state.noteHidden=1;
 /* back from paying for an add-on on the live site (WooCommerce return URL): reopen the matching registration form */
@@ -2149,35 +2475,30 @@ V.studio=()=>{const S=FS.studio||{fonts:[]},mine=S.vote,can=!!FS.plan&&S.open!==
    ${can?`<button class="btn ${mine===f.id?'btn-grad':'btn-line'} st-vote" data-vote="${ea(f.id)}" ${mine===f.id?'aria-pressed="true"':''}>${mine===f.id?'הבחירה שלך':mine?'לבחור בו במקום':'זה הפונט שלי'}</button>`:''}
   </div></article>`).join('')}</div>
  ${mine&&can?`<form class="st-why" id="stWhy"><label for="stWhyIn">מה היית מעצב/ת עם ${ea(stVote().name)}? <span class="hint">(רשות)</span></label><div class="st-why-row"><input id="stWhyIn" maxlength="140" value="${ea(S.why||'')}" placeholder="למשל: מיתוג לבית קפה, כותרות למגזין"><button class="btn btn-grad">שליחה</button></div><button type="button" class="linkbtn st-skip" data-stdone="1">סיום בלי תשובה</button></form>`:''}
- ${!can?`<div class="st-cta"><b>מנויים בוחרים מה יוצא ראשון.</b><span>במינוי מקבלים את כל הפונטים, וגם קול בבחירת הפונט הבא.</span><button class="btn btn-grad" data-view="subs">למינויים</button></div>`:''}
+ ${FS.plan&&S.open===false?`<div class="st-cta"><b>ההצבעה נסגרה.</b><span>תודה לכל מי שבחר. נעדכן כאן כשהפונט יוצא.</span></div>`:''}
+ ${!FS.plan?`<div class="st-cta"><b>מנויים בוחרים מה יוצא ראשון.</b><span>במינוי מקבלים את כל הפונטים, וגם קול בבחירת הפונט הבא.</span><button class="btn btn-grad" data-view="subs">למינויים</button></div>`:''}
  <p class="hint st-note">ההצבעה עוזרת לנו להחליט מה ייצא קודם. ההחלטה הסופית היא של הסטודיו. ${can?'האחוזים מוצגים אחרי שבוחרים.':''} כשהפונט יוצא, ${can?'מי שבחר בו מקבל כאן הודעה.':'הוא נכנס למינוי.'}</p>`};
-function studioTeaser(){if(!FEAT.includes('studio')||!FS.studio||!FS.plan||state.stHide)return '';const v=stVote(),n=FS.studio.fonts.length;
+function studioTeaser(){if(!FEAT.includes('studio')||!FS.studio||!FS.studio.fonts||!FS.studio.fonts.length||!FS.plan||state.stHide||(FS.studio.open===false&&!FS.studio.vote))return '';const v=stVote(),n=FS.studio.fonts.length;
  return `<div class="st-teaser"><span class="st-dot" aria-hidden="true">${FS.studio.fonts.slice(0,3).map(f=>`<i style="font-family:${ea(f.family||'inherit')}">${ea(f.sample.charAt(0))}</i>`).join('')}</span>
   <div class="st-t-txt">${v?`<b>בחרת ב${ea(v.name)}</b><span>${v.pct}% מהמנויים בחרו כמוך</span>`:`<b>בסטודיו: ${n} פונטים בפיתוח</b><span>איזה מהם תרצו לקבל ראשון?</span>`}</div>
   <button class="btn ${v?'btn-line':'btn-grad'}" data-view="studio">${v?'לתוצאות':'להצבעה'}</button><button class="ibtn st-x" data-sthide="1" aria-label="הסתרה">${ICON.close}</button></div>`}
 /* sites: a browser frame with a picture of the site (a screenshot when the site sends one, else a drawn sketch in the site's font) */
 const hue=h=>{let x=0;for(const c of h)x=(x*31+c.charCodeAt(0))%360;return x};
-function siteShot(x){const hu=hue(x.host),ff=fontFace((x.fonts||[x.font])[0]);
- if(x.img)return `<img src="${ea(x.img)}" alt="" loading="lazy">`;
+function siteShot(x){const hu=hue(x.host),ff=fontFace((x.fonts||[x.font])[0]),im=x.img||(FS.snaps||{})[x.host];
+ if(im)return `<img src="${ea(im)}" alt="" loading="lazy">`;
  return `<div class="sk" style="--hu:${hu};font-family:${ea(ff)}"><div class="sk-nav"><b>${ea(x.name)}</b><i></i><i></i><i></i></div><div class="sk-hero"><div class="sk-h">${ea(x.head||x.name)}</div><div class="sk-p"><i></i><i></i></div><span class="sk-btn"></span></div><div class="sk-row"><i></i><i></i><i></i></div></div>`}
 /* one site as a desktop monitor (screen + stand), caption: name, then label / value rows (font, year; own sites also the address) */
 function siteCard(x,mine){const fonts=x.fonts||[x.font],yr=x.year||(x.d?String(x.d).split('.')[2]:'');
  return `<figure class="sc"><a class="sc-mon" href="https://${ea(x.host)}" target="_blank" rel="noopener" aria-label="${ea(x.name)}, ${ea(x.host)}"><span class="sc-screen">${siteShot(x)}</span></a><span class="sc-stand" aria-hidden="true"><i></i><b></b></span>
-  <figcaption><h3 class="sc-name">${ea(x.name)}</h3><dl class="sc-meta"><dt>${fonts.length>1?'פונטים':'פונט'}</dt><dd>${fonts.map(ea).join(', ')}</dd>${yr?`<dt>שנה</dt><dd class="num">${ea(yr)}</dd>`:''}${x.by?`<dt>עיצוב</dt><dd>${ea(x.by)}</dd>`:''}${mine?`<dt>כתובת</dt><dd dir="ltr" class="sc-host">${ea(x.host)}</dd>`:''}</dl>
-  ${mine?`<div class="sc-acts"><button class="sc-share" data-share="${ea(x.host)}">${ICON.share||''}שיתוף</button><label class="sc-pub"><input type="checkbox" data-pub="${ea(x.host)}" ${(state.pub||{})[x.host]?'checked':''}> להציג בגלריה</label></div>`:''}</figcaption></figure>`}
+  <figcaption><h3 class="sc-name">${ea(x.name)}</h3><dl class="sc-meta"><dt>${fonts.length>1?'פונטים':'פונט'}</dt><dd${mine?' class="sc-font"':''}><span>${fonts.map(ea).join(', ')}</span>${mine?`<button class="sc-share" data-share="${ea(x.host)}">${ICON.share||''}שיתוף</button>`:''}</dd>${yr?`<dt>שנה</dt><dd class="num">${ea(yr)}</dd>`:''}${x.by?`<dt>עיצוב</dt><dd>${ea(x.by)}</dd>`:''}${mine?`<dt>כתובת</dt><dd dir="ltr" class="sc-host">${ea(x.host)}</dd>`:''}</dl></figcaption></figure>`}
 function fontChips(list,cur,attr){return `<div class="chips" role="group" aria-label="סינון לפי פונט"><button ${attr}="" aria-pressed="${!cur}">הכל</button>${list.map(f=>`<button ${attr}="${ea(f)}" aria-pressed="${cur===f}">${ea(f)}</button>`).join('')}</div>`}
-V.show=()=>{const all=FS.showcase||[],fonts=[...new Set(all.flatMap(x=>x.fonts||[x.font]))],f=state.showF||'',items=f?all.filter(x=>(x.fonts||[x.font]).includes(f)):all;
- return `<div class="sc-head"><span class="sc-eyebrow">הפונטים בפעולה</span><h1 class="sc-title">אתרי אינטרנט</h1><p class="sub">אתרים שנבנו עם הפונטים של פונטשוק. לחיצה פותחת את האתר.</p></div>
- ${fontChips(fonts,f,'data-showf')}
- <div class="sc-grid">${items.map(x=>siteCard(x)).join('')||'<p class="empty">עוד אין אתרים עם הפונט הזה.</p>'}</div>
- <div class="sc-invite"><b>יש לך אתר עם פונט של פונטשוק?</b><span>באזור הדומיינים אפשר לבחור אילו מהאתרים שלך יופיעו כאן.</span><button class="btn btn-line" data-mysites="1">לאתרים שלי</button></div>`};
 /* the customer's own sites (every registered domain, newest first, one card per address) */
 function mySites(){const seen=new Set(),out=[];
  const rows=[...(SUBDOM[state.plan]||[]).map(s=>({d:s[0],name:s[1],host:s[2],fonts:String(s[3]).split(',').map(x=>x.trim()).filter(Boolean)})),...LIC.filter(l=>l.web).flatMap(l=>(l.sites||[]).map(s=>({d:s[0],name:s[1]||siteName(s[2]),host:s[2],fonts:[l.f]})))].sort((a,b)=>parseD(b.d)-parseD(a.d));
  rows.forEach(r=>{if(!r.host||seen.has(r.host))return;seen.add(r.host);out.push(r)});return out}
 function domGallery(){const all=mySites(),fonts=[...new Set(all.flatMap(x=>x.fonts))],f=state.myF||'',items=f?all.filter(x=>x.fonts.includes(f)):all;
  return `${fontChips(fonts,f,'data-myf')}<div class="sc-grid">${items.map(x=>siteCard(x,true)).join('')||'<p class="empty">עוד אין אתרים רשומים.</p>'}</div>
- <p class="hint">התמונות מתעדכנות מהאתרים עצמם. "שיתוף" יוצר קישור לעמוד עם האתרים שבחרת, בלי פרטים אישיים.</p>`}
+ <p class="hint">"שיתוף" מעתיק קישור לעמוד עם האתרים שלך, בלי פרטים אישיים.</p>`}
 const _dom=V.dom;V.dom=()=>{if(!FEAT.includes('show'))return _dom();const g=state.domMode==='g';
  const sw=`<div class="seg-f dom-mode" role="group" aria-label="תצוגה"><button data-dommode="l" aria-pressed="${!g}">רשימה</button><button data-dommode="g" aria-pressed="${g}">תצוגת אתרים</button></div>`;
  if(!g)return _dom().replace('<h2 class="h2-sec sec-row">',sw+'<h2 class="h2-sec sec-row">');
@@ -2289,7 +2610,6 @@ function openCert(spec){
 $('#certClose').onclick=hideModal;
 modal.addEventListener('click',e=>{if(e.target.id==='certModal')hideModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){hideModal();closeMenus();closeCart();closeBye()}});
-document.addEventListener('change',e=>{const c=e.target.closest&&e.target.closest('[data-pub]');if(!c)return;state.pub=Object.assign({},state.pub,{[c.dataset.pub]:c.checked});save();toast(c.checked?'האתר יוצג בגלריה אחרי אישור של פונטשוק':'האתר לא יוצג בגלריה')});
 document.addEventListener('click',e=>{
  const t=e.target.closest('button,a');if(!t||!t.closest('#fsa,#fsa-layer'))return;
  if((t.dataset.addon||t.dataset.planaddon)&&!FS.addon){e.preventDefault();soon();return}
@@ -2328,11 +2648,9 @@ document.addEventListener('click',e=>{
  if(t.dataset.sthide){state.stHide=1;render();return}
  if(t.dataset.stopen){state.stOpen=true;render();if(t.dataset.stopen==='why')setTimeout(()=>{const i=$('#stWhyIn');if(i){i.scrollIntoView({behavior:'smooth',block:'center'});i.focus({preventScroll:true})}},60);return}
  if(t.dataset.stdone){state.stOpen=false;state.stFold=1;render();state.stFold=0;return}
- if(t.dataset.showf!==undefined){state.showF=t.dataset.showf;render();return}
  if(t.dataset.myf!==undefined){state.myF=t.dataset.myf;render();return}
  if(t.dataset.dommode){state.domMode=t.dataset.dommode;render();return}
- if(t.dataset.mysites){state.domMode='g';goPage('dom');return}
- if(t.dataset.share){const u=(FS.shareBase||location.origin+'/sites/')+encodeURIComponent(FS.user.id||'me');const done=()=>toast('הקישור לעמוד האתרים שלך הועתק');
+ if(t.dataset.share){const u=FS.shareUrl;if(!u){toast('השיתוף עוד לא פעיל');return}const done=()=>toast('הקישור לעמוד האתרים שלך הועתק');
   (navigator.clipboard?navigator.clipboard.writeText(u).then(done,()=>toast(u)):(toast(u),0));return}
  if(t.dataset.bye==='stay'){closeBye();return}
  if(t.dataset.bye==='go'){location.href=FS.links.logout;return}
@@ -2386,8 +2704,8 @@ document.addEventListener('input',e=>{if(e.target.dataset.namefor){const n=docum
 document.addEventListener('input',e=>{if(e.target.id==='sd2')$('#sdErr').hidden=true});
 document.addEventListener('input',e=>{if(e.target.id==='oq'){const q=e.target.value.trim().replace('#','');document.querySelectorAll('#otb tr[data-oid]').forEach(r=>r.hidden=q&&!r.dataset.oid.includes(q))}});
 $('#fsaName').textContent=FS.user.first||'';
-FEAT.forEach(k=>{const b=document.querySelector(`#fsa .side button[data-view="${k}"]`);if(b)b.hidden=false});
-if(FS.studio&&FS.plan&&!FS.studio.vote){const b=document.querySelector('#fsa .side button[data-view="studio"]');if(b)b.classList.add('has-dot')}
+FEAT.forEach(k=>{if(k!=='studio'||!(FS.studio&&FS.studio.fonts&&FS.studio.fonts.length))return;const b=document.querySelector(`#fsa .side button[data-view="${k}"]`);if(b)b.hidden=false});
+if(FS.studio&&FS.studio.open!==false&&FS.plan&&!FS.studio.vote){const b=document.querySelector('#fsa .side button[data-view="studio"]');if(b)b.classList.add('has-dot')}
 if(FS.mode==='live'){const n=$('#fsaNote');if(n)n.innerHTML=`<a href="${ea(FS.oldUrl)}">למעבר לאזור האישי הקודם</a>${FS.build?` <span class="fsa-build">· גרסה ${ea(FS.build)}</span>`:''}`}
 const h=new Date().getHours();$('#greet').textContent=h<5?'לילה טוב':h<12?'בוקר טוב':h<17?'צהריים טובים':h<21?'ערב טוב':'לילה טוב';
 document.querySelectorAll('i[data-ic]').forEach(e=>{const w=document.createElement('span');w.className='ic-wrap '+(e.className||'');if(e.title)w.title=e.title;w.innerHTML=ICON[e.dataset.ic];e.replaceWith(w)});
