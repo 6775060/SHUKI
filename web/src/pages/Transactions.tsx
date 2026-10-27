@@ -53,6 +53,7 @@ export function Transactions({ nav }: { nav: Nav }) {
   };
   const allOn = txns.length > 0 && txns.every((t) => selected.has(t.id));
   const picked = txns.filter((t) => selected.has(t.id));
+  const uncat = txns.filter((t) => t.categoryId === null || t.categoryName === 'לא מסווג').length;
   useEffect(load, [month, accountId, categoryId, scope, onlyUncat]);
 
   const groups = useMemo(() => {
@@ -149,6 +150,17 @@ export function Transactions({ nav }: { nav: Nav }) {
             load();
           }}
         />
+      )}
+
+      {uncat > 0 && (
+        <div className="notice row between wrap">
+          <span>
+            {uncat} תנועות כאן לא מסווגות. יש הצעות אוטומטיות לפי שמות בתי העסק.
+          </span>
+          <button className="link small" onClick={() => nav.go('rules')}>
+            להצעות ←
+          </button>
+        </div>
       )}
 
       {notice && (

@@ -2318,3 +2318,91 @@ textarea {
   z-index: 30;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
 }
+
+/* ---------- savings ---------- */
+.stack-s {
+  display: grid;
+  gap: 10px;
+}
+
+.calm-card.wide {
+  max-width: 720px;
+  width: 100%;
+}
+
+.howto {
+  text-align: start;
+  display: grid;
+  gap: 8px;
+  padding-inline-start: 20px;
+  margin: 12px 0;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.center-row {
+  justify-content: center;
+}
+
+.savings-table td {
+  vertical-align: top;
+}
+
+.savings-table .badge {
+  margin-inline-start: 6px;
+}
+
+/* ---------- sync alerts (every page) ---------- */
+.sync-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 0 auto 16px;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--warm);
+  background: var(--warm-soft);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.sync-banner.critical {
+  border-color: var(--danger);
+}
+
+.sync-banner b {
+  color: var(--danger);
+}
+
+/* ---------- suggestions (categories page) ---------- */
+.sugg-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.sugg-row:first-of-type {
+  border-top: 0;
+}
+
+.sugg-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.sugg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.sugg-to {
+  font-weight: 700;
+  color: var(--accent);
+}

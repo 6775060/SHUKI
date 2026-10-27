@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, setOnLocked, setToken } from './api';
+import { api, setOnLocked, setToken, type SyncAlert } from './api';
 import { Unlock } from './pages/Unlock';
 import { Dashboard } from './pages/Dashboard';
 import { Transactions } from './pages/Transactions';
@@ -11,14 +11,16 @@ import { Funds } from './pages/Funds';
 import { Business } from './pages/Business';
 import { Settings } from './pages/Settings';
 import { Reviews } from './pages/Reviews';
+import { Savings } from './pages/Savings';
 import { applyFont, type FontSetting } from './font';
 
-export type Page = 'dashboard' | 'insights' | 'funds' | 'business' | 'transactions' | 'reviews' | 'connections' | 'import' | 'rules' | 'settings';
+export type Page = 'dashboard' | 'insights' | 'funds' | 'savings' | 'business' | 'transactions' | 'reviews' | 'connections' | 'import' | 'rules' | 'settings';
 
 const NAV: { id: Page; label: string }[] = [
   { id: 'dashboard', label: 'בהירות' },
   { id: 'insights', label: 'תובנות' },
   { id: 'funds', label: 'קופות' },
+  { id: 'savings', label: 'חסכונות' },
   { id: 'business', label: 'עסק' },
   { id: 'transactions', label: 'תנועות' },
   { id: 'reviews', label: 'לבירור' },
@@ -37,6 +39,7 @@ export function App() {
   const [state, setState] = useState<'loading' | 'setup' | 'locked' | 'open'>('loading');
   const [page, setPage] = useState<Page>('dashboard');
   const [params, setParams] = useState<Record<string, string>>({});
+  const [syncAlerts, setSyncAlerts] = useState<SyncAlert[]>([]);
 
   useEffect(() => {
     setOnLocked(() => setState('locked'));
@@ -51,6 +54,11 @@ export function App() {
       }
     });
   }, []);
+
+  // Re-checked on every page change, so a fixed connection clears the banner.
+  useEffect(() => {
+    if (state === 'open') api<SyncAlert[]>('/sync-alerts').then(setSyncAlerts).catch(() => {});
+  }, [state, page]);
 
   useEffect(() => {
     if (state === 'open') api<{ font: FontSetting }>('/settings').then((r) => applyFont(r.font)).catch(() => {});
@@ -83,6 +91,7 @@ export function App() {
   };
 
   const nav: Nav = { go, params };
+  const alerts = syncAlerts.filter((a) => a.level !== 'info');
   return (
     <div className="shell">
       <header className="topbar">
@@ -104,9 +113,11 @@ export function App() {
         </button>
       </header>
       <main className="content">
+        {alerts.length > 0 && page !== 'connections' && <SyncBanner alerts={alerts} go={go} />}
         {page === 'dashboard' && <Dashboard nav={nav} />}
         {page === 'insights' && <Insights nav={nav} />}
         {page === 'funds' && <Funds />}
+        {page === 'savings' && <Savings />}
         {page === 'business' && <Business nav={nav} />}
         {page === 'transactions' && <Transactions nav={nav} />}
         {page === 'reviews' && <Reviews />}
@@ -115,6 +126,23 @@ export function App() {
         {page === 'rules' && <Rules />}
         {page === 'settings' && <Settings />}
       </main>
+    </div>
+  );
+}
+
+function SyncBanner({ alerts, go }: { alerts: SyncAlert[]; go: Nav['go'] }) {
+  const critical = alerts.some((a) => a.level === 'critical');
+  const first = alerts[0];
+  return (
+    <div className={`sync-banner ${critical ? 'critical' : ''}`} role="status">
+      <span aria-hidden>⚠️</span>
+      <span>
+        <b>חסר סנכרון:</b> {alerts.length === 1 ? first.title : alerts.map((a) => a.source).join(', ')}
+      </span>
+      <span className="muted small">{alerts.length === 1 ? first.action : 'התמונה לא מלאה עד שיתעדכנו.'}</span>
+      <button className="link small" onClick={() => go(first.page)}>
+        לטיפול ←
+      </button>
     </div>
   );
 }

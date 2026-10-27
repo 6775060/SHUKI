@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { api, type Category } from '../api';
 import { CategoryPicker } from '../CategoryPicker';
+import { Suggestions } from './Suggestions';
 
 interface Rule {
   id: number;
@@ -84,6 +85,7 @@ export function Rules() {
         הדרך הכי מהירה: במסך התנועות בוחרים קטגוריה לחיוב, ובוחרים "כל החיובים מבית העסק הזה". מאותו רגע כל חיוב ממנו – מהעבר ומהעתיד – נכנס לשם לבד.
       </p>
       {msg && <div className="success">{msg}</div>}
+      <Suggestions categories={cats} onChanged={load} />
       <input type="search" placeholder="חיפוש קטגוריה, בית עסק או כלל…" value={filter} onChange={(e) => setFilter(e.target.value)} />
 
       <div className="grid-main">

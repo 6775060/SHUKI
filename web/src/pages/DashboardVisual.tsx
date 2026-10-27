@@ -26,6 +26,18 @@ export function buildFocus(d: InsightsData, s: Summary, nav: Nav): Focus[] {
   const cy = d.cycle;
   const home = s.balances.filter((b) => b.kind === 'bank').reduce((sum, b) => sum + (b.balance ?? 0), 0);
 
+  const stale = d.syncAlerts.filter((a) => a.level === 'critical');
+  if (stale.length) {
+    out.push({
+      level: 'critical',
+      icon: '🔌',
+      title: stale.length === 1 ? stale[0].title : `חסר סנכרון מ-${stale.map((a) => a.source).join(', ')}`,
+      action: `${stale.length === 1 ? stale[0].action : 'כמה מקורות לא התעדכנו.'} עד אז המספרים כאן חלקיים.`,
+      go: () => nav.go(stale[0].page),
+      goLabel: 'לטיפול',
+    });
+  }
+
   if (d.forecast?.firstNegative) {
     out.push({
       level: 'critical',
@@ -165,6 +177,12 @@ export function VisualDashboard({ d, s, nav, onDetail }: { d: InsightsData; s: S
   const weakest = d.health ? [...d.health.parts].sort((a, b) => a.score - b.score).slice(0, 2) : [];
 
   const lights: { label: string; level: Level; text: string }[] = [];
+  const syncIssues = d.syncAlerts.filter((a) => a.level !== 'info');
+  lights.push({
+    label: 'סנכרון',
+    level: syncIssues.some((a) => a.level === 'critical') ? 'critical' : syncIssues.length ? 'warning' : 'good',
+    text: syncIssues.length ? `${syncIssues.length} ${syncIssues.length === 1 ? 'מקור חסר' : 'מקורות חסרים'}` : 'הכול מעודכן',
+  });
   if (cy) lights.push({ label: 'החודש התזרימי', level: cy.forecastEnd >= 0 ? 'good' : cy.forecastEnd > -cy.income.expected * 0.1 ? 'warning' : 'critical', text: cy.forecastEnd >= 0 ? 'בפלוס' : 'צפי מינוס' });
   if (d.forecast) lights.push({ label: '60 הימים הבאים', level: d.forecast.firstNegative ? 'critical' : 'good', text: d.forecast.firstNegative ? 'נקודת מינוס' : 'בלי מינוס' });
   const buffer = d.health?.parts.find((p) => p.key === 'buffer');

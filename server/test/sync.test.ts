@@ -63,3 +63,20 @@ describe('SyncService', () => {
     expect(conn).toEqual({ last_status: 'error', last_error: 'פרטי הכניסה שגויים. כדאי לבדוק שם משתמש וסיסמה.', last_sync_at: null });
   });
 });
+
+describe('sync alerts', () => {
+  it('names the source that went quiet', async () => {
+    const { openDb } = await import('../src/db.js');
+    const { syncAlerts } = await import('../src/sync-health.js');
+    const db = openDb('', ':memory:');
+    db.prepare("INSERT INTO connections (company_id, label, credentials_enc, last_sync_at, last_status) VALUES ('max', 'מקס', 'x', '2026-10-26T06:30:00Z', 'ok')").run();
+    db.prepare("INSERT INTO connections (company_id, label, credentials_enc, last_sync_at, last_status, last_error) VALUES ('isracard', 'ישראכרט', 'x', '2026-10-20T06:30:00Z', 'error', 'סיסמה שגויה')").run();
+    db.prepare("INSERT INTO connections (company_id, label, credentials_enc, last_sync_at, last_status) VALUES ('discount', 'דיסקונט', 'x', '2026-10-24T06:30:00Z', 'ok')").run();
+    const a = syncAlerts(db, '2026-10-27');
+    expect(a.map((x) => [x.source, x.level])).toEqual([
+      ['ישראכרט', 'critical'],
+      ['דיסקונט', 'warning'],
+    ]);
+    expect(a[0].action).toBe('סיסמה שגויה');
+  });
+});

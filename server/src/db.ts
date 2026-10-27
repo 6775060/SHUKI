@@ -186,6 +186,27 @@ const MIGRATIONS: string[] = [
   ALTER TABLE transactions ADD COLUMN review_opened_at TEXT;
   ALTER TABLE transactions ADD COLUMN review_closed_at TEXT;
   `,
+  `
+  -- Long-term savings: pension, provident and study funds, investments.
+  CREATE TABLE savings_accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider TEXT NOT NULL,
+    product TEXT NOT NULL CHECK (product IN ('pension','gemel','hishtalmut','gemel_invest','managers','investment','savings','other')),
+    account_number TEXT NOT NULL DEFAULT '',
+    track TEXT,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive')),
+    balance REAL NOT NULL DEFAULT 0,
+    balance_date TEXT,
+    monthly_deposit REAL,
+    fee_balance_pct REAL,
+    fee_deposit_pct REAL,
+    owner TEXT,
+    note TEXT,
+    source TEXT NOT NULL DEFAULT 'manual',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (provider, product, account_number)
+  );
+  `,
 ];
 
 export function openDb(dataDir: string, filename = 'shefa.db'): DB {

@@ -33,6 +33,9 @@ import {
 } from './insights.js';
 import { cardBills, cycleView } from './cycle.js';
 import { businessData, parseDocsFile, saveDocs, syncSumit, type DocSource } from './business.js';
+import { categoryCleanups, categorySuggestions } from './suggest.js';
+import { parseSavingsFile, saveSavings, savingsView } from './savings.js';
+import { syncAlerts } from './sync-health.js';
 
 interface Deps {
   db: DB;
@@ -424,6 +427,30 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     res.json({ changed: ids.size, rules: keys.size });
   });
 
+  api.get('/suggestions', (_req, res) => {
+    res.json({ categories: categorySuggestions(db), cleanups: categoryCleanups(db, new Date().toLocaleDateString('sv-SE')) });
+  });
+
+  // Fold a user-made category into another: its transactions, rules and funds move over.
+  api.post('/categories/:id/merge', (req, res) => {
+    const id = Number(req.params.id);
+    const { into } = z.object({ into: z.number().int() }).parse(req.body);
+    const c = db.prepare('SELECT slug FROM categories WHERE id = ?').get(id) as { slug: string | null } | undefined;
+    if (!c || c.slug || id === into || !db.prepare('SELECT 1 FROM categories WHERE id = ?').get(into)) {
+      res.status(400).json({ error: 'CANNOT_MERGE' });
+      return;
+    }
+    let moved = 0;
+    transaction(db, () => {
+      moved = Number(db.prepare('UPDATE transactions SET category_id = ? WHERE category_id = ?').run(into, id).changes);
+      db.prepare('UPDATE rules SET category_id = ? WHERE category_id = ?').run(into, id);
+      db.prepare('UPDATE funds SET category_id = ? WHERE category_id = ?').run(into, id);
+      db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+    });
+    categorizer.reload();
+    res.json({ moved });
+  });
+
   api.get('/rules', (_req, res) => {
     res.json(
       db
@@ -554,6 +581,57 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     res.json(r);
   });
 
+  // ---- long-term savings: pension, provident funds, investments ----
+  const savingsBody = z.object({
+    provider: z.string().min(1).max(60),
+    product: z.enum(['pension', 'gemel', 'hishtalmut', 'gemel_invest', 'managers', 'investment', 'savings', 'other']),
+    accountNumber: z.string().max(40).default(''),
+    track: z.string().max(80).nullable().default(null),
+    status: z.enum(['active', 'inactive']).default('active'),
+    balance: z.number().min(0),
+    balanceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
+    monthlyDeposit: z.number().min(0).nullable().default(null),
+    feeBalancePct: z.number().min(0).max(5).nullable().default(null),
+    feeDepositPct: z.number().min(0).max(10).nullable().default(null),
+  });
+
+  api.get('/sync-alerts', (_req, res) => res.json(syncAlerts(db, new Date().toLocaleDateString('sv-SE'))));
+
+  api.get('/savings', (_req, res) => res.json(savingsView(db, new Date().toLocaleDateString('sv-SE'))));
+
+  api.post('/savings', (req, res) => {
+    const b = savingsBody.parse(req.body);
+    res.json(saveSavings(db, [b], 'manual'));
+  });
+
+  api.put('/savings/:id', (req, res) => {
+    const b = savingsBody.parse(req.body);
+    db.prepare(
+      `UPDATE savings_accounts SET provider = ?, product = ?, account_number = ?, track = ?, status = ?, balance = ?, balance_date = ?,
+         monthly_deposit = ?, fee_balance_pct = ?, fee_deposit_pct = ?, updated_at = datetime('now') WHERE id = ?`,
+    ).run(b.provider, b.product, b.accountNumber, b.track, b.status, b.balance, b.balanceDate, b.monthlyDeposit, b.feeBalancePct, b.feeDepositPct, Number(req.params.id));
+    res.json({ ok: true });
+  });
+
+  api.delete('/savings/:id', (req, res) => {
+    db.prepare('DELETE FROM savings_accounts WHERE id = ?').run(Number(req.params.id));
+    res.json({ ok: true });
+  });
+
+  api.post('/savings/import', express.raw({ type: 'application/octet-stream', limit: '20mb' }), async (req, res) => {
+    const q = z.object({ filename: z.string(), dryRun: z.enum(['0', '1']).default('1') }).parse(req.query);
+    try {
+      const parsed = await parseSavingsFile(q.filename, req.body as Buffer);
+      if (q.dryRun === '1') {
+        res.json({ headers: parsed.headers, accounts: parsed.accounts, skipped: parsed.skipped });
+        return;
+      }
+      res.json({ ...saveSavings(db, parsed.accounts, 'import'), skipped: parsed.skipped });
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+    }
+  });
+
   // ---- file import ----
   api.post('/import', express.raw({ type: 'application/octet-stream', limit: '20mb' }), async (req, res) => {
     const q = z.object({ accountId: z.coerce.number(), filename: z.string(), dryRun: z.enum(['0', '1']).default('1') }).parse(req.query);
@@ -630,6 +708,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
       cards: cardBills(db, today),
       businessTips: business.hasBusiness ? businessData(db, month, today).tips : [],
       uncategorized,
+      syncAlerts: syncAlerts(db, today),
       reviews: (db.prepare("SELECT COUNT(*) AS n, COALESCE(SUM(-amount), 0) AS total, MIN(review_opened_at) AS oldest FROM transactions WHERE review_status = 'open'").get() as {
         n: number;
         total: number;

@@ -213,6 +213,69 @@ export interface InsightsData {
   cards: CardBill[];
   businessTips: Tip[];
   reviews: { n: number; total: number; oldest: string | null };
+  syncAlerts: SyncAlert[];
+}
+
+export interface SyncAlert {
+  key: string;
+  level: 'critical' | 'warning' | 'info';
+  source: string;
+  title: string;
+  action: string;
+  page: 'connections' | 'business' | 'import' | 'savings';
+}
+
+export interface CategorySuggestion {
+  key: string;
+  description: string;
+  ids: number[];
+  count: number;
+  total: number;
+  categoryId: number;
+  categoryName: string;
+  reason: string;
+  confidence: 'high' | 'medium';
+}
+
+export interface CategoryCleanup {
+  kind: 'merge' | 'regroup' | 'unused';
+  categoryId: number;
+  categoryName: string;
+  txnCount: number;
+  total: number;
+  intoId?: number;
+  intoName?: string;
+  grp?: string;
+  reason: string;
+}
+
+export type SavingsProduct = 'pension' | 'gemel' | 'hishtalmut' | 'gemel_invest' | 'managers' | 'investment' | 'savings' | 'other';
+
+export interface SavingsAccount {
+  id: number;
+  provider: string;
+  product: SavingsProduct;
+  accountNumber: string;
+  track: string | null;
+  status: 'active' | 'inactive';
+  balance: number;
+  balanceDate: string | null;
+  monthlyDeposit: number | null;
+  feeBalancePct: number | null;
+  feeDepositPct: number | null;
+  source: string;
+  updatedAt: string;
+}
+
+export interface SavingsView {
+  accounts: SavingsAccount[];
+  total: number;
+  byProduct: { product: SavingsProduct; label: string; total: number }[];
+  feeTotal: number;
+  feeSave: number;
+  monthlyDeposits: number;
+  bankMonthly: number;
+  insights: { tone: 'good' | 'attention' | 'neutral'; icon: string; title: string; body: string; yearly?: number }[];
 }
 
 export interface Review {
