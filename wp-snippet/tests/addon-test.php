@@ -19,7 +19,7 @@ class Prod { function __construct( public $id, public $lic ) {} function get_att
 $GLOBALS['prods'] = array( 501 => new Prod( 501, 'וובפונט' ), 502 => new Prod( 502, 'דסקטופ' ), 900 => new Prod( 900, '' ) );
 function wc_get_product( $id ) { return $GLOBALS['prods'][ $id ] ?? null; }
 function wc_get_customer_available_downloads( $u ) { return 7 === $u ? array( array( 'product_id' => 501, 'order_id' => 1 ), array( 'product_id' => 502, 'order_id' => 1 ) ) : array(); }
-class Item { public $meta = array(); function __construct( public $qty = 1 ) {} function get_meta( $k ) { return $this->meta[ $k ] ?? ''; } function get_quantity() { return $this->qty; } }
+class Item { public $meta = array(), $pid = 0; function __construct( public $qty = 1 ) {} function get_product_id() { return $this->pid; } function get_meta( $k ) { return $this->meta[ $k ] ?? ''; } function get_quantity() { return $this->qty; } }
 class Order { public $meta = array(), $items = array(), $notes = array(), $paid = false, $id;
 	function __construct( $c ) { $this->id = count( $GLOBALS['orders'] ) + 100; $this->c = $c; $GLOBALS['orders'][ $this->id ] = $this; }
 	function get_meta( $k ) { return $this->meta[ $k ] ?? ''; } function update_meta_data( $k, $v ) { $this->meta[ $k ] = $v; } function save() {} function add_order_note( $n ) { $this->notes[] = $n; }
@@ -34,6 +34,7 @@ function wc_get_orders( $q ) { return array_values( array_filter( array_reverse(
 function wc_add_order_item_meta( $i, $k, $v ) { foreach ( $GLOBALS['orders'] as $o ) { if ( isset( $o->items[ $i ] ) && end( $GLOBALS['orders'] ) === $o ) { $o->items[ $i ]->meta[ $k ] = $v; } } }
 function wc_get_order( $id ) { if ( 1 === $id ) { $o = new stdClass(); return new class { function get_meta( $k ) { return '_fs_domain' === $k ? 'checkout-site.co.il' : ''; } }; } return $GLOBALS['orders'][ $id ] ?? null; }
 class WC_Order {}
+class WP_User { public $ID; function __construct( $id ) { $this->ID = $id; } function add_role( $r ) { $GLOBALS['roles'][ $this->ID ][ $r ] = 1; } function remove_role( $r ) { unset( $GLOBALS['roles'][ $this->ID ][ $r ] ); } }
 eval( preg_replace( "/define\( 'FSA_V2_ADDON_PRODUCT', \d+ \);/", "define( 'FSA_V2_ADDON_PRODUCT', 900 );", file_get_contents( __DIR__ . '/../fsa-v2-snippet.php' ) ) );
 
 $fail = 0; $t = function ( $ok, $m ) use ( &$fail ) { echo ( $ok ? 'ok   ' : 'FAIL ' ) . $m . "\n"; if ( ! $ok ) $fail++; };
@@ -73,4 +74,11 @@ $t( 79.0 === fsa_v2_addon_price() || 79 === fsa_v2_addon_price(), 'add-on price 
 $GLOBALS['user']->roles = array( 'customer', 'member-extra' ); $t( ! $call( 'fsa_v2_addon_ajax', array( 'kind' => 'sub' ) )->ok, 'extra (unlimited) cannot buy subscription slots' );
 $t( ! $call( 'fsa_v2_addon_ajax', array( 'kind' => 'lic', 'key' => '502' ) )->ok, 'desktop licence cannot buy sites' );
 $GLOBALS['nonce_ok'] = false; $t( ! $call( 'fsa_v2_addon_ajax', array( 'kind' => 'lic', 'key' => '501' ) )->ok, 'bad nonce refused' );
+$GLOBALS['roles'] = array( 40 => array( 'customer' => 1, 'member-webstop' => 1 ) );
+$d = new Order( 40 ); $d->items[] = new Item(); $d->items[0]->pid = 22785; fsa_v2_desk_role( $d->id );
+$t( isset( $GLOBALS['roles'][40]['member-desktop'] ) && ! isset( $GLOBALS['roles'][40]['member-webstop'] ) && isset( $GLOBALS['roles'][40]['customer'] ), 'desktop product (22785) gives member-desktop instead of the earlier plan' );
+$t( preg_match( '#^\d\d/\d\d/\d{4}$#', $GLOBALS['meta'][40]['membership-date'] ?? '' ), 'and sets membership-date like the other plans' );
+$w = new Order( 40 ); $w->items[] = new Item(); $w->items[0]->pid = 12652; fsa_v2_desk_role( $w->id );
+$t( ! isset( $GLOBALS['roles'][40]['member-desktop'] ), 'buying Webstop later drops member-desktop' );
+$x = new Order( 41 ); $x->items[] = new Item(); $x->items[0]->pid = 501; fsa_v2_desk_role( $x->id ); $t( empty( $GLOBALS['roles'][41] ), 'other products change no roles' );
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n"; exit( $fail ? 1 : 0 );

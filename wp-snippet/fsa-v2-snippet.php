@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '98' );
+define( 'FSA_V2_BUILD', '99' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -25,7 +25,7 @@ define( 'FSA_V2_FEATURES', 'studio' );
 // in uploads/fsa-sites/ (the service receives only the site address; visitors never load from it). '' = no pictures, a drawn sketch instead
 define( 'FSA_V2_SHOTS', 'https://s.wordpress.com/mshots/v1/{url}?w=1280&h=800' );
 // subscription products, for "בלי מינוי" (price and join link come from the product). Desktop: 0 until its product ID is set
-define( 'FSA_V2_PLAN_PRODUCTS', array( 'web' => 12652, 'extra' => 14162, 'desk' => 0 ) );
+define( 'FSA_V2_PLAN_PRODUCTS', array( 'web' => 12652, 'extra' => 14162, 'desk' => 22785 ) );
 // the ₪79 additional domain: ID of a hidden virtual WooCommerce product. 0 = not offered yet (the button says "next stage")
 define( 'FSA_V2_ADDON_PRODUCT', 22751 );
 // ─────────────────────────────────────────────────────────────────────────
@@ -466,6 +466,24 @@ function fsa_v2_addon_lines( $order ) {
 }
 foreach ( array( 'woocommerce_payment_complete', 'woocommerce_order_status_processing', 'woocommerce_order_status_completed' ) as $fsa_h ) {
 	add_action( $fsa_h, 'fsa_v2_addon_grant' );
+}
+// the desktop subscription product gives the member-desktop role, as the snippet "add role on purchase" does for the other plans
+// (same hook, same membership-date); buying Webstop, Extra or Academic later drops member-desktop
+add_action( 'woocommerce_order_status_completed', 'fsa_v2_desk_role' );
+function fsa_v2_desk_role( $order_id ) {
+	$desk  = (int) FSA_V2_PLAN_PRODUCTS['desk'];
+	$order = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
+	if ( ! $order || ! $order->get_customer_id() ) return;
+	$ids = array();
+	foreach ( $order->get_items() as $it ) $ids[] = (int) $it->get_product_id();
+	$user = new WP_User( (int) $order->get_customer_id() );
+	if ( $desk && in_array( $desk, $ids, true ) ) {
+		update_user_meta( $user->ID, 'membership-date', date( 'd/m/Y' ) );
+		foreach ( array( 'member-webstop', 'member-extra', 'member-academic' ) as $r ) $user->remove_role( $r );
+		$user->add_role( 'member-desktop' );
+	} elseif ( array_intersect( array( 12652, 14162, 14168 ), $ids ) ) {
+		$user->remove_role( 'member-desktop' );
+	}
 }
 function fsa_v2_addon_grant( $order_id ) {
 	$order = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
