@@ -68,18 +68,6 @@ export function buildFocus(d: InsightsData, s: Summary, nav: Nav): Focus[] {
     });
   }
 
-  const tip = d.businessTips[0];
-  if (tip) {
-    out.push({
-      level: 'info',
-      icon: tip.icon,
-      title: tip.title,
-      action: tip.why,
-      go: () => nav.go('business', { month: d.month }),
-      goLabel: 'לעסק',
-    });
-  }
-
   if (d.funds.length === 0) {
     out.push({
       level: 'info',
@@ -119,6 +107,18 @@ export function buildFocus(d: InsightsData, s: Summary, nav: Nav): Focus[] {
   return out.sort((a, b) => rank[a.level] - rank[b.level]).slice(0, 3);
 }
 
+const GROUP_HINT: Record<string, string> = {
+  'קבועות חיוניות': 'חשבונות שחוזרים כל חודש ואי אפשר בלעדיהם – דיור, ארנונה, חשמל, מים, ביטוחים, תקשורת.',
+  'משתנות חיוניות': 'צרכים שהסכום שלהם משתנה מחודש לחודש – אוכל, בריאות, חינוך, תחבורה.',
+  'איכות חיים': 'מה שמשמח ולא הכרחי – בילויים, מסעדות, מנויים, קניות כלליות.',
+  'הוצאות שנתיות': 'הוצאות שבאות פעם או פעמיים בשנה – חגים, שמחות, ביגוד, חופשות, תיקונים.',
+  'חובות': 'החזרי הלוואות, ריבית ועמלות מינוס.',
+  'נתינה': 'מעשר וצדקה.',
+  'מסים': 'מע"מ, מקדמות מס הכנסה וביטוח לאומי.',
+  'חיסכון ונכסים': 'פנסיה, גמל, השתלמות וחיסכון.',
+  'הקטגוריות שלי': 'קטגוריות שיצרת בעצמך.',
+};
+
 const SLOTS = ['slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5', 'slot-6'];
 
 export function VisualDashboard({ d, s, nav, onDetail }: { d: InsightsData; s: Summary; nav: Nav; onDetail: () => void }) {
@@ -128,12 +128,12 @@ export function VisualDashboard({ d, s, nav, onDetail }: { d: InsightsData; s: S
   // Where this month's income goes.
   const flow: Slice[] = cy
     ? [
-        { key: 'fixed', label: 'קבועות', value: cy.fixed.monthly, cls: 'slot-1' },
-        { key: 'inst', label: 'תשלומים', value: cy.installments, cls: 'slot-2' },
-        { key: 'funds', label: 'קופות', value: cy.funds, cls: 'slot-3', onClick: () => nav.go('funds') },
-        { key: 'var', label: 'משתנות (צפי)', value: cy.projectedVariable, cls: 'slot-4', onClick: () => nav.go('transactions', { month: d.month }) },
+        { key: 'fixed', label: 'חשבונות קבועים', value: cy.fixed.monthly, cls: 'slot-1' },
+        { key: 'inst', label: 'תשלומים באשראי', value: cy.installments, cls: 'slot-2' },
+        { key: 'funds', label: 'הפרשה לקופות', value: cy.funds, cls: 'slot-3', onClick: () => nav.go('funds') },
+        { key: 'var', label: 'שוטף: אוכל, קניות, דלק', value: cy.projectedVariable, cls: 'slot-4', onClick: () => nav.go('transactions', { month: d.month }) },
         { key: 'joy', label: 'שמחות קטנות', value: cy.joy, cls: 'slot-5' },
-        { key: 'free', label: 'פנוי', value: Math.max(0, cy.forecastEnd), cls: 'slot-free' },
+        { key: 'free', label: 'יישאר פנוי', value: Math.max(0, cy.forecastEnd), cls: 'slot-free' },
       ].filter((x) => x.value > 0)
     : [];
 
@@ -175,6 +175,8 @@ export function VisualDashboard({ d, s, nav, onDetail }: { d: InsightsData; s: S
 
   return (
     <div className="stack visual">
+      <InOutCard d={d} nav={nav} />
+
       <section aria-label="המיקוד שלך עכשיו">
         <h3 className="section-title">המיקוד שלך עכשיו</h3>
         <div className="focus">
@@ -210,12 +212,11 @@ export function VisualDashboard({ d, s, nav, onDetail }: { d: InsightsData; s: S
         ))}
       </div>
 
-      <InOutCard d={d} nav={nav} />
-
       <div className="visual-grid">
         {cy && (
           <section className="card vcard">
-            <h3>השבוע</h3>
+            <h3>כמה נשאר להוציא השבוע</h3>
+            <p className="vcard-sub">תקציב לשוטף (אוכל, קניות, דלק), מחושב כך שהחודש ייגמר בלי מינוס. מתחדש בכל יום ראשון.</p>
             <Gauge used={cy.week.spent} total={cy.week.budget} label="נשארו השבוע" tone={weekTone} />
             <div className="vcard-foot">
               <span>
@@ -228,21 +229,38 @@ export function VisualDashboard({ d, s, nav, onDetail }: { d: InsightsData; s: S
 
         {cy && flow.length > 0 && (
           <section className="card vcard">
-            <h3>לאן הולכת ההכנסה החודש</h3>
-            <Donut slices={flow} center={`${cy.forecastEnd >= 0 ? '+' : '−'}${money(Math.abs(cy.forecastEnd))}`} sub="צפי לסוף החודש" />
+            <h3>התוכנית לכל החודש</h3>
+            <p className="vcard-sub">
+              כל ההוצאות הצפויות עד סוף החודש – מה שכבר יצא ומה שעוד יבוא – מול הכנסה צפויה של {money(cy.income.expected)}.
+            </p>
+            <Donut slices={flow} center={money(Math.abs(cy.forecastEnd))} sub={cy.forecastEnd >= 0 ? 'יישאר בסוף החודש' : 'יחסר בסוף החודש'} />
           </section>
         )}
 
         {spend.length > 0 && (
           <section className="card vcard">
-            <h3>על מה הלך הכסף של הבית</h3>
-            <Donut slices={spend} center={money(spendTotal)} sub="החודש" />
+            <h3>מה כבר יצא החודש</h3>
+            <p className="vcard-sub">הוצאות הבית בפועל מתחילת החודש (בלי העסק), לפי סוג. לחיצה על סוג מציגה את התנועות.</p>
+            <Donut slices={spend} center={money(spendTotal)} sub="יצא עד היום" />
+            <details className="vcard-more">
+              <summary>מה ההבדל בין הסוגים?</summary>
+              <ul>
+                {spend
+                  .filter((x) => GROUP_HINT[x.key])
+                  .map((x) => (
+                    <li key={x.key}>
+                      <b>{x.label}:</b> {GROUP_HINT[x.key]}
+                    </li>
+                  ))}
+              </ul>
+            </details>
           </section>
         )}
 
         {d.health && (
           <section className="card vcard">
             <h3>מדד היציבות</h3>
+            <p className="vcard-sub">ציון 0–100 על כרית ביטחון, יציבות הכנסה, חובות וסדר בנתונים. מעל 70 – יציב.</p>
             <ScoreRing score={d.health.score} size={150} />
             <div className="health-label center-text">{d.health.label}</div>
             <div className="vcard-foot">
@@ -258,6 +276,7 @@ export function VisualDashboard({ d, s, nav, onDetail }: { d: InsightsData; s: S
         {d.funds.length > 0 && (
           <section className="card vcard">
             <h3>הקופות שלי</h3>
+            <p className="vcard-sub">כסף שמפרישים כל חודש להוצאות שנתיות. הטבעת מראה כמה כבר נוצל השנה מתוך הסכום השנתי.</p>
             <div className="fund-rings">
               {d.funds.slice(0, 6).map((f) => (
                 <button key={f.id} className="fund-ring" onClick={() => nav.go('funds')} title={`${f.name}: ${money(f.spentThisYear)} מתוך ${money(f.annualAmount)}`}>
@@ -273,6 +292,7 @@ export function VisualDashboard({ d, s, nav, onDetail }: { d: InsightsData; s: S
         {d.cards.length > 0 && (
           <section className="card vcard">
             <h3>חיובי האשראי הבאים</h3>
+            <p className="vcard-sub">הסכום שצפוי לרדת מהבנק בחיוב הקרוב של כל כרטיס.</p>
             <div className="card-bars">
               {d.cards.map((c) => {
                 const max = Math.max(...d.cards.map((x) => x.amount), 1);
@@ -339,7 +359,10 @@ function InOutCard({ d, nav }: { d: InsightsData; nav: Nav }) {
   return (
     <section className="card inout" aria-label="הכנסות מול הוצאות">
       <div className="inout-head">
-        <h3>הכנסות מול הוצאות</h3>
+        <div>
+          <h3>הכנסות מול הוצאות</h3>
+          <p className="vcard-sub">כל מה שנכנס לחשבונות מול כל מה שיצא מהם, בלי העברות בין החשבונות שלך.</p>
+        </div>
         {hasBusiness && (
           <div className="seg-toggle" role="group" aria-label="של מה">
             {(
@@ -422,7 +445,135 @@ function InOutCard({ d, nav }: { d: InsightsData; nav: Nav }) {
           </TableToggle>
         </div>
       </div>
+
+      <Ideas d={d} nav={nav} scope={scope} />
     </section>
+  );
+}
+
+interface Idea {
+  key: string;
+  icon: string;
+  title: string;
+  why: string;
+  monthly: number | null;
+  go?: () => void;
+}
+
+const INCOME_TIPS = new Set(['pricing', 'concentration', 'retainer', 'collect', 'ownerpay_low']);
+const EXPENSE_TIPS = new Set(['fees', 'margin', 'marketing', 'invoices']);
+
+// Concrete ways to widen the gap: more coming in, less going out. Only ideas
+// the numbers actually point to – an empty side says so instead of padding.
+export function buildIdeas(d: InsightsData, nav: Nav, scope: InOutScope): { income: Idea[]; expenses: Idea[] } {
+  const toBiz = () => nav.go('business', { month: d.month });
+  const tip = (t: InsightsData['businessTips'][number]): Idea => ({ key: t.key, icon: t.icon, title: t.title, why: t.why, monthly: t.impact, go: toBiz });
+  const biz = scope !== 'home';
+  const home = scope !== 'business';
+
+  const income: Idea[] = biz ? d.businessTips.filter((t) => INCOME_TIPS.has(t.key)).map(tip) : [];
+  const expenses: Idea[] = biz ? d.businessTips.filter((t) => EXPENSE_TIPS.has(t.key)).map(tip) : [];
+
+  if (home) {
+    for (const r of d.recurring) {
+      if (r.amount >= 0 || r.isTax || r.scope === 'business') continue;
+      const monthly = -r.amount / r.periodMonths;
+      if (r.priceChangePct !== null && r.priceChangePct >= 0.05) {
+        expenses.push({
+          key: `rise-${r.key}`,
+          icon: '📈',
+          title: `${r.name} התייקר ב-${Math.round(r.priceChangePct * 100)}%`,
+          why: `עכשיו ${money(monthly)} בחודש. שיחה לשימור לקוחות או השוואה לחברה אחרת מחזירה לרוב את ההפרש, ולפעמים יותר.`,
+          monthly: Math.round(monthly - monthly / (1 + r.priceChangePct)),
+        });
+      } else if (r.isNew) {
+        expenses.push({
+          key: `new-${r.key}`,
+          icon: '🆕',
+          title: `חיוב קבוע חדש: ${r.name}`,
+          why: `${money(monthly)} בחודש, ${money(r.annual)} בשנה. אם זה מנוי שנפתח לניסיון – זה הזמן להחליט אם הוא נשאר.`,
+          monthly: Math.round(monthly),
+        });
+      }
+    }
+
+    const subs = d.recurring.filter((r) => r.amount < 0 && !r.isTax && r.scope !== 'business' && r.accountKind === 'card' && r.periodMonths === 1);
+    if (subs.length >= 4) {
+      const annual = subs.reduce((s, r) => s + r.annual, 0);
+      expenses.push({
+        key: 'subs',
+        icon: '🔁',
+        title: `${subs.length} חיובים חודשיים קבועים באשראי`,
+        why: `יחד ${money(annual / 12)} בחודש (${money(annual)} בשנה). מעבר אחד עליהם בשנה – מה עוד בשימוש – חוסך בדרך כלל אחד או שניים.`,
+        monthly: null,
+        go: () => nav.go('dashboard', { view: 'detail' }),
+      });
+    }
+
+    if (d.isCurrent && d.pace.avgFull !== null && d.pace.projected > d.pace.avgFull * 1.1 && d.pace.day >= 7) {
+      const over = d.pace.projected - d.pace.avgFull;
+      const top = d.categories.filter((c) => c.deltaPct !== null && c.deltaPct > 0.2 && c.total - c.avg > 100).sort((a, b) => b.total - b.avg - (a.total - a.avg))[0];
+      expenses.push({
+        key: 'pace',
+        icon: '🧺',
+        title: `בקצב הזה החודש יגיע ל-${money(d.pace.projected)}`,
+        why: `כ-${money(over)} יותר מחודש רגיל.${top ? ` הכי בולט: ${top.name} – ${money(top.total)} עד עכשיו, לעומת ${money(top.avg)} בחודש רגיל.` : ''}`,
+        monthly: null,
+        go: () => nav.go('transactions', { month: d.month, ...(top ? { categoryId: String(top.categoryId) } : {}) }),
+      });
+    } else {
+      const top = d.categories.filter((c) => c.deltaPct !== null && c.deltaPct > 0.25 && c.total - c.avg > 150).sort((a, b) => b.total - b.avg - (a.total - a.avg))[0];
+      if (top)
+        expenses.push({
+          key: 'cat',
+          icon: '🔎',
+          title: `${top.name}: ${money(top.total - top.avg)} יותר מהרגיל`,
+          why: `${money(top.total)} ${d.isCurrent ? 'עד עכשיו' : 'בחודש הזה'}, לעומת ${money(top.avg)} בחודש רגיל. כדאי להציץ בתנועות ולראות אם זה חד-פעמי.`,
+          monthly: null,
+          go: () => nav.go('transactions', { month: d.month, categoryId: String(top.categoryId) }),
+        });
+    }
+  }
+
+  const byImpact = (a: Idea, b: Idea) => (b.monthly ?? 0) - (a.monthly ?? 0);
+  return { income: income.slice(0, 3), expenses: expenses.sort(byImpact).slice(0, 3) };
+}
+
+function Ideas({ d, nav, scope }: { d: InsightsData; nav: Nav; scope: InOutScope }) {
+  const { income, expenses } = buildIdeas(d, nav, scope);
+  const col = (title: string, icon: string, list: Idea[], empty: string) => (
+    <div className="ideas-col">
+      <h4>
+        <span aria-hidden>{icon}</span> {title}
+      </h4>
+      {list.length === 0 && <p className="muted small">{empty}</p>}
+      {list.map((i) => (
+        <article key={i.key} className="idea">
+          <span className="idea-icon" aria-hidden>
+            {i.icon}
+          </span>
+          <div>
+            <div className="idea-title">
+              {i.title}
+              {i.monthly ? <span className="idea-gain">עד {money(i.monthly)} בחודש</span> : null}
+            </div>
+            <p className="small">{i.why}</p>
+            {i.go && (
+              <button className="link small" onClick={i.go}>
+                לפרטים ←
+              </button>
+            )}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="ideas">
+      {col('להגדלת ההכנסה', '🌱', income, scope === 'home' ? 'הצעות להגדלת הכנסה מגיעות מנתוני העסק – אפשר לעבור ל"הכול" או ל"עסק".' : 'אין כרגע הצעה שהמספרים מצביעים עליה.')}
+      {col('להקטנת ההוצאות', '✂️', expenses, 'לא נמצאה הוצאה שהתייקרה או חרגה מהרגיל. יפה.')}
+    </div>
   );
 }
 

@@ -71,6 +71,7 @@ export function Dashboard({ nav }: { nav: Nav }) {
   const cur = data.trend[data.trend.length - 1];
   const firstWithData = data.trend.findIndex((q) => q.income > 0 || q.expenses > 0);
   const trendData = data.trend.slice(Math.max(0, firstWithData)).map((p) => ({ label: shortMonth(p.month), income: p.income, expenses: p.expenses }));
+  const bizTips = data.businessTips.filter((t) => t.relevance === 'high').slice(0, 2);
   const homeCats = data.categories.filter((c) => c.total > 0).slice(0, 9);
   const pace = data.pace;
   const paceOver = pace.avgFull !== null && pace.projected > pace.avgFull * 1.05;
@@ -215,7 +216,7 @@ export function Dashboard({ nav }: { nav: Nav }) {
         </div>
       )}
 
-      {(data.insights.length > 0 || data.businessTips.length > 0) && (
+      {(data.insights.length > 0 || bizTips.length > 0) && (
         <section>
           <div className="row between section-head">
             <h3>מה כדאי לדעת</h3>
@@ -225,10 +226,10 @@ export function Dashboard({ nav }: { nav: Nav }) {
               </button>
             )}
           </div>
-          <InsightCards insights={data.insights.slice(0, data.businessTips.length ? 3 : 4)} nav={nav} />
-          {data.businessTips.length > 0 && (
+          <InsightCards insights={data.insights.slice(0, bizTips.length ? 3 : 4)} nav={nav} />
+          {bizTips.length > 0 && (
             <div className="insights biz-tips">
-              {data.businessTips.map((t) => (
+              {bizTips.map((t) => (
                 <article key={t.key} className="insight biz">
                   <div className="insight-icon" aria-hidden>
                     {t.icon}

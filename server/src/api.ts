@@ -585,7 +585,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
       insights: buildInsights({ month, isCurrent, trend, categories, recurring, pace, forecast: fc, business, merchants, uncategorized, completeEnd, funds }),
       cycle: isCurrent ? cycleView(db, today, recurring, funds) : null,
       cards: cardBills(db, today),
-      businessTips: business.hasBusiness ? businessData(db, month, today).tips.filter((t) => t.relevance === 'high').slice(0, 2) : [],
+      businessTips: business.hasBusiness ? businessData(db, month, today).tips : [],
       uncategorized,
       reviews: (db.prepare("SELECT COUNT(*) AS n, COALESCE(SUM(-amount), 0) AS total, MIN(review_opened_at) AS oldest FROM transactions WHERE review_status = 'open'").get() as {
         n: number;
