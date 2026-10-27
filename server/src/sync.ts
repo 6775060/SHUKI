@@ -87,7 +87,7 @@ export class SyncService {
 
   private async syncOne(connectionId: number): Promise<void> {
     const conn = this.db.prepare('SELECT * FROM connections WHERE id = ?').get(connectionId) as ConnectionRow | undefined;
-    if (!conn || !this.vault.isUnlocked()) return;
+    if (!conn || !conn.credentials_enc || !this.vault.isUnlocked()) return;
     const institution = getInstitution(conn.company_id);
     if (!institution) return;
 

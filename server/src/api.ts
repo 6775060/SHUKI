@@ -94,6 +94,14 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     res.json({ token: newSession() });
   });
 
+  api.post('/reset', (req, res) => {
+    z.object({ confirm: z.literal('איפוס') }).parse(req.body);
+    sessions.clear();
+    vault.reset();
+    failedAttempts = 0;
+    res.json({ ok: true });
+  });
+
   api.post('/lock', requireSession, (_req, res) => {
     sessions.clear();
     vault.lock();
@@ -167,7 +175,8 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
         res.status(400).json({ error: 'MISSING_FIELDS' });
         return;
       }
-      db.prepare('UPDATE connections SET credentials_enc = ?, last_error = NULL WHERE id = ?').run(vault.seal(creds), id);
+      // A login wiped by a password reset comes back to life with its new details.
+      db.prepare("UPDATE connections SET enabled = CASE WHEN credentials_enc = '' THEN 1 ELSE enabled END, credentials_enc = ?, last_error = NULL WHERE id = ?").run(vault.seal(creds), id);
     }
     res.json({ ok: true });
   });

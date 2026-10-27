@@ -64,6 +64,22 @@ export class Vault {
     return true;
   }
 
+  // Forgotten password: the sealed logins can't be opened without it, so they are
+  // dropped and the vault starts over. Transactions and settings stay.
+  reset(): void {
+    this.lock();
+    this.db.exec('BEGIN');
+    try {
+      this.db.exec(`DELETE FROM meta WHERE key IN ('vault_salt', 'vault_verifier', 'sumit_creds', 'sumit_last_sync', 'sumit_error')`);
+      this.db.exec(`UPDATE connections SET credentials_enc = '', enabled = 0, last_status = 'error',
+        last_error = 'אחרי איפוס סיסמת-העל צריך להזין שוב את פרטי הכניסה (עריכה ← החלפת פרטי כניסה).'`);
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
+  }
+
   lock(): void {
     this.key?.fill(0);
     this.key = null;

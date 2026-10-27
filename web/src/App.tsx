@@ -71,6 +71,7 @@ export function App() {
           setToken(token);
           setState('open');
         }}
+        onReset={() => setState('setup')}
       />
     );
   }

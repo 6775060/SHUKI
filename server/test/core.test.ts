@@ -36,6 +36,20 @@ describe('vault', () => {
     expect(v.open(sealed)).toEqual({ username: 'a', password: 'b' });
   });
 
+  it('resets a forgotten password, dropping logins but keeping data', () => {
+    const v = new Vault(db);
+    v.setup('forgotten one');
+    db.prepare("INSERT INTO connections (company_id, label, credentials_enc) VALUES ('max', 'מקס', ?)").run(v.seal({ a: 1 }));
+    v.lock();
+    v.reset();
+    expect(v.isInitialized()).toBe(false);
+    v.setup('a brand new one');
+    const c = db.prepare('SELECT credentials_enc, enabled, last_error FROM connections').get() as { credentials_enc: string; enabled: number; last_error: string };
+    expect(c.credentials_enc).toBe('');
+    expect(c.enabled).toBe(0);
+    expect(c.last_error).toContain('איפוס');
+  });
+
   it('detects tampering', () => {
     const key = Buffer.alloc(32, 7);
     const payload = encrypt(key, 'secret');

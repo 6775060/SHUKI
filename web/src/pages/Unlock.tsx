@@ -1,11 +1,55 @@
 import { useState, type FormEvent } from 'react';
 import { api, ApiError } from '../api';
 
-export function Unlock({ mode, onDone }: { mode: 'setup' | 'locked'; onDone: (token: string) => void }) {
+export function Unlock({ mode, onDone, onReset }: { mode: 'setup' | 'locked'; onDone: (token: string) => void; onReset: () => void }) {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [forgot, setForgot] = useState(false);
+  const [resetWord, setResetWord] = useState('');
+
+  const reset = async () => {
+    setBusy(true);
+    try {
+      await api('/reset', { method: 'POST', json: { confirm: resetWord.trim() } });
+      setPassword('');
+      setForgot(false);
+      onReset();
+    } catch {
+      setError('האיפוס לא הצליח. נסו שוב.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (forgot) {
+    return (
+      <div className="center">
+        <div className="card unlock">
+          <h1>שכחתי את סיסמת-העל</h1>
+          <p className="muted">
+            את הסיסמה עצמה אי אפשר לשחזר – היא לא נשמרת בשום מקום, וזה מה ששומר על פרטי הבנק שלך. אבל אפשר <b>לאפס</b> ולבחור סיסמה חדשה.
+          </p>
+          <ul className="small">
+            <li>✓ נשמרים: כל התנועות, הקטגוריות, הכללים, הבירורים וההגדרות.</li>
+            <li>✗ נמחקים: פרטי הכניסה לבנקים, לכרטיסים ול-SUMIT. אחרי האיפוס מזינים אותם שוב במסך "חיבורים".</li>
+          </ul>
+          <label>
+            כדי לאשר, כתבו <b>איפוס</b>
+            <input value={resetWord} onChange={(e) => setResetWord(e.target.value)} autoFocus />
+          </label>
+          {error && <div className="error">{error}</div>}
+          <button className="primary" disabled={busy || resetWord.trim() !== 'איפוס'} onClick={reset}>
+            {busy ? 'רגע…' : 'איפוס ובחירת סיסמה חדשה'}
+          </button>
+          <button className="link small" onClick={() => setForgot(false)}>
+            חזרה – נזכרתי
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -59,6 +103,18 @@ export function Unlock({ mode, onDone }: { mode: 'setup' | 'locked'; onDone: (to
         <button className="primary" disabled={busy}>
           {busy ? 'רגע…' : mode === 'setup' ? 'יוצאים לדרך' : 'פתיחה'}
         </button>
+        {mode === 'locked' && (
+          <button
+            type="button"
+            className="link small"
+            onClick={() => {
+              setError('');
+              setForgot(true);
+            }}
+          >
+            שכחתי סיסמה
+          </button>
+        )}
       </form>
     </div>
   );
