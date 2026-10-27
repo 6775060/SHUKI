@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '94' );
+define( 'FSA_V2_BUILD', '95' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -1034,24 +1034,28 @@ function fsa_v2_studio_admin() {
 		$f = $s['fonts'][ $i ] ?? array( 'name' => '', 'desc' => '', 'he' => '', 'en' => '', 'img' => '' );
 		echo '<section class="fsa-box" data-i="' . $i . '"><h2>פונט ' . ( $i + 1 ) . '</h2><div class="fsa-f">'
 			. '<div class="r2"><label>שם עבודה<input type="text" name="f[' . $i . '][name]" value="' . esc_attr( $f['name'] ) . '"></label><label>קובץ משקל (לא עולה לאתר)<input type="file" class="fsa-file" accept=".woff2,.woff,.ttf,.otf"></label></div>'
+			. '<label>או תמונה מוכנה (jpg, png, webp; נחתכת ל־1200×600)<input type="file" class="fsa-pic" accept="image/jpeg,image/png,image/webp"></label>'
 			. '<div class="r2"><label>מילה בעברית<input type="text" class="fsa-he" name="f[' . $i . '][he]" value="' . esc_attr( $f['he'] ) . '" maxlength="24"></label><label>מילה באנגלית<input type="text" class="fsa-en" name="f[' . $i . '][en]" value="' . esc_attr( $f['en'] ) . '" maxlength="24" dir="ltr"></label></div>'
 			. '<label>תיאור קצר<textarea name="f[' . $i . '][desc]" maxlength="160" rows="2">' . esc_textarea( $f['desc'] ) . '</textarea></label>'
 			. '<div><b>רקע</b><div class="fsa-bgs"></div></div><input type="hidden" class="fsa-img" name="f[' . $i . '][img]" value=""></div>'
-			. '<div class="fsa-p"><canvas width="1200" height="600"></canvas><p class="fsa-note">' . ( $f['img'] ? 'התמונה הנוכחית למטה. כדי ליצור תמונה חדשה בוחרים שוב את קובץ המשקל.' : 'בוחרים קובץ משקל, והתמונה נוצרת כאן.' ) . '</p>' . ( $f['img'] ? '<img src="' . esc_url( $f['img'] ) . '" alt="" style="width:100%;border-radius:12px">' : '' ) . '</div></section>';
+			. '<div class="fsa-p"><canvas width="1200" height="600"></canvas><p class="fsa-note">' . ( $f['img'] ? 'התמונה הנוכחית למטה. כדי להחליף: בוחרים שוב קובץ משקל או תמונה מוכנה.' : 'בוחרים קובץ משקל, והתמונה נוצרת כאן. אפשר גם להעלות תמונה מוכנה.' ) . '</p>' . ( $f['img'] ? '<img src="' . esc_url( $f['img'] ) . '" alt="" style="width:100%;border-radius:12px">' : '' ) . '</div></section>';
 	}
 	echo '<p><button class="button button-primary">שמירה</button></p></form>';
 	echo <<<'FSAJS'
 <script>(function(){
 const BGS=[['#EFE8FF','#FDE7F6','#2A1F4F'],['#1F1838','#4A2C7A','#FFFFFF'],['#FFFFFF','#F4F1FA','#151515'],['#FFF3C4','#FFD9E8','#3A1E00']];
-document.querySelectorAll('.fsa-box').forEach(box=>{const i=box.dataset.i,c=box.querySelector('canvas'),he=box.querySelector('.fsa-he'),en=box.querySelector('.fsa-en'),out=box.querySelector('.fsa-img'),bgs=box.querySelector('.fsa-bgs');let bg=0,fam='',dirty=false;
+document.querySelectorAll('.fsa-box').forEach(box=>{const i=box.dataset.i,c=box.querySelector('canvas'),he=box.querySelector('.fsa-he'),en=box.querySelector('.fsa-en'),out=box.querySelector('.fsa-img'),bgs=box.querySelector('.fsa-bgs');let bg=0,fam='',dirty=false,pic=null;
  BGS.forEach((b,j)=>{const x=document.createElement('button');x.type='button';x.style.background=`linear-gradient(135deg,${b[0]},${b[1]})`;x.setAttribute('aria-pressed',j===0);x.setAttribute('aria-label','רקע '+(j+1));x.onclick=()=>{bg=j;bgs.querySelectorAll('button').forEach((y,k)=>y.setAttribute('aria-pressed',k===j));draw()};bgs.appendChild(x)});
- function draw(){const x=c.getContext('2d'),W=c.width,H=c.height,b=BGS[bg],f=fam?`fsaS${i}`:'sans-serif',g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,b[0]);g.addColorStop(1,b[1]);x.fillStyle=g;x.fillRect(0,0,W,H);x.fillStyle=b[2];x.textAlign='center';x.textBaseline='middle';
+ function draw(){const x=c.getContext('2d'),W=c.width,H=c.height,b=BGS[bg],k=pic&&Math.max(W/pic.width,H/pic.height);
+  if(pic){x.drawImage(pic,(W-pic.width*k)/2,(H-pic.height*k)/2,pic.width*k,pic.height*k);out.value=c.toDataURL('image/jpeg',.88);return}
+  const f=fam?`fsaS${i}`:'sans-serif',g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,b[0]);g.addColorStop(1,b[1]);x.fillStyle=g;x.fillRect(0,0,W,H);x.fillStyle=b[2];x.textAlign='center';x.textBaseline='middle';
   const fit=(t,max,s,dir)=>{x.direction=dir;do{x.font=`${s}px ${f}`;s-=4}while(x.measureText(t).width>max&&s>20);return s+4};
   const hs=fit(he.value||' ',W*.84,220,'rtl');x.direction='rtl';x.font=`${hs}px ${f}`;x.fillText(he.value,W/2,H*(en.value?.42:.5));
   if(en.value){const es=Math.min(fit(en.value,W*.7,Math.round(hs*.42),'ltr'),110);x.direction='ltr';x.globalAlpha=.82;x.font=`${es}px ${f}`;x.fillText(en.value,W/2,H*.42+hs*.62);x.globalAlpha=1}
   if(dirty)out.value=c.toDataURL('image/jpeg',.88)}
  he.addEventListener('input',draw);en.addEventListener('input',draw);
- box.querySelector('.fsa-file').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const ff=new FontFace(`fsaS${i}`,await file.arrayBuffer());await ff.load();document.fonts.add(ff);fam=file.name;dirty=true;draw()}catch(err){alert('לא הצלחתי לקרוא את הקובץ. נסו woff2, woff, ttf או otf של משקל אחד.')}});
+ box.querySelector('.fsa-pic').addEventListener('change',e=>{const file=e.target.files[0];if(!file)return;const im=new Image();im.onload=()=>{pic=im;draw();URL.revokeObjectURL(im.src)};im.onerror=()=>alert('לא הצלחתי לקרוא את התמונה. נסו jpg, png או webp.');im.src=URL.createObjectURL(file)});
+ box.querySelector('.fsa-file').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const ff=new FontFace(`fsaS${i}`,await file.arrayBuffer());await ff.load();document.fonts.add(ff);fam=file.name;dirty=true;pic=null;draw()}catch(err){alert('לא הצלחתי לקרוא את הקובץ. נסו woff2, woff, ttf או otf של משקל אחד.')}});
  draw()});
 })();</script>
 FSAJS;
