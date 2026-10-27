@@ -117,6 +117,7 @@ Every item below was a decision by the site owner (the user).
 | 103 | "בסטודיו" on for customers (`FSA_V2_FEATURES = 'studio'`), only for subscribers (no plan = no studio data, no menu item); the sites view stays admin-only | snippet |
 | 104 | "בלי מינוי": the plan comparison is folded behind its heading (opens on click) | snippet |
 | 105 | Site pictures diagnostics on the approval screen: last round (time, asked, received, last error), "סבב צילומים עכשיו", "צילום" per waiting site; a failed single picture shows the service's reason | snippet |
+| 106 | Sites view: share = icon only (aria-label "שיתוף"); address = bare domain (no https://, www. or path), one line, cut with …. Fix: old registrations stored the typed URL, so `fsa_v2_user_sites()` keys by the bare domain now; before, the customer's pictures (keyed by bare domain) were never matched | snippet |
 
 **Tests:** `php wp-snippet/tests/data-test.php` `php wp-snippet/tests/domains-test.php`, `php wp-snippet/tests/rollout-test.php` and `php wp-snippet/tests/addon-test.php` (server rules) and `sh wp-snippet/tests/run.sh` renders the snippet with sample data and checks every view and action at 390 and 1280px, on a plain page and under a deliberately aggressive theme (must match). It fails on the previous build (identical labels, messages off screen, gradient lost on hover) and passes on the current one.
 

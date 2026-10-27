@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '97' );
+define( 'FSA_V2_BUILD', '98' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -829,14 +829,15 @@ function fsa_v2_showcase_public() {
 function fsa_v2_user_sites( $uid ) {
 	$out = array();
 	foreach ( fsa_v2_domains( $uid ) as $r ) {
-		if ( '' === $r[2] || isset( $out[ $r[2] ] ) ) continue;
-		$out[ $r[2] ] = array( 'name' => $r[1] ? $r[1] : $r[2], 'fonts' => array_values( array_filter( array_map( 'trim', explode( ',', (string) $r[3] ) ) ) ), 'year' => substr( (string) $r[0], -4 ) );
+		$h = fsa_v2_clean_host( $r[2] ); // old rows keep what was typed (https://…, www., a path); pictures are keyed by the bare domain
+		if ( '' === $h || isset( $out[ $h ] ) ) continue;
+		$out[ $h ] = array( 'name' => $r[1] && $r[1] !== $r[2] ? $r[1] : $h, 'fonts' => array_values( array_filter( array_map( 'trim', explode( ',', (string) $r[3] ) ) ) ), 'year' => substr( (string) $r[0], -4 ) );
 	}
 	foreach ( fsa_v2_lic_sites_all( $uid ) as $key => $sites ) {
 		$p = function_exists( 'wc_get_product' ) ? wc_get_product( (int) $key ) : null; // the licence's font: the variation's parent product
 		$fname = $p ? wp_strip_all_tags( method_exists( $p, 'get_parent_id' ) && $p->get_parent_id() ? get_the_title( $p->get_parent_id() ) : $p->get_name() ) : '';
 		foreach ( (array) $sites as $x ) {
-			$h = isset( $x['host'] ) ? $x['host'] : '';
+			$h = fsa_v2_clean_host( isset( $x['host'] ) ? $x['host'] : '' );
 			if ( '' === $h || isset( $out[ $h ] ) ) continue;
 			$out[ $h ] = array( 'name' => ! empty( $x['name'] ) ? $x['name'] : $h, 'fonts' => array_values( array_filter( array( $fname ) ) ), 'year' => isset( $x['d'] ) ? substr( (string) $x['d'], -4 ) : '' );
 		}
@@ -1909,11 +1910,11 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .sc-meta{display:grid;grid-template-columns:auto 1fr;gap:3px 18px;margin:0;font-size:15px}
 :is(#fsa,#fsa-layer) .sc-meta dt{color:var(--faint);font-weight:400}
 :is(#fsa,#fsa-layer) .sc-meta dd{margin:0;color:var(--ink);min-width:0;overflow-wrap:anywhere}
-:is(#fsa,#fsa-layer) .sc-meta .sc-host{text-align:right;font-size:14px}
+:is(#fsa,#fsa-layer) .sc-meta .sc-host{text-align:right;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 :is(#fsa,#fsa-layer) .sc-meta .sc-font{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-:is(#fsa,#fsa-layer) .sc-share{font-size:13px;flex-shrink:0}
-:is(#fsa,#fsa-layer) .sc-share{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;color:var(--violet);font-weight:600}
-:is(#fsa,#fsa-layer) .sc-share .icon{width:16px;height:16px}
+:is(#fsa,#fsa-layer) .sc-share{all:unset;cursor:pointer;display:inline-grid;place-items:center;width:30px;height:30px;margin:-6px 0;border-radius:50%;color:var(--violet);flex-shrink:0}
+:is(#fsa,#fsa-layer) .sc-share:hover{background:#F3ECFD}
+:is(#fsa,#fsa-layer) .sc-share .icon{width:18px;height:18px}
 :is(#fsa,#fsa-layer) .sc-share:focus-visible{outline:2px solid var(--violet);outline-offset:2px;border-radius:4px}
 @media (max-width:1000px){:is(#fsa,#fsa-layer) .st-grid,:is(#fsa,#fsa-layer) .sc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:620px){:is(#fsa,#fsa-layer) .st-grid{grid-template-columns:minmax(0,1fr)}:is(#fsa,#fsa-layer) .sc-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 12px}:is(#fsa,#fsa-layer) .sc-name{font-size:17px}:is(#fsa,#fsa-layer) .sc-meta{font-size:13px;gap:2px 12px}:is(#fsa,#fsa-layer) .sc-mon{padding:4px;border-radius:7px}:is(#fsa,#fsa-layer) .sc-stand i{height:14px}:is(#fsa,#fsa-layer) .st-teaser{flex-wrap:wrap;margin-top:-22px}:is(#fsa,#fsa-layer) .st-teaser .st-t-txt{flex-basis:calc(100% - 140px)}:is(#fsa,#fsa-layer) .st-teaser .btn{order:5;width:100%}:is(#fsa,#fsa-layer) .st-why-row{flex-direction:column}:is(#fsa,#fsa-layer) .st-spec{height:120px;font-size:40px}}
@@ -2522,11 +2523,13 @@ function siteShot(x){const hu=hue(x.host),ff=fontFace((x.fonts||[x.font])[0]),im
 /* one site as a desktop monitor (screen + stand), caption: name, then label / value rows (font, year; own sites also the address) */
 function siteCard(x,mine){const fonts=x.fonts||[x.font],yr=x.year||(x.d?String(x.d).split('.')[2]:'');
  return `<figure class="sc"><a class="sc-mon" href="https://${ea(x.host)}" target="_blank" rel="noopener" aria-label="${ea(x.name)}, ${ea(x.host)}"><span class="sc-screen">${siteShot(x)}</span></a><span class="sc-stand" aria-hidden="true"><i></i><b></b></span>
-  <figcaption><h3 class="sc-name">${ea(x.name)}</h3><dl class="sc-meta"><dt>${fonts.length>1?'פונטים':'פונט'}</dt><dd${mine?' class="sc-font"':''}><span>${fonts.map(ea).join(', ')}</span>${mine?`<button class="sc-share" data-share="${ea(x.host)}">${ICON.share||''}שיתוף</button>`:''}</dd>${yr?`<dt>שנה</dt><dd class="num">${ea(yr)}</dd>`:''}${x.by?`<dt>עיצוב</dt><dd>${ea(x.by)}</dd>`:''}${mine?`<dt>כתובת</dt><dd dir="ltr" class="sc-host">${ea(x.host)}</dd>`:''}</dl></figcaption></figure>`}
+  <figcaption><h3 class="sc-name">${ea(x.name)}</h3><dl class="sc-meta"><dt>${fonts.length>1?'פונטים':'פונט'}</dt><dd${mine?' class="sc-font"':''}><span>${fonts.map(ea).join(', ')}</span>${mine?`<button class="sc-share" data-share="${ea(x.host)}" aria-label="שיתוף" title="שיתוף">${ICON.share||''}</button>`:''}</dd>${yr?`<dt>שנה</dt><dd class="num">${ea(yr)}</dd>`:''}${x.by?`<dt>עיצוב</dt><dd>${ea(x.by)}</dd>`:''}${mine?`<dt>כתובת</dt><dd dir="ltr" class="sc-host">${ea(x.host)}</dd>`:''}</dl></figcaption></figure>`}
 function fontChips(list,cur,attr){return `<div class="chips" role="group" aria-label="סינון לפי פונט"><button ${attr}="" aria-pressed="${!cur}">הכל</button>${list.map(f=>`<button ${attr}="${ea(f)}" aria-pressed="${cur===f}">${ea(f)}</button>`).join('')}</div>`}
 /* the customer's own sites (every registered domain, newest first, one card per address) */
+/* the bare domain: no https://, www. or path (old registrations kept whatever was typed) */
+const bareHost=h=>String(h||'').trim().toLowerCase().replace(/^[a-z]+:\/\//,'').replace(/^www\./,'').split(/[\/?#]/)[0];
 function mySites(){const seen=new Set(),out=[];
- const rows=[...(SUBDOM[state.plan]||[]).map(s=>({d:s[0],name:s[1],host:s[2],fonts:String(s[3]).split(',').map(x=>x.trim()).filter(Boolean)})),...LIC.filter(l=>l.web).flatMap(l=>(l.sites||[]).map(s=>({d:s[0],name:s[1]||siteName(s[2]),host:s[2],fonts:[l.f]})))].sort((a,b)=>parseD(b.d)-parseD(a.d));
+ const rows=[...(SUBDOM[state.plan]||[]).map(s=>({d:s[0],name:s[1]&&s[1]!==s[2]?s[1]:bareHost(s[2]),host:bareHost(s[2]),fonts:String(s[3]).split(',').map(x=>x.trim()).filter(Boolean)})),...LIC.filter(l=>l.web).flatMap(l=>(l.sites||[]).map(s=>({d:s[0],name:s[1]||siteName(bareHost(s[2])),host:bareHost(s[2]),fonts:[l.f]})))].sort((a,b)=>parseD(b.d)-parseD(a.d));
  rows.forEach(r=>{if(!r.host||seen.has(r.host))return;seen.add(r.host);out.push(r)});return out}
 function domGallery(){const all=mySites(),fonts=[...new Set(all.flatMap(x=>x.fonts))],f=state.myF||'',items=f?all.filter(x=>x.fonts.includes(f)):all;
  return `${fontChips(fonts,f,'data-myf')}<div class="sc-grid">${items.map(x=>siteCard(x,true)).join('')||'<p class="empty">עוד אין אתרים רשומים.</p>'}</div>

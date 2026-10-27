@@ -103,6 +103,7 @@ $u = fsa_v2_snap( 'studio.co.il' ); $t( 0 === strpos( $u, 'https://site/up/fsa-s
 $t( $GLOBALS['opt']['fsa_v2_snap_log']['got'] >= 1, 'the log counts the pictures that arrived' );
 $GLOBALS['asked'] = array(); fsa_v2_snap_run(); $t( array() === $GLOBALS['asked'], 'sites with a picture are not asked again' );
 $t( array( 'studio.co.il' => $u ) === fsa_v2_user_snaps( 7 ), 'the customer gets the pictures of their own sites' );
+$t( array( 'noa.co.il', 'studio.co.il' ) === array_keys( fsa_v2_user_sites( 8 ) ), 'a site typed as https://www.… is keyed by the bare domain, so its picture is found' );
 $t( $u === fsa_v2_showcase_public()[0]['img'] || 'lavana.co.il' === fsa_v2_showcase_public()[0]['host'], 'gallery uses the picture' );
 $t( false !== strpos( fsa_v2_site_card_html( 'סטודיו', 'studio.co.il', array( 'פורטו' ), '2026' ), $u ), 'the share page shows the real picture' );
 $GLOBALS['shot'] = ''; $GLOBALS['opt']['fsa_v2_snaps']['gone.co.il'] = array( 'u' => '', 'n' => 6, 't' => 0 );
