@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import type { InsightsData, Summary } from '../api';
-import { date, money } from '../format';
-import { Donut, Gauge, ScoreRing, type Slice } from '../charts';
+import { currentMonth, date, money, monthLabel } from '../format';
+import { Donut, Gauge, IncomeExpenseChart, ScoreRing, TableToggle, type Slice } from '../charts';
 import type { Nav } from '../App';
 
 // The visual home view: a few shapes instead of many numbers, with the one to
@@ -209,6 +210,8 @@ export function VisualDashboard({ d, s, nav, onDetail }: { d: InsightsData; s: S
         ))}
       </div>
 
+      <InOutCard d={d} nav={nav} />
+
       <div className="visual-grid">
         {cy && (
           <section className="card vcard">
@@ -297,6 +300,129 @@ export function VisualDashboard({ d, s, nav, onDetail }: { d: InsightsData; s: S
         </button>
       </div>
     </div>
+  );
+}
+
+type InOutScope = 'all' | 'home' | 'business';
+
+const shortMonth = (m: string) => {
+  const [y, mo] = m.split('-').map(Number);
+  return new Date(y, mo - 1, 1).toLocaleDateString('he-IL', { month: 'short' });
+};
+
+// The central picture: what came in against what went out, this month and
+// over the last year, for the home, the business or both together.
+function InOutCard({ d, nav }: { d: InsightsData; nav: Nav }) {
+  const [scope, setScope] = useState<InOutScope>('all');
+  const hasBusiness = d.trend.some((p) => p.bizIncome > 0 || p.bizExpenses > 0);
+  const pick = (p: InsightsData['trend'][number]) =>
+    scope === 'business'
+      ? { income: p.bizIncome, expenses: p.bizExpenses }
+      : scope === 'home'
+        ? { income: p.income - p.bizIncome, expenses: p.expenses - p.bizExpenses }
+        : { income: p.income, expenses: p.expenses };
+
+  const firstWithData = d.trend.findIndex((p) => p.income > 0 || p.expenses > 0);
+  if (firstWithData < 0) return null;
+  const points = d.trend.slice(Math.max(firstWithData, d.trend.length - 12)).map((p) => ({ month: p.month, ...pick(p) }));
+  const cur = points.find((p) => p.month === d.month) ?? points[points.length - 1];
+  const net = cur.income - cur.expenses;
+  const partial = cur.month === currentMonth();
+  const before = points.filter((p) => p.month < cur.month && (p.income > 0 || p.expenses > 0)).slice(-3);
+  const avg = (key: 'income' | 'expenses') => (before.length ? before.reduce((s, p) => s + p[key], 0) / before.length : null);
+  const avgIn = avg('income');
+  const avgOut = avg('expenses');
+  const yearNet = points.reduce((s, p) => s + p.income - p.expenses, 0);
+  const chart = points.map((p) => ({ label: shortMonth(p.month), income: p.income, expenses: p.expenses }));
+  const bar = Math.max(cur.income, cur.expenses, 1);
+
+  return (
+    <section className="card inout" aria-label="הכנסות מול הוצאות">
+      <div className="inout-head">
+        <h3>הכנסות מול הוצאות</h3>
+        {hasBusiness && (
+          <div className="seg-toggle" role="group" aria-label="של מה">
+            {(
+              [
+                ['all', 'הכול'],
+                ['home', 'בית'],
+                ['business', 'עסק'],
+              ] as const
+            ).map(([k, label]) => (
+              <button key={k} className={scope === k ? 'on' : ''} aria-pressed={scope === k} onClick={() => setScope(k)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="inout-body">
+        <div className="inout-now">
+          <div className="muted small">
+            {monthLabel(cur.month)}
+            {partial ? ' · עד היום' : ''}
+          </div>
+          <div className="inout-row">
+            <span>נכנס</span>
+            <div className="inout-track">
+              <div className="inout-fill s1-bg" style={{ width: `${(cur.income / bar) * 100}%` }} />
+            </div>
+            <b>{money(cur.income)}</b>
+          </div>
+          <div className="inout-row">
+            <span>יצא</span>
+            <div className="inout-track">
+              <div className="inout-fill s2-bg" style={{ width: `${(cur.expenses / bar) * 100}%` }} />
+            </div>
+            <b>{money(cur.expenses)}</b>
+          </div>
+          <div className={`inout-net ${net >= 0 ? 'plus' : 'minus'}`}>
+            {net >= 0 ? 'נשאר' : 'יצא יותר ממה שנכנס'} <b>{money(Math.abs(net))}</b>
+          </div>
+          {(avgIn !== null || avgOut !== null) && (
+            <div className="muted small">
+              ממוצע 3 החודשים שלפני: נכנס {money(avgIn ?? 0)}, יצא {money(avgOut ?? 0)}
+            </div>
+          )}
+          <div className="muted small">
+            ב-{points.length} החודשים האחרונים: {yearNet >= 0 ? 'נשארו' : 'חסרו'} {money(Math.abs(yearNet))}
+          </div>
+          <button className="link small" onClick={() => nav.go('transactions', { month: cur.month })}>
+            לתנועות של החודש ←
+          </button>
+        </div>
+
+        <div className="inout-chart">
+          <TableToggle
+            table={
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>חודש</th>
+                    <th>נכנס</th>
+                    <th>יצא</th>
+                    <th>הפרש</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {points.map((p) => (
+                    <tr key={p.month}>
+                      <td>{monthLabel(p.month)}</td>
+                      <td>{money(p.income)}</td>
+                      <td>{money(p.expenses)}</td>
+                      <td>{money(p.income - p.expenses)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            }
+          >
+            <IncomeExpenseChart data={chart} height={220} />
+          </TableToggle>
+        </div>
+      </div>
+    </section>
   );
 }
 
