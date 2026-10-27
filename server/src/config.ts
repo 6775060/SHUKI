@@ -23,7 +23,7 @@ export const config = {
   showBrowser: process.env.SHEFA_SHOW_BROWSER === '1',
   // How far back the first sync of a new connection goes.
   initialSyncMonths: Number(process.env.SHEFA_INITIAL_MONTHS ?? 6),
-  webDist: path.resolve(import.meta.dirname, '../../web/dist'),
+  webDist: process.env.SHEFA_WEB_DIST ?? path.resolve(import.meta.dirname, '../../web/dist'),
 };
 
 export function ensureDataDir(): string {

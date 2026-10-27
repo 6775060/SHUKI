@@ -69,6 +69,19 @@ if (fs.existsSync(config.webDist)) {
   app.get('/', (_req, res) => res.type('text/plain; charset=utf-8').send('הממשק לא נבנה עדיין. הריצו: npm run build בתיקיית web'));
 }
 
+// The installed app's "stop" shortcut reads this to end the background server.
+const pidFile = path.join(dataDir, 'shefa.pid');
+fs.writeFileSync(pidFile, String(process.pid));
+const cleanup = () => {
+  try {
+    if (fs.readFileSync(pidFile, 'utf8') === String(process.pid)) fs.rmSync(pidFile);
+  } catch {
+    /* already gone */
+  }
+};
+process.on('exit', cleanup);
+for (const sig of ['SIGINT', 'SIGTERM'] as const) process.on(sig, () => process.exit(0));
+
 app.listen(config.port, config.host, () => {
   console.log(`שפע ובהירות פועל: http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${config.port}`);
   console.log(`תיקיית נתונים: ${dataDir}`);

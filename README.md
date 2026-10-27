@@ -31,7 +31,18 @@
 | **קופות** | הוצאות צפויות (ארנונה, חגים, שיניים...) עם הצעת סכום לפי השנה האחרונה שלך |
 | **ייבוא קובץ** | גיבוי כשאתר משתנה: Excel / CSV / קובץ xls שהבנק הוריד. בלי כפילויות |
 
-## התקנה ב-Windows (פעם אחת)
+## התקנה ב-Windows – הדרך הפשוטה
+
+1. **ללחוץ פעמיים על `ShefaSetup.exe`.** אם מופיע "Windows הגן על המחשב שלך" – "מידע נוסף" ← "הפעל בכל זאת" (התוכנה לא חתומה דיגיטלית, וזה צפוי).
+2. **"הבא" ← "התקנה" ← "סיום".** לא צריך Node.js, לא חלון שחור ולא הרשאות מנהל. אפשר לסמן "הפעלה אוטומטית עם Windows" כדי שהסנכרון היומי ירוץ.
+3. המערכת נפתחת בחלון משלה. מעכשיו פותחים אותה מהסמל בשולחן העבודה או מתפריט התחל.
+4. **לבחור סיסמת-על** (אין לה שחזור), ואז **"חיבורים"** – כמו בשלבים 5–6 למטה.
+
+סגירת החלון לא עוצרת את המערכת – היא ממשיכה ברקע בשביל הסנכרון. לעצירה מלאה: תפריט התחל ← "עצירת שפע ובהירות". הסרה: הגדרות ← אפליקציות. הנתונים נשמרים ב-`%APPDATA%\ShefaUBehirut` ונשארים גם אחרי הסרה או עדכון; עדכון = פשוט להריץ ShefaSetup.exe חדש.
+
+כניסה לבנקים נעשית דרך Chrome או Edge שכבר מותקנים במחשב.
+
+## התקנה ב-Windows – מהקוד (למי שמעדיף)
 
 1. **להתקין Node.js** – גרסת LTS (22 ומעלה) מ-[nodejs.org](https://nodejs.org). ללחוץ "הבא" עד הסוף.
 2. **להוריד את התיקייה** הזו למחשב (למשל ל-`C:\Shefa`).
@@ -76,11 +87,17 @@ docs/     מסמך האיפיון
 ```
 
 ```bash
-cd server && npm install && npm test      # 37 בדיקות
+cd server && npm install && npm test      # 42 בדיקות
 cd web && npm install && npm run build
 cd server && npm start                     # http://127.0.0.1:4870
 ```
 
-משתני סביבה: `SHEFA_DATA_DIR`, `SHEFA_PORT`, `SHEFA_SYNC_CRON` (ברירת מחדל `30 6 * * *`), `SHEFA_CHROME_PATH`, `SHEFA_SHOW_BROWSER`, `SHEFA_INITIAL_MONTHS` (ברירת מחדל 6).
+בניית תוכנת ההתקנה (צריך NSIS 3 ו-unzip; עובד גם על Linux):
+
+```bash
+node packaging/build-windows.mjs node-v22.x.y-win-x64.zip   # → packaging/out/ShefaSetup.exe
+```
+
+משתני סביבה: `SHEFA_WEB_DIST`, `SHEFA_DATA_DIR`, `SHEFA_PORT`, `SHEFA_SYNC_CRON` (ברירת מחדל `30 6 * * *`), `SHEFA_CHROME_PATH`, `SHEFA_SHOW_BROWSER`, `SHEFA_INITIAL_MONTHS` (ברירת מחדל 6).
 
 `npm audit` מתריע על חבילות בשרשרת של puppeteer שמשמשות להורדת הדפדפן הפנימי בזמן ההתקנה (extract-zip, proxy-agent). הן לא מעבדות קלט חיצוני בזמן הריצה. התיקון תלוי בעדכון של `israeli-bank-scrapers`.
