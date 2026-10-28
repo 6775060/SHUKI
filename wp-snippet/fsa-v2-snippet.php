@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '99' );
+define( 'FSA_V2_BUILD', '100' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -897,7 +897,9 @@ function fsa_v2_fetch_snap( $host ) {
 	$r = wp_remote_get( str_replace( '{url}', rawurlencode( 'https://' . $host . '/' ), FSA_V2_SHOTS ), array( 'timeout' => 25, 'redirection' => 3 ) );
 	$GLOBALS['fsa_v2_snap_err'] = '';
 	if ( is_wp_error( $r ) ) { $GLOBALS['fsa_v2_snap_err'] = 'השירות לא ענה: ' . $r->get_error_message(); return ''; }
-	if ( 200 !== (int) wp_remote_retrieve_response_code( $r ) ) { $GLOBALS['fsa_v2_snap_err'] = 'השירות החזיר קוד ' . (int) wp_remote_retrieve_response_code( $r ); return ''; }
+	$code = (int) wp_remote_retrieve_response_code( $r );
+	$GLOBALS['fsa_v2_snap_busy'] = 429 === $code; // too many requests: the round stops and the site keeps its tries
+	if ( 200 !== $code ) { $GLOBALS['fsa_v2_snap_err'] = 429 === $code ? 'השירות עמוס כרגע, ננסה שוב בסבב הבא' : 'השירות החזיר קוד ' . $code; return ''; }
 	$bin  = (string) wp_remote_retrieve_body( $r );
 	$info = strlen( $bin ) < 8 * 1024 * 1024 && function_exists( 'getimagesizefromstring' ) ? @getimagesizefromstring( $bin ) : false;
 	if ( ! $info || ! in_array( $info[2], array( IMAGETYPE_JPEG, IMAGETYPE_PNG ), true ) || $info[0] < 600 ) { $GLOBALS['fsa_v2_snap_err'] = 'התמונה עוד בהכנה אצל השירות'; return ''; }
@@ -920,7 +922,10 @@ function fsa_v2_snap_run( $max = 8 ) {
 		$x = isset( $snaps[ $h ] ) ? $snaps[ $h ] : array( 'u' => '', 'n' => 0, 't' => 0 );
 		if ( $x['u'] || $x['n'] >= 6 ) continue;
 		if ( ++$n > $max ) break;
-		$x['u'] = fsa_v2_fetch_snap( $h ); $x['n']++; $x['t'] = time();
+		if ( $n > 1 ) sleep( 2 ); // one request at a time, so the service does not refuse the round
+		$u = fsa_v2_fetch_snap( $h );
+		if ( ! empty( $GLOBALS['fsa_v2_snap_busy'] ) ) { $log['err'] = $GLOBALS['fsa_v2_snap_err']; break; }
+		$x['u'] = $u; $x['n']++; $x['t'] = time();
 		$snaps[ $h ] = $x; $log['asked']++;
 		if ( $x['u'] ) $log['got']++; elseif ( ! empty( $GLOBALS['fsa_v2_snap_err'] ) ) $log['err'] = $h . ': ' . $GLOBALS['fsa_v2_snap_err'];
 	}

@@ -25,7 +25,7 @@ function get_field( $k, $o ) { return ''; } function wc_get_product( $id ) { ret
 $GLOBALS['ups'] = array(); function wp_upload_bits( $n, $x, $bin ) { $GLOBALS['ups'][] = $n; return array( 'file' => "/up/$n", 'url' => "https://site/up/$n", 'error' => false ); }
 function wp_insert_attachment( $a, $f ) { return 55; }
 /* the screenshot service: $GLOBALS['shot'] = what it answers (a real picture, or the small "loading" one) */
-$GLOBALS['shot'] = ''; $GLOBALS['asked'] = array(); function wp_remote_get( $u, $a = array() ) { $GLOBALS['asked'][] = $u; return array( 'code' => 200, 'body' => $GLOBALS['shot'] ); }
+$GLOBALS['shot'] = ''; $GLOBALS['asked'] = array(); function wp_remote_get( $u, $a = array() ) { $GLOBALS['asked'][] = $u; return array( 'code' => $GLOBALS['shotcode'] ?? 200, 'body' => $GLOBALS['shot'] ); }
 function is_wp_error( $x ) { return false; } function wp_remote_retrieve_response_code( $r ) { return $r['code']; } function wp_remote_retrieve_body( $r ) { return $r['body']; }
 function wp_upload_dir() { return array( 'basedir' => sys_get_temp_dir() . '/fsa-up', 'baseurl' => 'https://site/up', 'error' => false ); } function trailingslashit( $s ) { return rtrim( $s, '/' ) . '/'; } function wp_mkdir_p( $d ) { return is_dir( $d ) || mkdir( $d, 0777, true ); }
 $jpg = function ( $w, $h ) { $i = imagecreatetruecolor( $w, $h ); ob_start(); imagejpeg( $i ); return ob_get_clean(); };
@@ -95,6 +95,9 @@ $pub = fsa_v2_showcase_public(); $t( 1 === count( $pub ) && 'lavana.co.il' === $
 $GLOBALS['admin'] = false;
 // real pictures: the hourly round asks the service, keeps a real picture, retries while it is still being made
 $GLOBALS['opt']['fsa_v2_showcase_no'] = array();
+$GLOBALS['shotcode'] = 429; fsa_v2_snap_run(); $GLOBALS['shotcode'] = 200;
+$t( 1 === count( $GLOBALS['asked'] ) && empty( $GLOBALS['opt']['fsa_v2_snaps']['lavana.co.il']['n'] ) && false !== strpos( $GLOBALS['opt']['fsa_v2_snap_log']['err'], 'עמוס' ), 'service busy (429): the round stops at once and no try is counted' );
+$GLOBALS['asked'] = array();
 $GLOBALS['shot'] = $jpg( 400, 300 ); fsa_v2_snap_run();
 $t( 3 === count( $GLOBALS['asked'] ) && false !== strpos( $GLOBALS['asked'][0], rawurlencode( 'https://lavana.co.il/' ) ) && '' === fsa_v2_snap( 'lavana.co.il' ), 'service still making it: no picture yet' );
 $lg = $GLOBALS['opt']['fsa_v2_snap_log']; $t( 3 === $lg['asked'] && 0 === $lg['got'] && false !== strpos( $lg['err'], 'בהכנה' ), 'the round is logged for the approval screen, with the reason' );
