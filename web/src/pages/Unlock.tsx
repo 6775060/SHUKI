@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { api, ApiError } from '../api';
+import { api, ApiError, restoreBackup, restoreErrorText } from '../api';
 
 export function Unlock({ mode, onDone, onReset }: { mode: 'setup' | 'locked'; onDone: (token: string) => void; onReset: () => void }) {
   const [password, setPassword] = useState('');
@@ -8,6 +8,8 @@ export function Unlock({ mode, onDone, onReset }: { mode: 'setup' | 'locked'; on
   const [busy, setBusy] = useState(false);
   const [forgot, setForgot] = useState(false);
   const [resetWord, setResetWord] = useState('');
+  const [restoring, setRestoring] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
 
   const reset = async () => {
     setBusy(true);
@@ -22,6 +24,58 @@ export function Unlock({ mode, onDone, onReset }: { mode: 'setup' | 'locked'; on
       setBusy(false);
     }
   };
+
+  const restore = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!file) return;
+    setBusy(true);
+    setError('');
+    try {
+      const r = await restoreBackup(file, password);
+      if (r.token) onDone(r.token);
+      else onReset();
+    } catch (err) {
+      setError(restoreErrorText(err instanceof ApiError ? err.code : ''));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (restoring) {
+    return (
+      <div className="center">
+        <form className="card unlock" onSubmit={restore}>
+          <h1>שחזור מקובץ גיבוי</h1>
+          <p className="muted">
+            בוחרים את קובץ הגיבוי (מסתיים ב-<span dir="ltr">.shefa</span>) שנוצר במחשב הקודם ב"הגדרות" ← "גיבוי והעברה למחשב אחר", ומזינים את סיסמת-העל
+            של אותו מחשב. הכול יחזור, כולל החיבורים לבנקים.
+          </p>
+          <label>
+            קובץ הגיבוי
+            <input type="file" accept=".shefa" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          </label>
+          <label>
+            סיסמת-על
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+          </label>
+          {error && <div className="error">{error}</div>}
+          <button className="primary" disabled={busy || !file || !password}>
+            {busy ? 'משחזר…' : 'שחזור'}
+          </button>
+          <button
+            type="button"
+            className="link small"
+            onClick={() => {
+              setError('');
+              setRestoring(false);
+            }}
+          >
+            חזרה – זו התקנה ראשונה
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   if (forgot) {
     return (
@@ -103,6 +157,19 @@ export function Unlock({ mode, onDone, onReset }: { mode: 'setup' | 'locked'; on
         <button className="primary" disabled={busy}>
           {busy ? 'רגע…' : mode === 'setup' ? 'יוצאים לדרך' : 'פתיחה'}
         </button>
+        {mode === 'setup' && (
+          <button
+            type="button"
+            className="link small"
+            onClick={() => {
+              setError('');
+              setPassword('');
+              setRestoring(true);
+            }}
+          >
+            עוברים ממחשב אחר? שחזור מקובץ גיבוי
+          </button>
+        )}
         {mode === 'locked' && (
           <button
             type="button"

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, ApiError } from '../api';
+import { api, ApiError, downloadBackup, restoreBackup, restoreErrorText, setToken } from '../api';
 import { applyFont, type FontSetting } from '../font';
 
 export function Settings() {
@@ -51,6 +51,8 @@ export function Settings() {
 
       <PhoneAccess />
 
+      <MoveComputer />
+
       <section className="card form">
         <h3>הפונט שלי</h3>
         <p className="sub">הממשק כולו יוצג בפונט שתבחר. הקובץ נשמר רק במחשב הזה.</p>
@@ -94,6 +96,94 @@ export function Settings() {
         {error && <div className="error">{error}</div>}
       </section>
     </div>
+  );
+}
+
+// One sealed file that carries everything – logins included – to another computer.
+function MoveComputer() {
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [error, setError] = useState('');
+  const [restoring, setRestoring] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [restorePass, setRestorePass] = useState('');
+  const [sure, setSure] = useState(false);
+
+  const backup = async () => {
+    setBusy(true);
+    setError('');
+    setMsg('');
+    try {
+      const name = await downloadBackup(password);
+      setPassword('');
+      setMsg(`הקובץ ${name} נשמר בתיקיית ההורדות.`);
+    } catch (err) {
+      setError((err as ApiError).code === 'WRONG_PASSWORD' ? 'הסיסמה לא נכונה.' : 'יצירת הגיבוי נכשלה.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const restore = async () => {
+    if (!file) return;
+    setBusy(true);
+    setError('');
+    try {
+      const r = await restoreBackup(file, restorePass);
+      setToken(r.token);
+      location.reload();
+    } catch (err) {
+      setError(restoreErrorText((err as ApiError).code));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="card form">
+      <h3>💾 גיבוי והעברה למחשב אחר</h3>
+      <p className="sub">
+        קובץ אחד שמכיל הכול: תנועות, קטגוריות, הגדרות, וגם החיבורים לבנקים ולכרטיסים. הקובץ מוצפן בסיסמת-העל, כך שבלעדיה אי אפשר לפתוח אותו.
+      </p>
+      <ol className="howto">
+        <li>כאן: מזינים את סיסמת-העל ולוחצים "יצירת קובץ גיבוי". הקובץ יורד לתיקיית ההורדות.</li>
+        <li>מעבירים את הקובץ למחשב השני (דיסק-און-קי, או מייל לעצמך).</li>
+        <li>במחשב השני: מתקינים את שפע ובהירות, ובמסך הפתיחה בוחרים "שחזור מקובץ גיבוי".</li>
+      </ol>
+      <div className="row wrap">
+        <input type="password" placeholder="סיסמת-על" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+        <button className="primary" disabled={busy || !password} onClick={backup}>
+          {busy && !restoring ? 'יוצר…' : 'יצירת קובץ גיבוי'}
+        </button>
+      </div>
+      <p className="muted small">כדאי שרק מחשב אחד יסנכרן מול הבנקים. אם צריך גישה ממקום נוסף, אפשר להשתמש ב"גישה מהטלפון" גם ממחשב אחר.</p>
+
+      {!restoring ? (
+        <button className="link small" onClick={() => setRestoring(true)}>
+          שחזור מקובץ גיבוי במחשב הזה…
+        </button>
+      ) : (
+        <div className="restore-box">
+          <b>שחזור מקובץ גיבוי</b>
+          <div className="warn small">השחזור מחליף את כל מה שיש כרגע במחשב הזה בתוכן הקובץ. עותק של המצב הנוכחי נשמר בצד, ליתר ביטחון.</div>
+          <input type="file" accept=".shefa" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          <input type="password" placeholder="סיסמת-העל של המחשב שבו נוצר הגיבוי" value={restorePass} onChange={(e) => setRestorePass(e.target.value)} />
+          <label className="check">
+            <input type="checkbox" checked={sure} onChange={(e) => setSure(e.target.checked)} /> הבנתי שהנתונים כאן יוחלפו
+          </label>
+          <div className="row wrap">
+            <button className="primary" disabled={busy || !file || !restorePass || !sure} onClick={restore}>
+              {busy ? 'משחזר…' : 'שחזור'}
+            </button>
+            <button className="ghost" onClick={() => setRestoring(false)}>
+              ביטול
+            </button>
+          </div>
+        </div>
+      )}
+      {msg && <div className="success small">{msg}</div>}
+      {error && <div className="error small">{error}</div>}
+    </section>
   );
 }
 

@@ -37,6 +37,7 @@ import { categoryCleanups, categorySuggestions } from './suggest.js';
 import { parseSavingsFile, saveSavings, savingsView } from './savings.js';
 import { syncAlerts } from './sync-health.js';
 import { disableRemote, enableRemote, remoteStatus } from './remote.js';
+import { BackupError, createBackup, restoreBackup } from './backup.js';
 
 interface Deps {
   db: DB;
@@ -112,7 +113,60 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     res.json({ ok: true });
   });
 
+  // Restoring a backup: allowed on a fresh install (nothing here to protect yet)
+  // or from inside an open session. The password travels URI-encoded in a header
+  // because the body is the file itself.
+  api.post('/restore', express.raw({ type: 'application/octet-stream', limit: '300mb' }), (req, res) => {
+    const token = req.header('x-session');
+    if (vault.isInitialized() && !(vault.isUnlocked() && token && sessions.has(token))) {
+      res.status(401).json({ error: 'LOCKED' });
+      return;
+    }
+    if (sync.status().running !== null) {
+      res.status(409).json({ error: 'SYNC_RUNNING' });
+      return;
+    }
+    let password: string;
+    try {
+      password = decodeURIComponent(req.header('x-backup-password') ?? '');
+    } catch {
+      password = '';
+    }
+    if (!Buffer.isBuffer(req.body) || !password) {
+      res.status(400).json({ error: 'NOT_A_BACKUP' });
+      return;
+    }
+    try {
+      const result = restoreBackup(db, config.dataDir, req.body, password);
+      sessions.clear();
+      vault.lock();
+      failedAttempts = 0;
+      const unlocked = vault.unlock(password);
+      if (unlocked) onUnlock();
+      res.json({ ...result, token: unlocked ? newSession() : null });
+    } catch (err) {
+      if (err instanceof BackupError) {
+        res.status(400).json({ error: err.code });
+        return;
+      }
+      throw err;
+    }
+  });
+
   api.use(requireSession);
+
+  api.post('/backup', (req, res) => {
+    const { password } = z.object({ password: z.string() }).parse(req.body);
+    if (!vault.verify(password)) {
+      res.status(401).json({ error: 'WRONG_PASSWORD' });
+      return;
+    }
+    const file = createBackup(db, config.dataDir, password);
+    const name = `shefa-backup-${new Date().toLocaleDateString('sv-SE')}.shefa`;
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
+    res.send(file);
+  });
 
   // ---- institutions & connections ----
   api.get('/institutions', (_req, res) => res.json(listInstitutions()));

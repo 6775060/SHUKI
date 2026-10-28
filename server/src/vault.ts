@@ -50,6 +50,18 @@ export class Vault {
     this.key = key;
   }
 
+  // Checks the password without changing whether the vault is open.
+  verify(password: string): boolean {
+    const salt = getMeta(this.db, 'vault_salt');
+    const verifier = getMeta(this.db, 'vault_verifier');
+    if (!salt || !verifier) return false;
+    try {
+      return decrypt(deriveKey(password, Buffer.from(salt, 'base64')), verifier) === VERIFIER_PLAINTEXT;
+    } catch {
+      return false;
+    }
+  }
+
   unlock(password: string): boolean {
     const salt = getMeta(this.db, 'vault_salt');
     const verifier = getMeta(this.db, 'vault_verifier');

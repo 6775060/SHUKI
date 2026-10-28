@@ -368,3 +368,61 @@ export interface BusinessData {
   tips: Tip[];
   connections: { sumit: boolean; sumitLastSync: string | null; sumitError: string | null; sources: { source: string; n: number; last: string }[] };
 }
+
+// ---- moving to another computer ----
+export interface RestoreResult {
+  createdAt: string;
+  transactions: number;
+  connections: number;
+  previousCopy: string | null;
+  token: string | null;
+}
+
+export async function restoreBackup(file: File, password: string): Promise<RestoreResult> {
+  return api<RestoreResult>('/restore', {
+    method: 'POST',
+    headers: { 'content-type': 'application/octet-stream', 'x-backup-password': encodeURIComponent(password) },
+    body: await file.arrayBuffer(),
+  });
+}
+
+export async function downloadBackup(password: string): Promise<string> {
+  const token = getToken();
+  const res = await fetch('/api/backup', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...(token ? { 'x-session': token } : {}) },
+    body: JSON.stringify({ password }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    if (res.status === 401 && data?.error === 'LOCKED') onLocked();
+    throw new ApiError(res.status, data?.error ?? 'ERROR');
+  }
+  const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? 'shefa-backup.shefa';
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return name;
+}
+
+export function restoreErrorText(code: string): string {
+  switch (code) {
+    case 'WRONG_PASSWORD':
+      return 'הסיסמה לא פותחת את הקובץ. צריך את סיסמת-העל של המחשב שבו נוצר הגיבוי.';
+    case 'NOT_A_BACKUP':
+      return 'זה לא קובץ גיבוי של שפע ובהירות. מחפשים קובץ שמסתיים ב-.shefa';
+    case 'NEWER_VERSION':
+      return 'הגיבוי נוצר בגרסה חדשה יותר. קודם מתקינים כאן את הגרסה העדכנית, ואז משחזרים.';
+    case 'SYNC_RUNNING':
+      return 'יש סנכרון שרץ עכשיו. מחכים דקה שיסתיים ומנסים שוב.';
+    case 'CORRUPT':
+      return 'הקובץ פגום. אפשר ליצור גיבוי חדש במחשב הראשון.';
+    default:
+      return 'השחזור לא הצליח. נסו שוב.';
+  }
+}

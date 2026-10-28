@@ -2713,3 +2713,16 @@ textarea {
   font-size: 17px;
   word-break: break-all;
 }
+
+/* ---- backup / move to another computer ---- */
+.restore-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--warn-line);
+  border-radius: var(--radius);
+}
+.restore-box .warn {
+  color: var(--muted);
+}

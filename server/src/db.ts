@@ -209,6 +209,8 @@ const MIGRATIONS: string[] = [
   `,
 ];
 
+export const SCHEMA_VERSION = MIGRATIONS.length;
+
 export function openDb(dataDir: string, filename = 'shefa.db'): DB {
   const db = new DatabaseSync(filename === ':memory:' ? ':memory:' : path.join(dataDir, filename));
   db.exec('PRAGMA journal_mode = WAL');
