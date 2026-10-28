@@ -25,15 +25,22 @@ Run `sh wp-snippet/tests/all.sh` (needs php, node + Playwright; in the cloud: `C
 ## Checking the live site yourself
 Needs `fontshok.co.il` in the environment's allowed network domains and the owner's test account **`claude-test`** (a plain customer with a Webstop role). Ask the owner for its password in the chat; never write it to a file or commit it.
 
-## Open with the owner (22.10.2026, build 87)
-1. Desktop subscription product: put its ID in `FSA_V2_PLAN_PRODUCTS['desk']` (price and link then come from the product).
-2. Strategy chat (prices, licences, terms): `docs/BRIEF-strategy-licensing.md` lists the contradictions (prices vs VAT, academic domains, desktop wording, barter certificate, end of subscription). Apply its "עדכון לאזור האישי" lists here.
-3. "Choices is not defined" on the old account pages (only for customers who chose the previous area): needs a logged-in look.
-4. Live check as `claude-test` (password from the owner, never stored): profile save, order deep link, old pages redirect, goodbye window, add-on up to the payment page (do not pay).
-5. Precision passes on the design ("דיוקים") when the owner has them.
-6. When the work is finished: delete the `claude-test` user; consider deactivating the unused Stage 2 plugin.
-7. After every paste: purge the site cache and check "גרסה N" (admins) on /my-account/.
+## Where things stand (28.10.2026, build 102), for session "אזור אישי 4"
+- **Build 102 was sent to the owner.** First check that it was pasted. Compare snippet 38 with the file (REST `code-snippets/v1/snippets/38`, which must be `active`). Then purge the site cache.
+- **Prices (approved):** all include VAT, with the full price struck through. Webstop 320 (~~378~~), Extra 680 (~~802~~), Desktop 179 (~~211~~). In the store they are a sale price over the regular price; on pricing page 13376 there is a `<del>` next to each price. Backup: `docs/backups/pricing-13376-elementor-before-strike.json`.
+- **Desktop:** product 22785 is in the catalog (Academic 14168 is hidden). The details page is post 22788. The terms were approved by the owner, including the 24-month commitment and up to 5 workstations.
+- **Build 101 is live and checked:** "הכל לאתרים" / "הכל לדסקטופ" ZIPs (24MB / 12.5MB, 12 families each).
+- **Build 102:** the monthly "נשאר לך" reminder is gone. The friendly "מה בנית עם {פונט}?" email, FontShok email frame, show-as-example consent and owner alert on a full quota are in `docs/HANDOFF-snippet.md` (last entry). Tone and messages for every customer text are in `docs/BRIEF-strategy-licensing.md` section 6. Keep them aligned with the strategy chat (a claude.ai chat, not visible from here; the owner passes updates).
+- **The studio vote** is open until 28.01.2027.
+
+## Open with the owner
+1. After the paste of 102: send yourself the sample (`/?fsa_remind_test=1` as admin) and ask the owner how it looks in their inbox (Gmail and phone).
+2. A test purchase of the desktop subscription (payment → role member-desktop → the right area), and refund it afterwards if the owner wants.
+3. Site pictures (mshots 429): on hold at the owner's request.
+4. Public gallery page from the approved list: wait for the owner's go.
+5. At the end: revert `claude-test` from administrator or delete it.
 
 ## Rules
-- Do not change payment settings or the live pricing page without the owner.
+- Talk to the owner in Hebrew, always (see `CLAUDE.md`).
+- Do not change payment settings, store prices or the live pricing page without the owner's explicit approval.
 - Writes to the live site only through files the owner pastes (or with explicit approval).
