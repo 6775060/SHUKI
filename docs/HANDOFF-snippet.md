@@ -133,3 +133,7 @@ Open questions to report back:
 - whether Grow/Meshulam can charge a saved card without leaving the page, which would keep the whole add-on purchase inside the cart.
 
 Do not change payment settings or the live pricing page without the owner.
+
+**28.10.2026, prices (owner approved):** all plans are charged including VAT, with the full price shown struck through.
+- Store: 12652 regular 378 / sale 320; 14162 regular 802 / sale 680; 22785 regular 211 / sale 179. Webstop was charged 377.6 before.
+- Pricing page 13376: a `<del>` heading was added next to each price, and Webstop's "לא כולל מע"מ" was changed to "כולל מע"מ". The backup from before the change is in `docs/backups/pricing-13376-elementor-before-strike.json`.
