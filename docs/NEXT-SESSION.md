@@ -33,6 +33,11 @@ Needs `fontshok.co.il` in the environment's allowed network domains and the owne
 - **Build 102:** the monthly "נשאר לך" reminder is gone. The friendly "מה בנית עם {פונט}?" email, FontShok email frame, show-as-example consent and owner alert on a full quota are in `docs/HANDOFF-snippet.md` (last entry). Tone and messages for every customer text are in `docs/BRIEF-strategy-licensing.md` section 6. Keep them aligned with the strategy chat (a claude.ai chat, not visible from here; the owner passes updates).
 - **The studio vote** is open until 28.01.2027.
 
+## Build 103 (28.10.2026, session "אזור אישי 4")
+- 102 is live (checked: `/?fsa_nonudge=1&k=x` answers "הקישור לא תקין", which only 102 has). The exact compare with snippet 38 needs the claude-test password (FSPW).
+- **Build 103 was sent to the owner:** gallery shortcode `[fontshok_gallery]` and the light picture round (wake, then collect; og:image fallback). See item 112.
+- **After the paste:** create page **גלריה** (slug `gallery`, content: a shortcode block `[fontshok_gallery]`), publish it, and add "גלריה" after "פונט־בלוג" in both mega-menus of header template 10689 (`fea6a12`, `f43e924`): a new `menu_items` entry plus a matching empty child container in `elements` at the same index. Backup: `docs/backups/header-10689-elementor-before-gallery.json`. Then clear the Elementor cache. The WordPress connector got 403 on writes, so this needs FSPW (REST as claude-test) or the owner.
+
 ## Open with the owner
 1. After the paste of 102: send yourself the sample (`/?fsa_remind_test=1` as admin) and ask the owner how it looks in their inbox (Gmail and phone).
 2. A test purchase of the desktop subscription (payment → role member-desktop → the right area), and refund it afterwards if the owner wants.

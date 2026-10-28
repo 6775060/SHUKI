@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '102' );
+define( 'FSA_V2_BUILD', '103' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -1080,46 +1080,71 @@ function fsa_v2_user_snaps( $uid ) {
 	foreach ( array_keys( fsa_v2_user_sites( $uid ) ) as $h ) if ( ! empty( $s[ $h ]['u'] ) ) $out[ $h ] = $s[ $h ]['u'];
 	return $out;
 }
-// one picture from the service; '' while the service is still making it (it first answers with a small "loading" picture)
-function fsa_v2_fetch_snap( $host ) {
-	if ( ! FSA_V2_SHOTS || ! $host ) return '';
-	$r = wp_remote_get( str_replace( '{url}', rawurlencode( 'https://' . $host . '/' ), FSA_V2_SHOTS ), array( 'timeout' => 25, 'redirection' => 3 ) );
-	$GLOBALS['fsa_v2_snap_err'] = '';
-	if ( is_wp_error( $r ) ) { $GLOBALS['fsa_v2_snap_err'] = 'השירות לא ענה: ' . $r->get_error_message(); return ''; }
-	$code = (int) wp_remote_retrieve_response_code( $r );
-	$GLOBALS['fsa_v2_snap_busy'] = 429 === $code; // too many requests: the round stops and the site keeps its tries
-	if ( 200 !== $code ) { $GLOBALS['fsa_v2_snap_err'] = 429 === $code ? 'השירות עמוס כרגע, ננסה שוב בסבב הבא' : 'השירות החזיר קוד ' . $code; return ''; }
-	$bin  = (string) wp_remote_retrieve_body( $r );
+// keep a picture on the site: 800×500 JPEG/PNG in uploads/fsa-sites/ (small enough for a card); '' if it is not a real picture
+function fsa_v2_keep_snap( $host, $bin, $min = 600 ) {
 	$info = strlen( $bin ) < 8 * 1024 * 1024 && function_exists( 'getimagesizefromstring' ) ? @getimagesizefromstring( $bin ) : false;
-	if ( ! $info || ! in_array( $info[2], array( IMAGETYPE_JPEG, IMAGETYPE_PNG ), true ) || $info[0] < 600 ) { $GLOBALS['fsa_v2_snap_err'] = 'התמונה עוד בהכנה אצל השירות'; return ''; }
+	if ( ! $info || ! in_array( $info[2], array( IMAGETYPE_JPEG, IMAGETYPE_PNG ), true ) || $info[0] < $min ) return '';
 	$dir = wp_upload_dir();
 	if ( ! empty( $dir['error'] ) ) return '';
 	$path = trailingslashit( $dir['basedir'] ) . 'fsa-sites';
 	wp_mkdir_p( $path );
 	$name = sanitize_file_name( $host ) . '-' . substr( md5( $host . microtime() ), 0, 6 ) . ( IMAGETYPE_PNG === $info[2] ? '.png' : '.jpg' );
 	if ( false === file_put_contents( $path . '/' . $name, $bin ) ) { $GLOBALS['fsa_v2_snap_err'] = 'לא הצלחתי לשמור בתיקיית ההעלאות'; return ''; }
-	$ed = function_exists( 'wp_get_image_editor' ) ? wp_get_image_editor( $path . '/' . $name ) : null; // keep it light: 800px wide is enough for a card
+	$ed = function_exists( 'wp_get_image_editor' ) ? wp_get_image_editor( $path . '/' . $name ) : null;
 	if ( $ed && ! is_wp_error( $ed ) ) { $ed->resize( 800, 500, true ); $ed->set_quality( 80 ); $ed->save( $path . '/' . $name ); }
 	return trailingslashit( $dir['baseurl'] ) . 'fsa-sites/' . $name;
 }
-// the hourly round: up to $max sites without a picture; a site that fails 6 times (down, blocked) is left as a sketch
-function fsa_v2_snap_run( $max = 8 ) {
+// one picture from the service; '' while the service is still making it (the first call only starts it and answers with a small "loading" picture)
+function fsa_v2_fetch_snap( $host ) {
+	$GLOBALS['fsa_v2_snap_err'] = ''; $GLOBALS['fsa_v2_snap_busy'] = false;
+	if ( ! FSA_V2_SHOTS || ! $host ) return '';
+	$r = wp_remote_get( str_replace( '{url}', rawurlencode( 'https://' . $host . '/' ), FSA_V2_SHOTS ), array( 'timeout' => 15, 'redirection' => 3 ) );
+	if ( is_wp_error( $r ) ) { $GLOBALS['fsa_v2_snap_err'] = 'השירות לא ענה: ' . $r->get_error_message(); return ''; }
+	$code = (int) wp_remote_retrieve_response_code( $r );
+	$GLOBALS['fsa_v2_snap_busy'] = 429 === $code; // too many requests: the round stops and the site keeps its tries
+	if ( 200 !== $code ) { $GLOBALS['fsa_v2_snap_err'] = 429 === $code ? 'השירות עמוס כרגע, ננסה שוב בסבב הבא' : 'השירות החזיר קוד ' . $code; return ''; }
+	$u = fsa_v2_keep_snap( $host, (string) wp_remote_retrieve_body( $r ) );
+	if ( '' === $u && '' === $GLOBALS['fsa_v2_snap_err'] ) $GLOBALS['fsa_v2_snap_err'] = 'התמונה עוד בהכנה אצל השירות';
+	return $u;
+}
+// second way, no service at all: the picture the site itself gives for sharing (og:image), when it is wide enough. Reads only the top of the home page
+function fsa_v2_og_snap( $host ) {
+	$r = wp_remote_get( 'https://' . $host . '/', array( 'timeout' => 8, 'redirection' => 3, 'limit_response_size' => 150000 ) );
+	if ( is_wp_error( $r ) || 200 !== (int) wp_remote_retrieve_response_code( $r ) ) return '';
+	if ( ! preg_match( '/<meta[^>]+(?:property|name)=["\'](?:og:image|twitter:image)["\'][^>]*>/i', (string) wp_remote_retrieve_body( $r ), $m ) || ! preg_match( '/content=["\']([^"\']+)/i', $m[0], $c ) ) return '';
+	$src = html_entity_decode( $c[1] );
+	if ( 0 === strpos( $src, '//' ) ) $src = 'https:' . $src; elseif ( '/' === substr( $src, 0, 1 ) ) $src = 'https://' . $host . $src;
+	if ( ! preg_match( '#^https?://#i', $src ) ) return '';
+	$i = wp_remote_get( $src, array( 'timeout' => 10, 'redirection' => 3, 'limit_response_size' => 4 * 1024 * 1024 ) );
+	return is_wp_error( $i ) || 200 !== (int) wp_remote_retrieve_response_code( $i ) ? '' : fsa_v2_keep_snap( $host, (string) wp_remote_retrieve_body( $i ) );
+}
+// the round, light: a site is first only "woken" (one short call, the service starts the picture on its side), and a few minutes later
+// the next round collects the ready picture. At most 3 new sites and 4 pickups per round; after 3 empty pickups, the site's own og:image.
+// A site that fails 6 times (down, blocked) is left as a sketch. snaps: host => [u = picture, n = tries, t = last try, w = woken at]
+function fsa_v2_snap_run( $wake = 3, $pick = 4 ) {
 	if ( ! FSA_V2_SHOTS ) return;
-	$snaps = fsa_v2_snaps(); $n = 0; $log = array( 't' => current_time( 'd.m.Y H:i' ), 'asked' => 0, 'got' => 0, 'err' => '' );
+	$snaps = fsa_v2_snaps(); $now = time(); $woke = 0; $log = array( 't' => current_time( 'd.m.Y H:i' ), 'asked' => 0, 'got' => 0, 'err' => '' );
 	$hosts = array_unique( array_merge( wp_list_pluck( fsa_v2_showcase_all(), 'host' ), array_keys( fsa_v2_all_sites() ) ) );
 	foreach ( $hosts as $h ) {
-		$x = isset( $snaps[ $h ] ) ? $snaps[ $h ] : array( 'u' => '', 'n' => 0, 't' => 0 );
+		$x = ( isset( $snaps[ $h ] ) ? $snaps[ $h ] : array() ) + array( 'u' => '', 'n' => 0, 't' => 0, 'w' => 0 );
 		if ( $x['u'] || $x['n'] >= 6 ) continue;
-		if ( ++$n > $max ) break;
-		if ( $n > 1 ) sleep( 2 ); // one request at a time, so the service does not refuse the round
+		if ( ! $x['w'] ) { // wake: fire and forget, nothing to wait for
+			if ( $woke >= $wake ) continue;
+			wp_remote_get( str_replace( '{url}', rawurlencode( 'https://' . $h . '/' ), FSA_V2_SHOTS ), array( 'timeout' => 3, 'blocking' => false ) );
+			$x['w'] = $now; $snaps[ $h ] = $x; $woke++;
+			continue;
+		}
+		if ( $now - $x['w'] < 120 || $log['asked'] >= $pick ) continue; // give the service a couple of minutes
 		$u = fsa_v2_fetch_snap( $h );
 		if ( ! empty( $GLOBALS['fsa_v2_snap_busy'] ) ) { $log['err'] = $GLOBALS['fsa_v2_snap_err']; break; }
-		$x['u'] = $u; $x['n']++; $x['t'] = time();
-		$snaps[ $h ] = $x; $log['asked']++;
-		if ( $x['u'] ) $log['got']++; elseif ( ! empty( $GLOBALS['fsa_v2_snap_err'] ) ) $log['err'] = $h . ': ' . $GLOBALS['fsa_v2_snap_err'];
+		$x['n']++; $x['t'] = $now; $log['asked']++;
+		if ( '' === $u && $x['n'] >= 3 && ( $og = fsa_v2_og_snap( $h ) ) ) $u = $og;
+		if ( '' === $u ) { $x['w'] = $now; if ( $GLOBALS['fsa_v2_snap_err'] ) $log['err'] = $h . ': ' . $GLOBALS['fsa_v2_snap_err']; } else $log['got']++;
+		$x['u'] = $u; $snaps[ $h ] = $x;
 	}
 	update_option( 'fsa_v2_snaps', $snaps, false );
 	update_option( 'fsa_v2_snap_log', $log, false ); // shown on the approval screen
+	if ( $woke && function_exists( 'wp_schedule_single_event' ) ) wp_schedule_single_event( $now + 180, 'fsa_v2_snaps' ); // collect what was woken in 3 minutes, not in an hour
 }
 add_action( 'fsa_v2_snaps', 'fsa_v2_snap_run' );
 add_action( 'init', function () {
@@ -1136,11 +1161,16 @@ function fsa_v2_share_user( $token ) {
 	$u = get_users( array( 'meta_key' => 'fsa_v2_share', 'meta_value' => $token, 'number' => 1, 'fields' => 'ID' ) );
 	return $u ? (int) $u[0] : 0;
 }
-function fsa_v2_site_card_html( $name, $host, $fonts, $year ) {
+// the look of the sites pages (share page and gallery): a screen on a stand per site, a drawn sketch until the real picture arrives
+function fsa_v2_sites_css() {
+	return '.fsa-sites{max-width:1180px;margin:0 auto;padding:40px 20px 70px;font-family:"Discovery_Fs","Heebo",Arial,sans-serif}.fsa-sites .eb{display:inline-block;border:1.5px solid #151515;padding:2px 12px;font-size:20px;font-weight:300}.fsa-sites h1{font-size:46px;font-weight:800;margin:6px 0 24px;padding-bottom:20px;border-bottom:1px solid #151515}.fsa-sites .g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px 22px}.fsa-sites .sc{margin:0}.fsa-sites .mon{display:block;text-decoration:none;background:#1F1F22;border-radius:10px;padding:7px}.fsa-sites .scr{display:block;aspect-ratio:16/10;overflow:hidden;border-radius:3px;background:#F8F7FB}.fsa-sites .scr img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}.fsa-sites .stand{display:flex;flex-direction:column;align-items:center}.fsa-sites .stand i{width:22%;height:22px;background:#7E7E83;clip-path:polygon(12% 0,88% 0,100% 100%,0 100%)}.fsa-sites .stand b{width:34%;height:7px;border-radius:5px 5px 2px 2px;background:#6E6E73}.fsa-sites h3{font-size:21px;margin:10px 0 6px}.fsa-sites dl{display:grid;grid-template-columns:auto 1fr;gap:3px 18px;margin:0;font-size:15px}.fsa-sites dt{color:#A8A8A8}.fsa-sites dd{margin:0}.fsa-sites .sk{display:flex;flex-direction:column;justify-content:center;gap:8px;height:100%;padding:0 8%;box-sizing:border-box;background:hsl(var(--hu) 60% 97%)}.fsa-sites .sk-h{font-size:28px;font-weight:700;color:hsl(var(--hu) 55% 30%)}.fsa-sites .sk-p{height:6px;width:70%;border-radius:3px;background:hsl(var(--hu) 25% 84%)}.fsa-sites .sk-p.s{width:50%}.fsa-sites .sk-b{width:70px;height:18px;border-radius:99px;background:hsl(var(--hu) 60% 55%)}.fsa-sites .by{margin-top:40px;color:#6E6E6E}@media(max-width:900px){.fsa-sites .g{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.fsa-sites h1{font-size:34px}.fsa-sites .sk-h{font-size:18px}.fsa-sites .g{gap:28px 12px}.fsa-sites h3{font-size:17px}.fsa-sites dl{font-size:13px}}';
+}
+function fsa_v2_site_card_html( $name, $host, $fonts, $year, $img = '', $by = '' ) {
 	$hue = 0; foreach ( str_split( $host ) as $c ) $hue = ( $hue * 31 + ord( $c ) ) % 360;
-	$shot = ( $img = fsa_v2_snap( $host ) ) ? '<img src="' . esc_url( $img ) . '" alt="" loading="lazy">'
+	$img  = $img ? $img : fsa_v2_snap( $host );
+	$shot = $img ? '<img src="' . esc_url( $img ) . '" alt="" width="800" height="500" loading="lazy" decoding="async">'
 		: '<span class="sk" style="--hu:' . $hue . '"><span class="sk-h">' . esc_html( $name ) . '</span><span class="sk-p"></span><span class="sk-p s"></span><span class="sk-b"></span></span>';
-	return '<figure class="sc"><a class="mon" href="https://' . esc_attr( $host ) . '" target="_blank" rel="noopener"><span class="scr">' . $shot . '</span></a><span class="stand"><i></i><b></b></span><figcaption><h3>' . esc_html( $name ) . '</h3><dl><dt>' . ( count( $fonts ) > 1 ? 'פונטים' : 'פונט' ) . '</dt><dd>' . esc_html( implode( ', ', $fonts ) ) . '</dd>' . ( $year ? '<dt>שנה</dt><dd>' . esc_html( $year ) . '</dd>' : '' ) . '<dt>כתובת</dt><dd dir="ltr">' . esc_html( $host ) . '</dd></dl></figcaption></figure>';
+	return '<figure class="sc" data-f="' . esc_attr( implode( '|', $fonts ) ) . '"><a class="mon" href="https://' . esc_attr( $host ) . '" target="_blank" rel="noopener"><span class="scr">' . $shot . '</span></a><span class="stand"><i></i><b></b></span><figcaption><h3>' . esc_html( $name ) . '</h3><dl><dt>' . ( count( $fonts ) > 1 ? 'פונטים' : 'פונט' ) . '</dt><dd>' . esc_html( implode( ', ', $fonts ) ) . '</dd>' . ( $year ? '<dt>שנה</dt><dd>' . esc_html( $year ) . '</dd>' : '' ) . '<dt>כתובת</dt><dd dir="ltr">' . esc_html( $host ) . '</dd>' . ( $by ? '<dt>עיצוב</dt><dd>' . esc_html( $by ) . '</dd>' : '' ) . '</dl></figcaption></figure>';
 }
 add_action( 'template_redirect', function () {
 	if ( ! isset( $_GET['fsa_sites'] ) ) return;
@@ -1149,13 +1179,45 @@ add_action( 'template_redirect', function () {
 	$sites = fsa_v2_user_sites( $uid );
 	add_filter( 'wp_robots', function ( $r ) { $r['noindex'] = true; $r['nofollow'] = true; return $r; } );
 	get_header();
-	echo '<main class="fsa-sites" dir="rtl"><style>.fsa-sites{max-width:1180px;margin:0 auto;padding:40px 20px 70px;font-family:"Discovery_Fs","Heebo",Arial,sans-serif}.fsa-sites .eb{display:inline-block;border:1.5px solid #151515;padding:2px 12px;font-size:20px;font-weight:300}.fsa-sites h1{font-size:46px;font-weight:800;margin:6px 0 24px;padding-bottom:20px;border-bottom:1px solid #151515}.fsa-sites .g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px 22px}.fsa-sites .sc{margin:0}.fsa-sites .mon{display:block;background:#1F1F22;border-radius:10px;padding:7px}.fsa-sites .scr{display:block;aspect-ratio:16/10;overflow:hidden;border-radius:3px;background:#F8F7FB}.fsa-sites .scr img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}.fsa-sites .stand{display:flex;flex-direction:column;align-items:center}.fsa-sites .stand i{width:22%;height:22px;background:#7E7E83;clip-path:polygon(12% 0,88% 0,100% 100%,0 100%)}.fsa-sites .stand b{width:34%;height:7px;border-radius:5px 5px 2px 2px;background:#6E6E73}.fsa-sites h3{font-size:21px;margin:10px 0 6px}.fsa-sites dl{display:grid;grid-template-columns:auto 1fr;gap:3px 18px;margin:0;font-size:15px}.fsa-sites dt{color:#A8A8A8}.fsa-sites dd{margin:0}.fsa-sites .sk{display:flex;flex-direction:column;justify-content:center;gap:8px;height:100%;padding:0 8%;box-sizing:border-box;background:hsl(var(--hu) 60% 97%)}.fsa-sites .sk-h{font-size:28px;font-weight:700;color:hsl(var(--hu) 55% 30%)}.fsa-sites .sk-p{height:6px;width:70%;border-radius:3px;background:hsl(var(--hu) 25% 84%)}.fsa-sites .sk-p.s{width:50%}.fsa-sites .sk-b{width:70px;height:18px;border-radius:99px;background:hsl(var(--hu) 60% 55%)}.fsa-sites .by{margin-top:40px;color:#6E6E6E}@media(max-width:900px){.fsa-sites .g{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.fsa-sites h1{font-size:34px}.fsa-sites .g{gap:28px 12px}.fsa-sites h3{font-size:17px}.fsa-sites dl{font-size:13px}}</style>';
+	echo '<main class="fsa-sites" dir="rtl"><style>' . fsa_v2_sites_css() . '</style>';
 	echo '<span class="eb">הפונטים בפעולה</span><h1>' . count( $sites ) . ' אתרים עם פונטים של פונטשוק</h1><div class="g">';
 	foreach ( $sites as $h => $s ) echo fsa_v2_site_card_html( $s['name'], $h, $s['fonts'], $s['year'] );
 	echo '</div><p class="by">פונטים ורישיונות: <a href="' . esc_url( home_url( '/' ) ) . '">פונטשוק</a></p></main>';
 	get_footer();
 	exit;
 }, 4 );
+
+// public gallery page: shortcode [fontshok_gallery] on a normal page (גלריה, in the site menu). Shows the approved list (בסטודיו → גלריה),
+// newest first, with a filter by font. Light: plain HTML from the server, kept ready (transient) until the list or a picture changes,
+// lazy pictures from the site itself, the style only on this page and ~10 lines of script for the filter
+function fsa_v2_gallery_html() {
+	$html = get_transient( 'fsa_v2_gallery' );
+	if ( is_string( $html ) && '' !== $html ) return $html;
+	$list = array_reverse( fsa_v2_showcase_public() ); $count = array();
+	foreach ( $list as $x ) foreach ( $x['fonts'] as $f ) $count[ $f ] = ( $count[ $f ] ?? 0 ) + 1;
+	arsort( $count );
+	$html = '<div class="fsa-sites fsa-gal" dir="rtl"><style>' . fsa_v2_sites_css() . '.fsa-gal{padding-top:10px}.fsa-gal .lede{font-size:19px;margin:-8px 0 22px;max-width:640px}.fsa-gal .fl{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 30px}.fsa-gal .fl button{font:inherit;font-size:16px;background:#fff;color:#151515;border:1.5px solid #151515;border-radius:99px;padding:5px 15px;cursor:pointer}.fsa-gal .fl button[aria-pressed=true]{background:#151515;color:#fff}.fsa-gal .fl small{opacity:.6;margin-inline-start:4px}.fsa-gal .sc[hidden]{display:none}.fsa-gal .none{font-size:19px;color:#6E6E6E}</style>'
+		. '<span class="eb">הפונטים בפעולה</span><h1>אתרים שנבנו עם פונטשוק</h1>';
+	if ( ! $list ) $html .= '<p class="none">הגלריה נבנית עכשיו. אתרים, כמו קרנינג טוב, לוקחים זמן.</p>';
+	else {
+		$html .= '<p class="lede">עבודות של לקוחות פונטשוק, עם פונטים ברישיון מסודר. בחרו פונט כדי לראות איפה הוא עובד.</p>';
+		if ( count( $count ) > 1 ) {
+			$html .= '<div class="fl" role="group" aria-label="סינון לפי פונט"><button type="button" aria-pressed="true" data-f="">הכל<small>' . count( $list ) . '</small></button>';
+			foreach ( $count as $f => $n ) $html .= '<button type="button" aria-pressed="false" data-f="' . esc_attr( $f ) . '">' . esc_html( $f ) . '<small>' . (int) $n . '</small></button>';
+			$html .= '</div>';
+		}
+		$html .= '<div class="g">';
+		foreach ( $list as $x ) $html .= fsa_v2_site_card_html( $x['name'], $x['host'], $x['fonts'], $x['year'], $x['img'], $x['by'] );
+		$html .= '</div><script>(function(){var r=document.currentScript.parentNode,b=r.querySelectorAll(".fl button");'
+			. 'b.forEach(function(x){x.onclick=function(){var f=x.getAttribute("data-f");b.forEach(function(y){y.setAttribute("aria-pressed",y===x)});'
+			. 'r.querySelectorAll(".sc").forEach(function(c){c.hidden=!!f&&("|"+c.getAttribute("data-f")+"|").indexOf("|"+f+"|")<0})}})})();</script>';
+	}
+	$html .= '</div>';
+	set_transient( 'fsa_v2_gallery', $html, 12 * HOUR_IN_SECONDS );
+	return $html;
+}
+add_shortcode( 'fontshok_gallery', 'fsa_v2_gallery_html' );
+foreach ( array( 'fsa_v2_showcase', 'fsa_v2_snaps' ) as $o ) foreach ( array( 'add_option_', 'update_option_' ) as $w ) add_action( $w . $o, function () { delete_transient( 'fsa_v2_gallery' ); } );
 
 // admin screen "בסטודיו" (Admin menu → בסטודיו): the three fonts of the vote, results, and the gallery
 add_action( 'admin_menu', function () {
@@ -1223,8 +1285,10 @@ function fsa_v2_show_save() {
 	if ( 'snaprun' === $op ) fsa_v2_snap_run(); // a round now, instead of waiting for the hour
 	if ( 'snap' === $op && $host ) { // a new picture now (e.g. the site was redesigned)
 		$snaps = fsa_v2_snaps(); $u = fsa_v2_fetch_snap( $host );
-		$snaps[ $host ] = array( 'u' => $u ? $u : ( $snaps[ $host ]['u'] ?? '' ), 'n' => 0, 't' => time() );
+		if ( ! $u && empty( $GLOBALS['fsa_v2_snap_busy'] ) && ( $og = fsa_v2_og_snap( $host ) ) ) $u = $og; // the site's own sharing picture, if the service has nothing yet
+		$snaps[ $host ] = array( 'u' => $u ? $u : ( $snaps[ $host ]['u'] ?? '' ), 'n' => 0, 't' => time(), 'w' => $u ? 0 : time() ); // no picture: the call started one, a round in 3 minutes picks it up
 		update_option( 'fsa_v2_snaps', $snaps, false );
+		if ( ! $u && function_exists( 'wp_schedule_single_event' ) ) wp_schedule_single_event( time() + 180, 'fsa_v2_snaps' );
 	}
 	update_option( 'fsa_v2_showcase', array_values( array_filter( $list, function ( $x ) { return ! empty( $x['ok'] ); } ) ), false ); // drops old "waiting" requests
 	update_option( 'fsa_v2_showcase_no', array_values( array_unique( $no ) ), false );
@@ -1246,7 +1310,7 @@ function fsa_v2_studio_admin() {
 	$tab = isset( $_GET['tab'] ) && 'show' === $_GET['tab'] ? 'show' : 'studio';
 	$s = fsa_v2_studio(); $t = fsa_v2_studio_tally( $s['round'] ); $tot = array_sum( $t );
 	echo '<div class="wrap" dir="rtl"><h1>פונטשוק · בסטודיו</h1>';
-	if ( isset( $_GET['saved'] ) ) echo 'wait' === $_GET['saved'] ? '<div class="notice notice-warning is-dismissible"><p>לא התקבלה תמונה' . ( ! empty( $_GET['why'] ) ? ': ' . esc_html( sanitize_text_field( wp_unslash( $_GET['why'] ) ) ) : '' ) . '. אם היא בהכנה, נסו שוב בעוד דקה.</p></div>' : '<div class="notice notice-success is-dismissible"><p>נשמר.</p></div>';
+	if ( isset( $_GET['saved'] ) ) echo 'wait' === $_GET['saved'] ? '<div class="notice notice-warning is-dismissible"><p>לא התקבלה תמונה' . ( ! empty( $_GET['why'] ) ? ': ' . esc_html( sanitize_text_field( wp_unslash( $_GET['why'] ) ) ) : '' ) . '. אם היא בהכנה, היא תגיע לבד בעוד כמה דקות.</p></div>' : '<div class="notice notice-success is-dismissible"><p>נשמר.</p></div>';
 	echo '<nav class="nav-tab-wrapper"><a class="nav-tab' . ( 'studio' === $tab ? ' nav-tab-active' : '' ) . '" href="' . esc_url( admin_url( 'admin.php?page=fsa-studio' ) ) . '">ההצבעה</a><a class="nav-tab' . ( 'show' === $tab ? ' nav-tab-active' : '' ) . '" href="' . esc_url( admin_url( 'admin.php?page=fsa-studio&tab=show' ) ) . '">גלריה</a></nav>';
 	echo '<p style="max-width:70ch">' . ( FSA_V2_FEATURES ? 'פעיל ללקוחות: ' . esc_html( FSA_V2_FEATURES ) . '.' : 'כרגע רק מנהלים ו־claude-test רואים את זה באזור האישי. כדי לפתוח ללקוחות: בראש הסניפט, FSA_V2_FEATURES = \'studio,show\'.' ) . '</p>';
 	if ( 'show' === $tab ) { fsa_v2_show_admin(); echo '</div>'; return; }
