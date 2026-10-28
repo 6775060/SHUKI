@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '101' );
+define( 'FSA_V2_BUILD', '102' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -28,8 +28,12 @@ define( 'FSA_V2_SHOTS', 'https://s.wordpress.com/mshots/v1/{url}?w=1280&h=800' )
 define( 'FSA_V2_PLAN_PRODUCTS', array( 'web' => 12652, 'extra' => 14162, 'desk' => 22785 ) );
 // the ₪79 additional domain: ID of a hidden virtual WooCommerce product. 0 = not offered yet (the button says "next stage")
 define( 'FSA_V2_ADDON_PRODUCT', 22751 );
-// reminder email to subscribers with domains left to register: this many days before the month closes (Academic: the year). 0 = off
-define( 'FSA_V2_REMIND_DAYS', 3 );
+// "built something?" email after a web-font download (section 2l), and the FontShok email frame
+define( 'FSA_V2_NUDGE_DAYS', 14 );  // days after a web-font download before the "built something?" email; 0 = off
+define( 'FSA_V2_NUDGE_STALE', 45 ); // a download older than this sends nothing
+define( 'FSA_V2_NUDGE_GAP', 60 );   // at most one such email per customer in this many days
+define( 'FSA_V2_MAIL_LOGO', 'https://fontshok.co.il/wp-content/uploads/2026/10/fontshok-mail-logo.png' );
+define( 'FSA_V2_MAIL_FROM', '' ); // sender address; '' = the site's usual sender (keeps the mail plugin's settings)
 // ─────────────────────────────────────────────────────────────────────────
 
 function fsa_v2_is_tester() {
@@ -221,6 +225,7 @@ function fsa_v2_weight_download() {
 	if ( ! $parent || ! in_array( $parent->post_title, $names, true ) || ( ! $is_desk && $desktop_only ) || ! isset( $dls[ $k ] ) ) {
 		wp_die( 'אין גישה לקובץ הזה.', '', array( 'response' => 403 ) );
 	}
+	if ( ! $is_desk ) fsa_v2_note_webdl( get_current_user_id(), $parent->post_title );
 	WC_Download_Handler::download( $dls[ $k ]->get_file(), $v->get_id() );
 	exit;
 }
@@ -252,6 +257,7 @@ function fsa_v2_all_download() {
 	}
 	$kind = 'web' === $_GET['fsa_wall'] ? 'web' : 'desk';
 	$zip  = fsa_v2_all_zip( $kind );
+	if ( 'web' === $kind ) fsa_v2_note_webdl( get_current_user_id() );
 	nocache_headers();
 	header( 'Content-Type: application/zip' );
 	header( 'Content-Disposition: attachment; filename="' . ( 'web' === $kind ? 'FontShok-Webfonts.zip' : 'FontShok-Desktop.zip' ) . '"' );
@@ -361,11 +367,12 @@ function fsa_v2_dom_ajax() {
 		$used = 0; $free = 0; $max = 0;
 		foreach ( $rows as $r ) { $max = max( $max, (int) $r->domain_slot ); if ( '' !== $r->domain_url ) $used++; elseif ( ! $free ) $free = (int) $r->domain_slot; }
 		if ( $yearly ) $used = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `$t` WHERE user_id = %d AND year = %d AND domain_url <> ''", $uid, $y ) );
-		if ( $limit && $used >= $limit ) $err( $yearly ? 'ניצלת את 3 הדומיינים של השנה.' : 'ניצלת את הדומיינים של החודש.' );
+		if ( $limit && $used >= $limit ) $err( $yearly ? 'כל 3 האתרים של השנה כבר רשומים. המכסה מתחדשת בינואר.' : 'כל האתרים של החודש כבר רשומים. המכסה מתחדשת ב־1 לחודש.' );
 		if ( ! $free ) { for ( $k = 1; $k <= max( $max, 0 ) + 1; $k++ ) { if ( ! in_array( $k, array_map( 'intval', wp_list_pluck( $rows, 'domain_slot' ) ), true ) ) { $free = $k; break; } } }
 		$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM `$t` WHERE user_id = %d AND year = %d AND month = %d AND domain_slot = %d", $uid, $y, $m, $free ) );
 		$data = array( 'domain_name' => $name, 'domain_url' => $host, 'font_name' => implode( ', ', $fonts ) );
 		$ok = $exists ? $wpdb->update( $t, $data, array( 'id' => $exists ) ) : $wpdb->insert( $t, $data + array( 'user_id' => $uid, 'year' => $y, 'month' => $m, 'domain_slot' => $free ) );
+		if ( false !== $ok && $limit && $used + 1 >= $limit ) fsa_v2_quota_full_alert( $uid, $plan, $used + 1, $yearly ? (string) $y : $y . '-' . $m );
 	} elseif ( 'edit' === $op ) {
 		$ok = $wpdb->update( $t, array( 'domain_name' => $name, 'domain_url' => $host, 'font_name' => implode( ', ', $fonts ) ), array( 'id' => $id ) );
 	} elseif ( 'del' === $op ) {
@@ -374,6 +381,7 @@ function fsa_v2_dom_ajax() {
 		$err( 'פעולה לא מוכרת.' );
 	}
 	if ( false === $ok ) $err( 'השמירה נכשלה. נסו שוב.' );
+	if ( 'del' !== $op && ! empty( $_POST['show'] ) ) fsa_v2_show_consent( $uid, $host ); // "אפשר להציג כדוגמה": the owner sees it in the gallery queue
 	wp_send_json_success( array( 'domains' => fsa_v2_domains( $uid ) ) );
 }
 
@@ -545,64 +553,122 @@ function fsa_v2_desk_role( $order_id ) {
 	}
 }
 
-// 2l. domain reminder: once a day, subscribers whose cycle closes within FSA_V2_REMIND_DAYS and who still have domains to register get one email
-// per cycle (user meta fsa_v2_remind = the cycle it was sent for). Extra (unlimited) and Desktop (no domains) get none.
-add_action( 'fsa_v2_remind', 'fsa_v2_remind_run' );
+// 2l. a gentle nudge to register a site: after a subscriber downloads web fonts, about FSA_V2_NUDGE_DAYS later, one friendly email
+// ("built something with it? register it: tidy licence, maybe a spot in the gallery"). No counts, no deadlines, nothing "lost".
+// Not when a site was registered since that download, not for a download older than FSA_V2_NUDGE_STALE days, at most once every
+// FSA_V2_NUDGE_GAP days, never after the customer asked to stop (user meta fsa_v2_nudge_off). Desktop (no sites) gets none.
+// User meta: fsa_v2_webdl = time of the last web-font download, fsa_v2_webdl_font = its font, fsa_v2_nudge = time of the last nudge.
+add_action( 'fsa_v2_remind', 'fsa_v2_nudge_run' ); // the daily event already scheduled on the site
 add_action( 'init', function () {
-	if ( FSA_V2_REMIND_DAYS && function_exists( 'wp_next_scheduled' ) && ! wp_next_scheduled( 'fsa_v2_remind' ) ) wp_schedule_event( time() + 300, 'daily', 'fsa_v2_remind' );
+	if ( FSA_V2_NUDGE_DAYS && function_exists( 'wp_next_scheduled' ) && ! wp_next_scheduled( 'fsa_v2_remind' ) ) wp_schedule_event( time() + 300, 'daily', 'fsa_v2_remind' );
 } );
-// what a subscriber has left this cycle: array( left, cycle key, closing date d.m.Y, days to closing, yearly ) or null when nothing applies
-function fsa_v2_remind_state( $uid, $plan ) {
-	global $wpdb;
-	$limit = fsa_v2_domain_limit( $plan );
-	$t = fsa_v2_eft_table();
-	if ( $limit <= 0 || ! $t ) return null;
-	$y = (int) current_time( 'Y' ); $m = (int) current_time( 'n' ); $d = (int) current_time( 'j' );
-	$yearly = fsa_v2_domain_yearly( $plan );
-	$end  = $yearly ? mktime( 0, 0, 0, 12, 31, $y ) : mktime( 0, 0, 0, $m, (int) current_time( 't' ), $y );
-	$days = (int) round( ( $end - mktime( 0, 0, 0, $m, $d, $y ) ) / DAY_IN_SECONDS );
-	if ( $yearly ) {
-		$used = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `$t` WHERE user_id = %d AND year = %d AND domain_url <> ''", $uid, $y ) );
-	} else {
-		$limit += fsa_v2_bonus_sub( $uid, $y, $m ) + fsa_v2_deal_extra( $uid );
-		$used = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `$t` WHERE user_id = %d AND year = %d AND month = %d AND domain_url <> ''", $uid, $y, $m ) );
-	}
-	return array( max( 0, $limit - $used ), $yearly ? (string) $y : $y . '-' . $m, date( 'd.m.Y', $end ), $days, $yearly );
+function fsa_v2_note_webdl( $uid, $font = '' ) {
+	update_user_meta( $uid, 'fsa_v2_webdl', time() );
+	update_user_meta( $uid, 'fsa_v2_webdl_font', (string) $font );
 }
-function fsa_v2_remind_mail( $u, $st ) {
-	list( $left, , $date, , $yearly ) = $st;
-	$when = $yearly ? 'עד סוף השנה' : 'עד סוף החודש';
-	$n    = 1 === $left ? 'דומיין אחד' : $left . ' דומיינים';
-	$url  = ( function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ) ) . '#subdom';
+// the stop link in every email: no login needed, signed for this customer only
+function fsa_v2_nudge_stop_url( $uid ) {
+	return add_query_arg( array( 'fsa_nonudge' => $uid, 'k' => substr( hash_hmac( 'sha256', 'nonudge' . $uid, wp_salt() ), 0, 20 ) ), home_url( '/' ) );
+}
+add_action( 'template_redirect', function () {
+	if ( empty( $_GET['fsa_nonudge'] ) ) return;
+	$uid = (int) $_GET['fsa_nonudge'];
+	$ok  = $uid && hash_equals( substr( hash_hmac( 'sha256', 'nonudge' . $uid, wp_salt() ), 0, 20 ), (string) ( $_GET['k'] ?? '' ) );
+	if ( $ok ) update_user_meta( $uid, 'fsa_v2_nudge_off', 1 );
+	wp_die( $ok ? '<h2>סגרנו.</h2><p>לא נשלח לך יותר תזכורות לרישום אתרים. כל השאר (פונטים, תעודות, רישום) נשאר בדיוק כמו שהיה.</p><p><a href="' . esc_url( home_url( '/' ) ) . '">חזרה לפונטשוק</a></p>' : 'הקישור לא תקין.', 'פונטשוק', array( 'response' => 200 ) );
+} );
+
+// the FontShok email: one fixed frame for every message the area sends (logo, a soft brand band, white card, a short footer).
+// Tables and inline styles only, so Gmail, Outlook and phones show it the same; right-to-left.
+function fsa_v2_mail_frame( $pre, $inner, $foot = '' ) {
+	$f = 'font-family:Arial,\'Helvetica Neue\',Helvetica,sans-serif';
+	return '<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
+		. '<body style="margin:0;padding:0;background:#F4F4F4">'
+		. '<div style="display:none;max-height:0;overflow:hidden;opacity:0">' . esc_html( $pre ) . '</div>'
+		. '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F4F4"><tr><td align="center" style="padding:28px 12px">'
+		. '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="rtl" style="max-width:560px;' . $f . ';color:#151515;text-align:right">'
+		. '<tr><td style="padding:0 6px 18px"><a href="' . esc_url( home_url( '/' ) ) . '"><img src="' . esc_url( FSA_V2_MAIL_LOGO ) . '" width="150" alt="פונטשוק" style="display:block;border:0;width:150px;height:auto"></a></td></tr>'
+		. '<tr><td style="background:#FFFFFF;border-radius:18px;overflow:hidden">'
+		. '<div style="height:8px;background:#BCB6FF;background-image:linear-gradient(90deg,#BCB6FF,#EACCFF);border-radius:18px 18px 0 0"></div>'
+		. '<div style="padding:30px 30px 26px;font-size:16px;line-height:1.65">' . $inner . '</div></td></tr>'
+		. '<tr><td style="padding:18px 8px 0;font-size:12px;line-height:1.6;color:#8A8A8A">'
+		. 'פונטשוק · פונטים עבריים לעבודה אמיתית · <a href="' . esc_url( home_url( '/' ) ) . '" style="color:#8A8A8A">fontshok.co.il</a>' . ( $foot ? '<br>' . $foot : '' )
+		. '</td></tr></table></td></tr></table></body></html>';
+}
+function fsa_v2_mail_button( $url, $label ) {
+	return '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0 6px"><tr><td style="border-radius:99px;background:#151515">'
+		. '<a href="' . esc_url( $url ) . '" style="display:inline-block;padding:13px 28px;font-weight:bold;font-size:16px;color:#FFFFFF;text-decoration:none;border-radius:99px">' . esc_html( $label ) . ' ←</a></td></tr></table>';
+}
+function fsa_v2_send_mail( $to, $subj, $html ) {
+	$h = array( 'Content-Type: text/html; charset=UTF-8' );
+	if ( FSA_V2_MAIL_FROM ) $h[] = 'From: פונטשוק <' . FSA_V2_MAIL_FROM . '>';
+	return wp_mail( $to, $subj, $html, $h );
+}
+
+// the nudge itself; $font is the font they downloaded, when one font was downloaded
+function fsa_v2_nudge_mail( $u, $font, $plan_label ) {
 	$hi   = $u->first_name ? $u->first_name : $u->display_name;
-	$subj = 'נשאר לך ' . $n . ' לרשום ' . $when;
-	$body = '<div dir="rtl" style="font-family:Arial,sans-serif;font-size:16px;line-height:1.6;color:#1A1A1A;text-align:right">'
-		. '<p>שלום ' . esc_html( $hi ) . ',</p>'
-		. '<p>' . $when . ', ב־' . esc_html( $date ) . ', אפשר לרשום במינוי שלך עוד <b>' . $n . '</b>. דומיין שלא נרשם עד אז לא עובר ל' . ( $yearly ? 'שנה הבאה' : 'חודש הבא' ) . '.</p>'
-		. '<p><a href="' . esc_url( $url ) . '" style="display:inline-block;background:#5B3FFF;color:#fff;text-decoration:none;padding:10px 22px;border-radius:99px;font-weight:bold">לרישום דומיין</a></p>'
-		. '<p style="color:#666;font-size:14px">פונטשוק</p></div>';
-	return array( $subj, $body );
+	$what = '' !== (string) $font ? esc_html( $font ) : 'הפונטים של פונטשוק';
+	$url  = ( function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ) ) . '#subdom';
+	$row  = function ( $t, $d ) { return '<tr><td style="padding:0 0 12px 12px;vertical-align:top;font-size:18px;line-height:1">✦</td><td style="padding:0 0 12px;font-size:15px;line-height:1.55"><b>' . $t . '</b><br><span style="color:#6E6E6E">' . $d . '</span></td></tr>'; };
+	$subj = ( '' !== (string) $font ? 'מה בנית עם ' . $font . '?' : 'מה בנית לאחרונה?' );
+	$in   = '<p style="margin:0 0 14px;font-size:22px;font-weight:bold;line-height:1.3">היי ' . esc_html( $hi ) . ', מה בנית?</p>'
+		. '<p style="margin:0 0 18px">לפני כשבועיים הורדת את ' . $what . ' לאתרים. אם האתר כבר באוויר, או קרוב לשם, זה רגע טוב לרשום אותו במינוי:</p>'
+		. '<table role="presentation" cellpadding="0" cellspacing="0">'
+		. $row( 'רישיון מסודר', 'האתר מקבל תעודה משלו, עם הכתובת שלו. נוח כשלקוח שואל "יש לזה רישיון?"' )
+		. $row( 'במה לעבודה שלך', 'אם תרצה, נציג את האתר בגלריית האתרים של פונטשוק, עם קרדיט וקישור אליך.' )
+		. $row( '20 שניות', 'כתובת, פונט, סיימת. בלי טפסים ארוכים.' )
+		. '</table>'
+		. fsa_v2_mail_button( $url, 'לרישום האתר' )
+		. '<p style="margin:18px 0 0;color:#6E6E6E;font-size:14px">עוד לא באוויר? הכל טוב. אתרים, כמו קרנינג טוב, לוקחים זמן. אנחנו פה.</p>'
+		. '<p style="margin:18px 0 0">צוות פונטשוק</p>';
+	$foot = 'קיבלת את המייל כי יש לך מינוי ' . esc_html( $plan_label ) . ' בפונטשוק. <a href="' . esc_url( fsa_v2_nudge_stop_url( $u->ID ) ) . '" style="color:#8A8A8A">לא לשלוח לי תזכורות כאלה</a>';
+	return array( $subj, fsa_v2_mail_frame( 'רישום של 20 שניות, תעודה מסודרת, ואולי גם מקום בגלריה.', $in, $foot ) );
 }
-function fsa_v2_remind_run() {
-	if ( ! FSA_V2_REMIND_DAYS || ! function_exists( 'get_users' ) ) return 0;
-	$sent = 0;
-	foreach ( get_users( array( 'role__in' => array( 'member-webstop', 'member-barter', 'member-academic' ), 'fields' => 'all' ) ) as $u ) {
+function fsa_v2_nudge_due( $uid, $now ) {
+	global $wpdb;
+	$dl = (int) get_user_meta( $uid, 'fsa_v2_webdl', true );
+	if ( ! $dl || get_user_meta( $uid, 'fsa_v2_nudge_off', true ) ) return false;
+	if ( $now - $dl < FSA_V2_NUDGE_DAYS * DAY_IN_SECONDS || $now - $dl > FSA_V2_NUDGE_STALE * DAY_IN_SECONDS ) return false;
+	$last = (int) get_user_meta( $uid, 'fsa_v2_nudge', true );
+	if ( $last && ( $last >= $dl || $now - $last < FSA_V2_NUDGE_GAP * DAY_IN_SECONDS ) ) return false;
+	$t = fsa_v2_eft_table();
+	if ( $t ) foreach ( (array) $wpdb->get_results( $wpdb->prepare( "SELECT created_at FROM `$t` WHERE user_id = %d AND domain_url <> ''", $uid ) ) as $r ) {
+		if ( $r->created_at && strtotime( $r->created_at ) >= $dl ) return false; // registered a site since: nothing to nudge
+	}
+	return true;
+}
+function fsa_v2_nudge_run() {
+	if ( ! FSA_V2_NUDGE_DAYS || ! function_exists( 'get_users' ) ) return 0;
+	$sent = 0; $now = time();
+	foreach ( get_users( array( 'role__in' => array( 'member-webstop', 'member-barter', 'member-academic', 'member-extra' ), 'meta_key' => 'fsa_v2_webdl', 'fields' => 'all' ) ) as $u ) {
 		list( $plan ) = fsa_v2_plan_info( $u );
-		$st = fsa_v2_remind_state( $u->ID, $plan );
-		if ( ! $st || $st[0] < 1 || $st[3] > FSA_V2_REMIND_DAYS || $st[3] < 0 || $st[1] === (string) get_user_meta( $u->ID, 'fsa_v2_remind', true ) || ! $u->user_email ) continue;
-		list( $subj, $body ) = fsa_v2_remind_mail( $u, $st );
-		update_user_meta( $u->ID, 'fsa_v2_remind', $st[1] ); // before sending, so a slow mail server never means two emails
-		if ( wp_mail( $u->user_email, $subj, $body, array( 'Content-Type: text/html; charset=UTF-8' ) ) ) $sent++;
+		if ( fsa_v2_domain_limit( $plan ) < 0 || ! $u->user_email || ! fsa_v2_nudge_due( $u->ID, $now ) ) continue;
+		$labels = array( 'web' => 'וובסטופ', 'extra' => 'אקסטרה', 'barter' => 'בארטר', 'acad' => 'אקדמיק' );
+		list( $subj, $body ) = fsa_v2_nudge_mail( $u, (string) get_user_meta( $u->ID, 'fsa_v2_webdl_font', true ), $labels[ $plan ] ?? '' );
+		update_user_meta( $u->ID, 'fsa_v2_nudge', $now ); // before sending, so a slow mail server never means two emails
+		if ( fsa_v2_send_mail( $u->user_email, $subj, $body ) ) $sent++;
 	}
 	update_option( 'fsa_v2_remind_log', array( 't' => current_time( 'd.m.Y H:i' ), 'sent' => $sent ), false );
 	return $sent;
 }
-// an admin can see the email: /?fsa_remind_test=1 sends the reminder, as a Webstop subscriber with 2 domains left would get it, to their own address
+// the owner hears when a customer fills the month's quota (a candidate for Extra or the add-on); the customer is not told anything new
+function fsa_v2_quota_full_alert( $uid, $plan, $used, $cycle ) {
+	if ( (string) get_user_meta( $uid, 'fsa_v2_full_alert', true ) === $cycle ) return;
+	update_user_meta( $uid, 'fsa_v2_full_alert', $cycle );
+	$u = get_userdata( $uid );
+	$n = $u ? trim( $u->first_name . ' ' . $u->last_name ) : '';
+	$in = '<p style="margin:0 0 12px;font-size:20px;font-weight:bold">לקוח מילא את המכסה</p>'
+		. '<p style="margin:0">' . esc_html( $n ? $n : ( $u ? $u->display_name : '#' . $uid ) ) . ( $u ? ' (' . esc_html( $u->user_email ) . ')' : '' ) . ' רשם ' . (int) $used . ' אתרים ' . ( 'acad' === $plan ? 'השנה' : 'החודש' ) . ', כל מה שכלול במינוי. אולי מתאים לו אקסטרה, הסדר מיוחד, או סתם מילה טובה.</p>'
+		. fsa_v2_mail_button( admin_url( 'user-edit.php?user_id=' . $uid ), 'לכרטיס הלקוח' );
+	fsa_v2_send_mail( get_option( 'admin_email' ), 'מילא את המכסה: ' . ( $n ? $n : '#' . $uid ), fsa_v2_mail_frame( 'לקוח רשם את כל האתרים שכלולים במינוי.', $in ) );
+}
+// an admin can see the email: /?fsa_remind_test=1 sends the nudge to their own address
 add_action( 'template_redirect', function () {
 	if ( empty( $_GET['fsa_remind_test'] ) || ! current_user_can( 'manage_options' ) ) return;
 	$u = wp_get_current_user();
-	list( $subj, $body ) = fsa_v2_remind_mail( $u, array( 2, '', date( 'd.m.Y', mktime( 0, 0, 0, (int) current_time( 'n' ), (int) current_time( 't' ), (int) current_time( 'Y' ) ) ), 3, false ) );
-	$ok = wp_mail( $u->user_email, '[בדיקה] ' . $subj, $body, array( 'Content-Type: text/html; charset=UTF-8' ) );
+	list( $subj, $body ) = fsa_v2_nudge_mail( $u, 'דיסקברי', 'וובסטופ' );
+	$ok = fsa_v2_send_mail( $u->user_email, '[בדיקה] ' . $subj, $body );
 	wp_die( $ok ? 'נשלח מייל בדיקה אל ' . esc_html( $u->user_email ) : 'השליחה נכשלה.', '', array( 'response' => 200 ) );
 } );
 function fsa_v2_addon_grant( $order_id ) {
@@ -963,6 +1029,9 @@ function fsa_v2_showcase_public() {
 	foreach ( fsa_v2_showcase_all() as $x ) if ( ! empty( $x['ok'] ) ) $out[] = array( 'name' => $x['name'], 'host' => $x['host'], 'fonts' => $x['fonts'], 'year' => $x['year'], 'by' => $x['by'], 'img' => $x['img'] ? $x['img'] : fsa_v2_snap( $x['host'] ) );
 	return $out;
 }
+// sites the customer agreed to show (ticked "אפשר להציג כדוגמה" when registering): user meta fsa_v2_show_ok = host => d.m.Y
+function fsa_v2_show_ok( $uid ) { $l = get_user_meta( $uid, 'fsa_v2_show_ok', true ); return is_array( $l ) ? $l : array(); }
+function fsa_v2_show_consent( $uid, $host ) { $l = fsa_v2_show_ok( $uid ); $l[ $host ] = current_time( 'd.m.Y' ); update_user_meta( $uid, 'fsa_v2_show_ok', $l ); }
 // every site this customer registered (subscription domains + sites on purchased licences): host => [name, fonts, year]
 function fsa_v2_user_sites( $uid ) {
 	$out = array();
@@ -1218,18 +1287,21 @@ FSAJS;
 	echo '</div>';
 }
 function fsa_v2_show_admin() {
-	$list = fsa_v2_showcase_all(); $q = fsa_v2_showcase_queue(); $page = max( 1, (int) ( $_GET['p'] ?? 1 ) ); $per = 40;
+	$list = fsa_v2_showcase_all(); $q = fsa_v2_showcase_queue();
+	$agreed = function ( $x, $h ) { $ok = fsa_v2_show_ok( (int) $x['uid'] ); return $ok[ $h ] ?? ''; };
+	uksort( $q, function ( $a, $b ) use ( $q, $agreed ) { return (int) ( '' === $agreed( $q[ $a ], $a ) ) - (int) ( '' === $agreed( $q[ $b ], $b ) ); } ); // the ones who agreed first
+	$page = max( 1, (int) ( $_GET['p'] ?? 1 ) ); $per = 40;
 	$form = function ( $op, $host, $label, $extra = '' ) { return '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="hidden" name="action" value="fsa_v2_show_save"><input type="hidden" name="op" value="' . $op . '"><input type="hidden" name="host" value="' . esc_attr( $host ) . '">' . wp_nonce_field( 'fsa_v2_show', '_wpnonce', true, false ) . $extra . '<button class="button' . ( 'ok' === $op ? ' button-primary' : '' ) . '">' . $label . '</button></form>'; };
 	$pic = function ( $host, $img = '' ) { $u = $img ? $img : fsa_v2_snap( $host ); return $u ? '<img src="' . esc_url( $u ) . '" alt="" loading="lazy" style="width:150px;aspect-ratio:16/10;object-fit:cover;object-position:top;border-radius:4px;border:1px solid #DCDCDE;display:block">' : '<span style="display:grid;place-items:center;width:150px;aspect-ratio:16/10;border-radius:4px;background:#F0F0F1;color:#787C82;font-size:12px">' . ( FSA_V2_SHOTS ? 'התמונה בהכנה' : 'אין תמונה' ) . '</span>'; };
 	$site = function ( $x, $host ) { return '<b>' . esc_html( $x['name'] ) . '</b><br><a href="https://' . esc_attr( $host ) . '" target="_blank" rel="noopener" dir="ltr">' . esc_html( $host ) . '</a>'; };
-	echo '<h2>ממתינים לאישור (' . count( $q ) . ')</h2><p style="max-width:70ch">כל אתר שלקוח רושם, במינוי או ברישיון שקנה, מגיע לכאן. מה שמאשרים עולה לגלריה; "לא להציג" מוציא אותו מהרשימה. התמונות נלקחות מהאתרים עצמם, כמה בכל שעה.</p>';
+	echo '<h2>ממתינים לאישור (' . count( $q ) . ')</h2><p style="max-width:70ch">כל אתר שלקוח רושם, במינוי או ברישיון שקנה, מגיע לכאן. מי שסימן "אפשר להציג כדוגמה" מופיע ראשון. מה שמאשרים עולה לגלריה; "לא להציג" מוציא אותו מהרשימה. התמונות נלקחות מהאתרים עצמם, כמה בכל שעה.</p>';
 	$lg = get_option( 'fsa_v2_snap_log' );
 	echo '<p>' . ( FSA_V2_SHOTS ? ( is_array( $lg ) ? 'סבב צילומים אחרון: ' . esc_html( $lg['t'] ) . ' · נשלחו ' . (int) $lg['asked'] . ' · התקבלו ' . (int) $lg['got'] . ( $lg['err'] ? ' · ' . esc_html( $lg['err'] ) : '' ) : 'עוד לא היה סבב צילומים (הוא רץ פעם בשעה, כשיש כניסות לאתר).' ) . ' ' . $form( 'snaprun', '', 'סבב צילומים עכשיו' ) : 'הצילום האוטומטי כבוי (FSA_V2_SHOTS).' ) . '</p>';
-	echo '<table class="widefat striped"><thead><tr><th style="width:160px">תמונה</th><th>אתר</th><th>פונטים</th><th>שנה</th><th>לקוח</th><th></th></tr></thead><tbody>';
+	echo '<table class="widefat striped"><thead><tr><th style="width:160px">תמונה</th><th>אתר</th><th>פונטים</th><th>שנה</th><th>לקוח</th><th>הסכים להצגה</th><th></th></tr></thead><tbody>';
 	foreach ( array_slice( $q, ( $page - 1 ) * $per, $per, true ) as $h => $x ) { $u = get_userdata( $x['uid'] );
-		echo '<tr><td>' . $pic( $h ) . '</td><td>' . $site( $x, $h ) . '</td><td>' . esc_html( implode( ', ', $x['fonts'] ) ) . '</td><td>' . esc_html( $x['year'] ) . '</td><td>' . esc_html( $u ? $u->user_email : '' ) . '</td><td>'
+		echo '<tr><td>' . $pic( $h ) . '</td><td>' . $site( $x, $h ) . '</td><td>' . esc_html( implode( ', ', $x['fonts'] ) ) . '</td><td>' . esc_html( $x['year'] ) . '</td><td>' . esc_html( $u ? $u->user_email : '' ) . '</td><td>' . ( $agreed( $x, $h ) ? '<b style="color:#008A20">✓ ' . esc_html( $agreed( $x, $h ) ) . '</b>' : '<span style="color:#787C82">לא סימן</span>' ) . '</td><td>'
  			. ( FSA_V2_SHOTS ? $form( 'snap', $h, 'צילום' ) . ' ' : '' ) . $form( 'ok', $h, 'אישור', '<input name="by" placeholder="עיצוב (לא חובה)" style="width:130px"> <input type="url" name="img" placeholder="תמונה אחרת (קישור)" dir="ltr" style="width:150px"> ' ) . ' ' . $form( 'no', $h, 'לא להציג' ) . '</td></tr>'; }
-	if ( ! $q ) echo '<tr><td colspan="6">אין אתרים שממתינים.</td></tr>';
+	if ( ! $q ) echo '<tr><td colspan="7">אין אתרים שממתינים.</td></tr>';
 	echo '</tbody></table>';
 	if ( count( $q ) > $per ) { echo '<p>'; for ( $i = 1; $i <= ceil( count( $q ) / $per ); $i++ ) echo $i === $page ? '<b>' . $i . '</b> ' : '<a href="' . esc_url( admin_url( 'admin.php?page=fsa-studio&tab=show&p=' . $i ) ) . '">' . $i . '</a> '; echo '</p>'; }
 	echo '<h2>בגלריה (' . count( $list ) . ')</h2><table class="widefat striped"><thead><tr><th style="width:160px">תמונה</th><th>אתר</th><th>פונטים</th><th>שנה</th><th>עיצוב</th><th></th></tr></thead><tbody>';
@@ -1451,6 +1523,10 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .demo button{all:unset;cursor:pointer;padding:3px 12px;border-radius:99px;font-weight:700;color:var(--ink)}
 :is(#fsa,#fsa-layer) .demo button.on{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 :is(#fsa,#fsa-layer) .dom-head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+:is(#fsa,#fsa-layer) .why-reg{margin:-6px 0 16px;color:var(--muted)}
+/* "אפשר להציג כדוגמה": a quiet tick under the registration row */
+:is(#fsa,#fsa-layer) .show-ok{display:flex;align-items:flex-start;gap:8px;margin:12px 2px 0;font-size:14px;color:var(--muted);cursor:pointer;line-height:1.45}
+:is(#fsa,#fsa-layer) .show-ok input{appearance:auto;-webkit-appearance:checkbox;width:16px;height:16px;min-width:16px;margin:2px 0 0;accent-color:var(--violet);cursor:pointer}
 :is(#fsa,#fsa-layer) .usage{display:flex;flex-direction:column;gap:6px;min-width:200px;font-size:14px}
 :is(#fsa,#fsa-layer) .usage .track{height:6px;border-radius:9px;background:var(--soft);overflow:hidden;display:block}
 :is(#fsa,#fsa-layer) .usage .track i{display:block;height:100%;border-radius:9px;margin-inline-start:auto}
@@ -2361,14 +2437,15 @@ const fontNote=()=>state.noteHidden?'':`<div class="note x-new" data-new="חדש
 
 function subsDomains(){
  if(!DOM_PLANS.includes(state.plan))return `<p class="empty">המינוי שלך לא כולל רישום דומיינים לאתרים.</p>`;
- const p=PLAN[state.plan],list=SUBDOM[state.plan]||[],lim=p.n?p.n+EXTRA+BONUS:0,used=list.filter(s=>canEdit(s[0])).length,full=lim&&used>=lim;
+ const p=PLAN[state.plan],list=SUBDOM[state.plan]||[],lim=p.n?p.n+EXTRA+BONUS:0,used=list.filter(s=>canEdit(s[0])).length,full=lim&&used>=lim,sites=new Set(list.map(s=>cleanHost(s[2]))).size;
  const demo=``;const _demoOff=`<div class="demo x-new" data-new="לתצוגה בלבד"><span>תצוגה לפי מינוי:</span>${['web','extra'].map(k=>`<button class="${state.plan===k?'on':''}" data-plan="${k}">${PLAN[k].label}</button>`).join('')}</div>`;
  return `${demo}
  <div class="dom-head">
    <div><b style="font-size:18px">דומיינים במינוי ${p.label}</b>
-   <div class="hint" style="margin:2px 0 0">${lim?`ניתן לרשום ${p.n+EXTRA} דומיינים ${PER.every}${BONUS?` + ${BONUS} נוספים שנרכשו`:''}. מתחדש ב־${nextReset()}.`:'רישום דומיינים ללא הגבלה, כל עוד המינוי פעיל.'}</div></div>
-   ${lim?`<div class="usage"><span class="num"><b>${used}</b> מתוך ${lim} ${PER.now}</span><span class="track"><i style="width:${Math.min(100,used/lim*100)}%;background:${full?'var(--bad)':used/lim>=.66?'var(--warn)':'var(--ok)'}"></i></span></div>`:'<span class="chip">ללא הגבלה</span>'}
+   <div class="hint" style="margin:2px 0 0">${lim?`כלול במינוי: עד ${p.n+EXTRA} אתרים ${PER.every}${BONUS?`, ועוד ${BONUS} שהוספת`:''}.`:'רישום אתרים ללא הגבלה, כל עוד המינוי פעיל.'}</div></div>
+   <span class="chip">${sites?`${sites===1?'אתר אחד רשום':sites+' אתרים רשומים'} אצלך`:'עוד אין אתרים רשומים'}</span>
  </div>
+ <p class="hint why-reg">הרישום הוא לא מעקב. הוא האישור שלך שהפונט ברישיון באתר הזה, וממנו יוצאת התעודה של האתר.</p>
  <div class="box dom-box sub-reg ${state.regOpen?'reg-on reg-done':''}">
    ${full?quotaFullPlan():`<button class="btn btn-grad reg-open" data-regopen="1" aria-expanded="${!!state.regOpen}" aria-controls="regFold">${ICON.plus} רישום דומיין חדש</button>
    <div class="reg-fold" id="regFold"><div><div class="reg-head"><b>רישום דומיין חדש</b><button type="button" class="ibtn reg-close" data-regclose="1" aria-label="סגירה וקיפול הטופס">${ICON.close}</button></div><form class="form-row reg-row" data-subadd="1" novalidate>
@@ -2378,7 +2455,7 @@ function subsDomains(){
        <div class="fp-menu">${DOMF.map(f=>`<label><input type="checkbox" value="${ea(f)}"> ${ea(f)}</label>`).join('')}<p class="fp-hint">אפשר לבחור עד 2 פונטים לכל אתר</p></div>
      </div>
      <button class="btn btn-grad reg-add">${ICON.plus}הוסף דומיין</button>
-   </form><p class="form-err" id="sdErr" hidden></p></div></div>`}
+   </form><label class="show-ok"><input type="checkbox" id="sdShow"><span>אפשר להציג את האתר כדוגמה בפונטשוק, עם קרדיט וקישור אליך</span></label><p class="form-err" id="sdErr" hidden></p></div></div>`}
  </div>
  <div class="tbl-wrap"><table class="tbl dom-tbl reg-tbl">${DOM_THEAD}<tbody>
  ${list.map(subRow).filter(r=>canEdit(r.s[0])).sort((a,b)=>parseD(b.s[0])-parseD(a.s[0])).map(domRow).join('')||`<tr><td colspan="5" class="hint" style="padding:18px 0">עוד לא נרשמו דומיינים ${PER.now}</td></tr>`}
@@ -2387,7 +2464,7 @@ function subsDomains(){
 }
 function quotaFullPlan(){
  return `<div class="quota-line">
-  <div class="msg"><b>ניצלת את ${PLAN[state.plan].n+EXTRA+BONUS} הדומיינים ${PER.of}</b><span>מתחדש ב־${nextReset()}.${FS.addon&&!YEARLY?' צריך עוד עכשיו?':''}</span></div>
+  <div class="msg"><b>כל ${PLAN[state.plan].n+EXTRA+BONUS} האתרים ${PER.of} כבר רשומים</b><span>יפה. המכסה מתחדשת ב־${nextReset()}.${FS.addon&&!YEARLY?' צריך עוד אחד עכשיו?':''}</span></div>
   ${FS.addon&&!YEARLY?`<button class="btn btn-grad" data-planaddon="1">דומיין נוסף · ₪${ADDON_P}</button>`:''}
   <a class="linkbtn" href="https://fontshok.co.il/מחירון-רישיונות-ומנויים/">או שדרוג לאקסטרה</a>
  </div>`;
@@ -2590,7 +2667,7 @@ V.profile=(tab)=>`
    <div><label for="w1">סיסמה נוכחית</label><input id="w1" type="password" autocomplete="current-password"></div>
    <div><label for="w2">סיסמה חדשה</label><input id="w2" type="password" autocomplete="new-password"><div class="hint">לפחות 8 תווים, כולל אותיות ומספרים</div></div>
  </div>`:`<div class="prefs">
-   ${[['עדכוני פונטים','כשפונט שרכשת או שכלול במינוי מקבל גרסה חדשה.',1],['ניוזלטר פונטשוק','פונטים חדשים, השראה ומבצעים. בערך פעמיים בחודש.',1],['תזכורת לפני חידוש','מייל 7 ימים לפני החיוב הבא.',1],['מכסת דומיינים','מייל כשניצלת את כל הדומיינים של החודש.',0],['פונטים חדשים במינוי','כשמשפחה חדשה נוספת לחבילה שלך.',0]].map(([h,d,on],i)=>`<label class="pref" for="pr${i}"><div><b>${h}</b><span>${d}</span></div><input type="checkbox" class="sw" id="pr${i}" ${on?'checked':''}></label>`).join('')}
+   ${[['עדכוני פונטים','כשפונט שרכשת או שכלול במינוי מקבל גרסה חדשה.',1],['ניוזלטר פונטשוק','פונטים חדשים, השראה ומבצעים. בערך פעמיים בחודש.',1],['תזכורת לפני חידוש','מייל 7 ימים לפני החיוב הבא.',1],['תזכורת לרישום אתר','מייל אחד, כמה שבועות אחרי שהורדת פונטים לאתרים.',1],['פונטים חדשים במינוי','כשמשפחה חדשה נוספת לחבילה שלך.',0]].map(([h,d,on],i)=>`<label class="pref" for="pr${i}"><div><b>${h}</b><span>${d}</span></div><input type="checkbox" class="sw" id="pr${i}" ${on?'checked':''}></label>`).join('')}
  </div>`}
  <div class="form-actions"><button class="btn btn-grad">${tab==='pwd'?'עדכון סיסמה':'שמירת שינויים'}</button></div>
  </form>`;
@@ -2753,7 +2830,8 @@ function byeFacts(){
  const f=[],p=FS.plan&&PLAN[FS.plan];
  if(p&&FAMILY.length)f.push(`<b>${FAMILY.length} משפחות פונטים</b> במינוי ${p.label} מחכות להורדה`);
  if(p&&DOM_PLANS.includes(FS.plan)){const lim=p.n?p.n+EXTRA+BONUS:0,used=(SUBDOM[FS.plan]||[]).filter(x=>canEdit(x[0])).length,left=Math.max(lim-used,0);
-  f.push(!lim?'רישום דומיינים <b>ללא הגבלה</b>, כל עוד המינוי פעיל':left?`נשארו לך <b>${left===1?'דומיין אחד':left+' דומיינים'}</b> לרשום ${PER.now}. הם לא עוברים ${YEARLY?'לשנה הבאה':'לחודש הבא'}`:`ניצלת את הדומיינים של ${CYCLE.label}. המכסה מתחדשת ב־${nextReset()}`)}
+  const n=new Set((SUBDOM[FS.plan]||[]).map(x=>cleanHost(x[2]))).size;
+  f.push(!lim?'רישום אתרים <b>ללא הגבלה</b>, כל עוד המינוי פעיל':n?`<b>${n===1?'אתר אחד':n+' אתרים'}</b> רשומים אצלך, עם תעודה לכל אחד`:'רישום אתרים כלול במינוי, עם תעודה לכל אתר')}
  if(LIC.length){const n=licGroups().length;f.push(`<b>${n===1?'פונט אחד':n+' פונטים'}</b> שקנית, עם הקבצים והתעודות שלהם`)}
  if(!p)f.push('עוד אין לך מינוי. במינוי מקבלים את כל הפונטים להורדה');
  if(FEAT.includes('studio')&&FS.studio&&p&&!FS.studio.vote)f.unshift(`עוד לא בחרת איזה פונט <b>ייצא ראשון</b> מהסטודיו`);
@@ -2846,7 +2924,7 @@ document.addEventListener('submit',e=>{
   const msg=!host||!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)?'צריך להזין כתובת אתר תקינה, למשל studio.co.il':!picked.length?'צריך לבחור לפחות פונט אחד':'';
   if(msg){err.textContent=msg;err.hidden=false;(msg.includes('כתובת')?$('#sd2'):f.querySelector('.fp-btn')).focus();return}
   const btn=f.querySelector('.reg-add');if(btn)btn.disabled=true;
-  domApi('add',{host,name:siteName(host),fonts:picked.join(', ')}).then(()=>{state.regOpen=false;render({fresh:host});toast('האתר נרשם במינוי. התעודה מוכנה להורדה')}).catch(x=>{if(btn)btn.disabled=false;err.textContent=x.message;err.hidden=false});return}
+  domApi('add',{host,name:siteName(host),fonts:picked.join(', '),show:$('#sdShow')&&$('#sdShow').checked?1:''}).then(()=>{state.regOpen=false;render({fresh:host});toast('האתר נרשם במינוי. התעודה מוכנה להורדה')}).catch(x=>{if(btn)btn.disabled=false;err.textContent=x.message;err.hidden=false});return}
  if(f.dataset.add!==undefined){const i=+f.dataset.add;const host=cleanHost(f.querySelector('[data-namefor]').value);if(!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)){toast('צריך להזין כתובת אתר תקינה');return}
   const btn=f.querySelector('button');if(btn)btn.disabled=true;
   licApi(i,'add',{host,name:f.querySelector('.sitename').value.trim()||siteName(host)}).then(()=>{render({fresh:host});toast('האתר נרשם. התעודה מוכנה להורדה')}).catch(x=>{if(btn)btn.disabled=false;toast(x.message)});return}

@@ -137,3 +137,11 @@ Do not change payment settings or the live pricing page without the owner.
 **28.10.2026, prices (owner approved):** all plans are charged including VAT, with the full price shown struck through.
 - Store: 12652 regular 378 / sale 320; 14162 regular 802 / sale 680; 22785 regular 211 / sale 179. Webstop was charged 377.6 before.
 - Pricing page 13376: a `<del>` heading was added next to each price, and Webstop's "לא כולל מע"מ" was changed to "כולל מע"מ". The backup from before the change is in `docs/backups/pricing-13376-elementor-before-strike.json`.
+
+**28.10.2026, build 102: softer site registration (the owner asked for a balance between reminding and not scaring).**
+- The monthly reminder ("נשאר לך…") is gone. In its place, section 2l "built something?": about 14 days after a web-font download (`fsa_v2_webdl`, from the per-weight download and the "הכל לאתרים" ZIP), one email. It is not sent when a site was registered since, when the download is older than 45 days, or after "stop" (`fsa_v2_nudge_off`, a signed link in the email). It goes at most once every 60 days. Constants: `FSA_V2_NUDGE_DAYS/STALE/GAP`. It uses the daily `fsa_v2_remind` event that is already on the site.
+- `fsa_v2_mail_frame()` is the fixed FontShok email frame: a PNG logo (media 22793, `FSA_V2_MAIL_LOGO`), the brand band, a white card and a footer. `fsa_v2_mail_button()`, `fsa_v2_send_mail()` (`FSA_V2_MAIL_FROM` '' = the site's sender).
+- Owner alert `fsa_v2_quota_full_alert()`: once per cycle, when a customer fills the quota. It goes to admin_email.
+- The registration form has an "אפשר להציג כדוגמה" checkbox (not ticked by default), saved in `fsa_v2_show_ok` (host => date). The gallery admin shows "הסכים להצגה" and lists those sites first.
+- Interface: no countdown bar. It shows "כלול במינוי: עד N אתרים בכל חודש", a chip with the number of sites registered, and the line "הרישום הוא לא מעקב…". The full-quota and refusal messages and the logout window have no "ניצלת" / "נשאר לך".
+- Test sample: `/?fsa_remind_test=1` (admin) sends "מה בנית עם דיסקברי?" to yourself.

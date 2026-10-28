@@ -30,6 +30,11 @@ class FakeDB {
 	function delete( $t, $w ) { $b = count( $this->rows ); $this->rows = array_values( array_filter( $this->rows, function ( $r ) use ( $w ) { foreach ( $w as $k => $v ) if ( (string) $r[ $k ] !== (string) $v ) return true; return false; } ) ); return $b - count( $this->rows ); }
 }
 $GLOBALS['wpdb'] = new FakeDB();
+$GLOBALS['mails'] = array(); function wp_mail( $to, $s, $b, $h ) { $GLOBALS['mails'][] = array( $to, $s, $b ); return true; }
+function get_userdata( $id ) { return (object) array( 'ID' => $id, 'first_name' => 'דנה', 'last_name' => 'לוי', 'display_name' => 'd', 'user_email' => "u$id@x" ); }
+function get_option( $k, $d = false ) { return 'admin_email' === $k ? 'owner@x' : ( $GLOBALS['opt'][ $k ] ?? $d ); } function admin_url( $p = '' ) { return 'https://fontshok.co.il/wp-admin/' . $p; }
+function home_url( $p = '' ) { return 'https://fontshok.co.il' . $p; } function wp_salt() { return 'salt'; } function add_query_arg( $a, $u ) { return $u . '?' . http_build_query( $a ); }
+function esc_html( $s ) { return htmlspecialchars( $s ); } function esc_url( $s ) { return $s; }
 eval( file_get_contents( __DIR__ . '/../fsa-v2-snippet.php' ) );
 
 $fail = 0; $t = function ( $ok, $m ) use ( &$fail ) { echo ( $ok ? 'ok   ' : 'FAIL ' ) . $m . "\n"; if ( ! $ok ) $fail++; };
@@ -43,7 +48,7 @@ $r = $add( 'https://www.Studio-A.co.il/about' ); $t( $r->ok && 'studio-a.co.il' 
 $t( 1 === $wpdb->rows[1]['domain_slot'] && 10 === $wpdb->rows[1]['month'], 'register uses slot 1 of this month, same as the old form' );
 $t( ! $add( 'studio-a.co.il' )->ok, 'the same address twice in a month is refused' );
 $t( $add( 'b.co.il' )->ok && $add( 'c.co.il' )->ok, 'second and third domains' );
-$r = $add( 'd.co.il' ); $t( ! $r->ok && false !== strpos( $r->data['message'], 'ניצלת' ), 'webstop: the 4th domain this month is refused' );
+$r = $add( 'd.co.il' ); $t( ! $r->ok && false !== strpos( $r->data['message'], 'כבר רשומים' ), 'webstop: the 4th domain this month is refused' );
 $GLOBALS['meta'][7]['fsa_v2_bonus_2026_10'] = 1; $t( $add( 'bought.co.il' )->ok, 'after buying the ₪79 add-on: a 4th domain fits this month' );
 $t( ! $add( 'e.co.il' )->ok, 'and a 5th does not' );
 $wpdb->rows = array_values( array_filter( $wpdb->rows, function ( $r ) { return 'bought.co.il' !== $r['domain_url']; } ) ); unset( $GLOBALS['meta'][7]['fsa_v2_bonus_2026_10'] );
@@ -94,21 +99,34 @@ $a1 = array_values( array_filter( $wpdb->rows, function ( $r ) { return 'a1.co.i
 $r = $call( array( 'op' => 'edit', 'id' => $a1, 'host' => 'a1-new.co.il', 'name' => '', 'fonts' => 'פורטו' ) ); $t( $r->ok, 'academic: a domain from March can still be edited in October (same year)' );
 $GLOBALS['now'] = array( 2027, 1 ); $t( $add( 'a4.co.il' )->ok, 'academic: a new year, a new quota' );
 $r = $call( array( 'op' => 'del', 'id' => $a1 ) ); $t( ! $r->ok, 'academic: last year\'s domain is closed' );
-// reminder email 3 days before the cycle closes
-$GLOBALS['mails'] = array(); function wp_mail( $to, $s, $b, $h ) { $GLOBALS['mails'][] = array( $to, $s, $b ); return true; }
+// the owner hears once per cycle when a customer fills the quota
+$GLOBALS['mails'] = array(); $GLOBALS['meta'][40] = array(); $GLOBALS['now'] = array( 2026, 10 ); $GLOBALS['user']->ID = 40; $GLOBALS['user']->roles = array( 'customer', 'member-webstop' );
+$add( 'q1.co.il' ); $add( 'q2.co.il' ); $t( array() === $GLOBALS['mails'], 'quota alert: nothing while there is room' );
+$add( 'q3.co.il' ); $t( 1 === count( $GLOBALS['mails'] ) && 'owner@x' === $GLOBALS['mails'][0][0] && false !== strpos( $GLOBALS['mails'][0][2], 'user_id=40' ), 'quota alert: the owner gets one email when the third site is registered' );
+$call( array( 'op' => 'del', 'id' => $wpdb->rows[ count( $wpdb->rows ) - 1 ]['id'] ) ); $add( 'q4.co.il' ); $t( 1 === count( $GLOBALS['mails'] ), 'quota alert: once per month, even when the customer fills it again' );
+$r = $add( 'q5.co.il' ); $t( ! $r->ok && false === strpos( $r->data['message'], 'ניצלת' ), 'full month: the refusal does not say "used up"' );
+// "אפשר להציג כדוגמה" is kept for the owner's gallery queue
+$GLOBALS['user']->ID = 41; $call( array( 'op' => 'add', 'host' => 'show.co.il', 'name' => '', 'fonts' => 'פורטו', 'show' => '1' ) ); $call( array( 'op' => 'add', 'host' => 'quiet.co.il', 'name' => '', 'fonts' => 'פורטו' ) );
+$t( array( 'show.co.il' ) === array_keys( fsa_v2_show_ok( 41 ) ), 'show consent: only the site that was ticked' );
+// "built something?" email: about two weeks after a web-font download, once, never with a site registered since, stoppable
 function get_users( $a ) { return $GLOBALS['subs']; } function update_option( $k, $v, $a = null ) { $GLOBALS['opt'][ $k ] = $v; }
-function wc_get_page_permalink( $p ) { return 'https://fontshok.co.il/my-account/'; } function esc_html( $s ) { return htmlspecialchars( $s ); } function esc_url( $s ) { return $s; }
+function wc_get_page_permalink( $p ) { return 'https://fontshok.co.il/my-account/'; }
 $mk = function ( $id, $role ) { return (object) array( 'ID' => $id, 'roles' => array( 'customer', $role ), 'user_email' => "u$id@x", 'first_name' => 'דנה', 'display_name' => 'd' ); };
-$GLOBALS['subs'] = array( $mk( 31, 'member-webstop' ), $mk( 32, 'member-webstop' ), $mk( 33, 'member-extra' ), $mk( 34, 'member-academic' ) );
-$GLOBALS['now'] = array( 2026, 10 ); $wpdb->rows = array();
-foreach ( array( 1, 2, 3 ) as $k ) $wpdb->rows[] = array( 'id' => 500 + $k, 'user_id' => 32, 'year' => 2026, 'month' => 10, 'domain_slot' => $k, 'domain_name' => 'x', 'domain_url' => "full$k.co.il", 'font_name' => 'פורטו', 'created_at' => '2026-10-02 09:00:00' );
-$wpdb->rows[] = array( 'id' => 510, 'user_id' => 31, 'year' => 2026, 'month' => 10, 'domain_slot' => 1, 'domain_name' => 'x', 'domain_url' => 'one.co.il', 'font_name' => 'פורטו', 'created_at' => '2026-10-02 09:00:00' );
-$GLOBALS['day'] = 27; fsa_v2_remind_run(); $t( array() === $GLOBALS['mails'], 'reminder: nothing 4 days before the month closes' );
-$GLOBALS['day'] = 28; fsa_v2_remind_run(); $m = $GLOBALS['mails'];
-$t( 1 === count( $m ) && 'u31@x' === $m[0][0], 'reminder: 3 days before, only to the subscriber with domains left (not full, not Extra, not Academic mid-year)' );
-$t( false !== strpos( $m[0][1], '2 דומיינים' ) && false !== strpos( $m[0][2], '31.10.2026' ) && false !== strpos( $m[0][2], '#subdom' ) && false !== strpos( $m[0][2], 'dir="rtl"' ), 'reminder: how many are left, the closing date, a link to registration, right-to-left' );
-$GLOBALS['day'] = 29; fsa_v2_remind_run(); $t( 1 === count( $GLOBALS['mails'] ), 'reminder: once per month' );
-$GLOBALS['now'] = array( 2026, 11 ); $GLOBALS['day'] = 27; fsa_v2_remind_run(); $nov = array_column( array_slice( $GLOBALS['mails'], 1 ), 0 ); sort( $nov ); $t( array( 'u31@x', 'u32@x' ) === $nov, 'reminder: again the next month (November closes on the 30th), now also to the one who was full in October' );
-$GLOBALS['now'] = array( 2026, 12 ); $GLOBALS['day'] = 28; $GLOBALS['mails'] = array(); fsa_v2_remind_run();
-$t( in_array( 'u34@x', array_column( $GLOBALS['mails'], 0 ), true ) && false !== strpos( implode( ' ', array_column( $GLOBALS['mails'], 1 ) ), 'עד סוף השנה' ), 'reminder: Academic at the end of the year' );
+$GLOBALS['subs'] = array( $mk( 31, 'member-webstop' ), $mk( 32, 'member-webstop' ), $mk( 33, 'member-extra' ), $mk( 34, 'member-desktop' ), $mk( 35, 'member-webstop' ), $mk( 36, 'member-webstop' ) );
+$wpdb->rows = array(); $GLOBALS['mails'] = array(); $day = 86400; $now = time();
+foreach ( array( 31, 32, 33, 34, 35 ) as $id ) fsa_v2_note_webdl( $id, 31 === $id ? 'דיסקברי' : '' );
+foreach ( array( 31, 32, 33, 34, 35 ) as $id ) $GLOBALS['meta'][ $id ]['fsa_v2_webdl'] = $now - 15 * $day;
+$GLOBALS['meta'][36]['fsa_v2_webdl'] = $now - 50 * $day; // too long ago
+$wpdb->rows[] = array( 'id' => 700, 'user_id' => 32, 'year' => 2026, 'month' => 10, 'domain_slot' => 1, 'domain_name' => 'x', 'domain_url' => 'done.co.il', 'font_name' => 'פורטו', 'created_at' => date( 'Y-m-d H:i:s', $now - 3 * $day ) );
+$GLOBALS['meta'][35]['fsa_v2_nudge_off'] = 1;
+fsa_v2_nudge_run(); $to = array_column( $GLOBALS['mails'], 0 ); sort( $to );
+$t( array( 'u31@x', 'u33@x' ) === $to, 'nudge: Webstop and Extra after a web download; not after registering a site since, not Desktop, not after "stop", not for an old download' );
+$m = $GLOBALS['mails'][ array_search( 'u31@x', array_column( $GLOBALS['mails'], 0 ), true ) ];
+$t( false !== strpos( $m[1], 'דיסקברי' ) && false !== strpos( $m[2], 'fontshok-mail-logo.png' ) && false !== strpos( $m[2], '#subdom' ) && false !== strpos( $m[2], 'fsa_nonudge=31' ) && false !== strpos( $m[2], 'dir="rtl"' ), 'nudge: names the font, the FontShok frame with the logo, a link to registration, a stop link' );
+$t( false === strpos( $m[2], 'נשאר' ) && false === strpos( $m[2], 'עד סוף' ) && ! preg_match( '/\d+ דומיינים/u', $m[2] ), 'nudge: no counts, no deadline' );
+$GLOBALS['mails'] = array(); fsa_v2_nudge_run(); $t( array() === $GLOBALS['mails'], 'nudge: once for a download' );
+$GLOBALS['meta'][31]['fsa_v2_webdl'] = $now - 14 * $day - 60; $GLOBALS['meta'][31]['fsa_v2_nudge'] = $now - 20 * $day; fsa_v2_nudge_run(); $t( array() === $GLOBALS['mails'], 'nudge: a new download soon after the last email waits (60 days apart)' );
+$GLOBALS['meta'][31]['fsa_v2_nudge'] = $now - 61 * $day; fsa_v2_nudge_run(); $t( 1 === count( $GLOBALS['mails'] ), 'nudge: and goes after 60 days' );
+$GLOBALS['meta'][31]['fsa_v2_webdl'] = $now - 5 * $day; unset( $GLOBALS['meta'][31]['fsa_v2_nudge'] ); $GLOBALS['mails'] = array(); fsa_v2_nudge_run(); $t( array() === $GLOBALS['mails'], 'nudge: nothing in the first two weeks' );
+$url = fsa_v2_nudge_stop_url( 31 ); parse_str( parse_url( $url, PHP_URL_QUERY ), $q ); $t( '31' === $q['fsa_nonudge'] && 20 === strlen( $q['k'] ) && $q['k'] !== substr( hash_hmac( 'sha256', 'nonudge32', 'salt' ), 0, 20 ), 'stop link: signed for that customer only' );
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n"; exit( $fail ? 1 : 0 );

@@ -153,7 +153,10 @@ for(const w of [390,1280]){
  // special arrangement: the quota shown includes the extra domains
  {const fs=require('fs');const src=fs.readFileSync(S+'/page-plain.html','utf8').replace('"bonus":0','"bonus":0,"extra":2');fs.writeFileSync(S+'/page-deal.html',src);
   const dp=await b.newPage({viewport:{width:w,height:800}});await dp.goto('file://'+S+'/page-deal.html');await dp.waitForTimeout(400);await dp.evaluate(()=>document.querySelector('#fsa [data-subtab="reg"]').click());await dp.waitForTimeout(400);
-  const tx=await dp.evaluate(()=>document.querySelector('#fsa .main').innerText);if(!tx.includes('ניתן לרשום 5 דומיינים בכל חודש')||!/1 מתוך 5/.test(tx))bad(`${w} arrangement quota not shown (${(tx.match(/ניתן לרשום[^.]*|\d מתוך \d/g)||[]).join(' | ')})`);await dp.close()}
+  const tx=await dp.evaluate(()=>document.querySelector('#fsa .main').innerText);if(!tx.includes('כלול במינוי: עד 5 אתרים בכל חודש')||/מתוך \d/.test(tx))bad(`${w} arrangement quota not shown, or a countdown is (${(tx.match(/כלול במינוי[^.]*|\d מתוך \d/g)||[]).join(' | ')})`);
+  if(!tx.includes('הרישום הוא לא מעקב'))bad(`${w} the "not tracking" line is missing`);
+  await dp.evaluate(()=>document.querySelector('#fsa [data-regopen]')&&document.querySelector('#fsa [data-regopen]').click());await dp.waitForTimeout(500);
+  const so=await dp.evaluate(()=>{const l=document.querySelector('#fsa .show-ok'),i=document.querySelector('#sdShow');if(!l||!i)return 'missing';const r=l.getBoundingClientRect(),f=document.querySelector('#fsa .reg-row').getBoundingClientRect();return i.checked?'ticked by default':r.width<1?'hidden':r.top<f.bottom-1?'overlaps the form':''});if(so)bad(`${w} "show as example" tick: ${so}`);await dp.close()}
  const fs=require('fs');const src=fs.readFileSync(S+'/page-theme.html','utf8');const cut=src.replace(/"lic":\[.*?\],"orders"/s,'"lic":[],"orders"');if(cut===src)bad(`${w} could not empty the purchases for the empty-state check`);fs.writeFileSync(S+'/page-empty.html',cut);
  const ep=await b.newPage({viewport:{width:w,height:800}});const eerr=[];ep.on('pageerror',e=>eerr.push(e.message));await ep.goto('file://'+S+'/page-empty.html');await ep.waitForTimeout(400);
  await ep.evaluate(()=>document.querySelector('#fsa .side button[data-view="lic"]').click());await ep.waitForTimeout(500);
