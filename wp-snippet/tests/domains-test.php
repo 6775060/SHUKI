@@ -10,7 +10,8 @@ function update_user_meta( $u, $k, $v ) { $GLOBALS['meta'][ $u ][ $k ] = $v; } f
 function check_ajax_referer() { return $GLOBALS['nonce_ok']; } function sanitize_key( $s ) { return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( $s ) ); }
 function sanitize_text_field( $s ) { return trim( strip_tags( (string) $s ) ); } function wp_unslash( $s ) { return $s; }
 $GLOBALS['meta'] = array(); function get_user_meta( $u, $k, $x = false ) { return $GLOBALS['meta'][ $u ][ $k ] ?? ''; }
-function current_time( $f ) { return 'Y-m-d' === $f ? sprintf( '%d-%02d-15', $GLOBALS['now'][0], $GLOBALS['now'][1] ) : ( 'Y' === $f ? $GLOBALS['now'][0] : $GLOBALS['now'][1] ); }
+$GLOBALS['day'] = 15; define( 'DAY_IN_SECONDS', 86400 );
+function current_time( $f ) { $n = $GLOBALS['now']; if ( 'j' === $f ) return $GLOBALS['day']; if ( 't' === $f ) return (int) date( 't', mktime( 0, 0, 0, $n[1], 1, $n[0] ) ); if ( 'd.m.Y H:i' === $f ) return 'now'; return 'Y-m-d' === $f ? sprintf( '%d-%02d-15', $n[0], $n[1] ) : ( 'Y' === $f ? $n[0] : $n[1] ); }
 function get_field( $k, $o ) { return 'list_of_fonts_for_domain_registration' === $k ? 'פורטו, טאלנט, דיסקברי' : array(); }
 function wp_list_pluck( $l, $f ) { return array_map( function ( $x ) use ( $f ) { return is_array( $x ) ? $x[ $f ] : $x->$f; }, $l ); }
 class Done extends Exception { public $ok; public $data; function __construct( $ok, $d ) { $this->ok = $ok; $this->data = $d; } }
@@ -93,4 +94,21 @@ $a1 = array_values( array_filter( $wpdb->rows, function ( $r ) { return 'a1.co.i
 $r = $call( array( 'op' => 'edit', 'id' => $a1, 'host' => 'a1-new.co.il', 'name' => '', 'fonts' => 'פורטו' ) ); $t( $r->ok, 'academic: a domain from March can still be edited in October (same year)' );
 $GLOBALS['now'] = array( 2027, 1 ); $t( $add( 'a4.co.il' )->ok, 'academic: a new year, a new quota' );
 $r = $call( array( 'op' => 'del', 'id' => $a1 ) ); $t( ! $r->ok, 'academic: last year\'s domain is closed' );
+// reminder email 3 days before the cycle closes
+$GLOBALS['mails'] = array(); function wp_mail( $to, $s, $b, $h ) { $GLOBALS['mails'][] = array( $to, $s, $b ); return true; }
+function get_users( $a ) { return $GLOBALS['subs']; } function update_option( $k, $v, $a = null ) { $GLOBALS['opt'][ $k ] = $v; }
+function wc_get_page_permalink( $p ) { return 'https://fontshok.co.il/my-account/'; } function esc_html( $s ) { return htmlspecialchars( $s ); } function esc_url( $s ) { return $s; }
+$mk = function ( $id, $role ) { return (object) array( 'ID' => $id, 'roles' => array( 'customer', $role ), 'user_email' => "u$id@x", 'first_name' => 'דנה', 'display_name' => 'd' ); };
+$GLOBALS['subs'] = array( $mk( 31, 'member-webstop' ), $mk( 32, 'member-webstop' ), $mk( 33, 'member-extra' ), $mk( 34, 'member-academic' ) );
+$GLOBALS['now'] = array( 2026, 10 ); $wpdb->rows = array();
+foreach ( array( 1, 2, 3 ) as $k ) $wpdb->rows[] = array( 'id' => 500 + $k, 'user_id' => 32, 'year' => 2026, 'month' => 10, 'domain_slot' => $k, 'domain_name' => 'x', 'domain_url' => "full$k.co.il", 'font_name' => 'פורטו', 'created_at' => '2026-10-02 09:00:00' );
+$wpdb->rows[] = array( 'id' => 510, 'user_id' => 31, 'year' => 2026, 'month' => 10, 'domain_slot' => 1, 'domain_name' => 'x', 'domain_url' => 'one.co.il', 'font_name' => 'פורטו', 'created_at' => '2026-10-02 09:00:00' );
+$GLOBALS['day'] = 27; fsa_v2_remind_run(); $t( array() === $GLOBALS['mails'], 'reminder: nothing 4 days before the month closes' );
+$GLOBALS['day'] = 28; fsa_v2_remind_run(); $m = $GLOBALS['mails'];
+$t( 1 === count( $m ) && 'u31@x' === $m[0][0], 'reminder: 3 days before, only to the subscriber with domains left (not full, not Extra, not Academic mid-year)' );
+$t( false !== strpos( $m[0][1], '2 דומיינים' ) && false !== strpos( $m[0][2], '31.10.2026' ) && false !== strpos( $m[0][2], '#subdom' ) && false !== strpos( $m[0][2], 'dir="rtl"' ), 'reminder: how many are left, the closing date, a link to registration, right-to-left' );
+$GLOBALS['day'] = 29; fsa_v2_remind_run(); $t( 1 === count( $GLOBALS['mails'] ), 'reminder: once per month' );
+$GLOBALS['now'] = array( 2026, 11 ); $GLOBALS['day'] = 27; fsa_v2_remind_run(); $nov = array_column( array_slice( $GLOBALS['mails'], 1 ), 0 ); sort( $nov ); $t( array( 'u31@x', 'u32@x' ) === $nov, 'reminder: again the next month (November closes on the 30th), now also to the one who was full in October' );
+$GLOBALS['now'] = array( 2026, 12 ); $GLOBALS['day'] = 28; $GLOBALS['mails'] = array(); fsa_v2_remind_run();
+$t( in_array( 'u34@x', array_column( $GLOBALS['mails'], 0 ), true ) && false !== strpos( implode( ' ', array_column( $GLOBALS['mails'], 1 ) ), 'עד סוף השנה' ), 'reminder: Academic at the end of the year' );
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n"; exit( $fail ? 1 : 0 );

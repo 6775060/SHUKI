@@ -12,7 +12,10 @@ function wp_die( $m ) { $GLOBALS['died'] = $m; throw new Exception( 'die' ); }
 function home_url( $p = '' ) { return 'https://fontshok.co.il' . $p; } function add_query_arg( ...$x ) { if ( is_array( $x[0] ) ) { $a = $x[0]; $u = $x[1]; } else { $a = array( $x[0] => $x[1] ); $u = $x[2]; } return $u . '?' . http_build_query( $a ); }
 function get_transient( $k ) { return $GLOBALS['transients'][ $k ] ?? false; } function set_transient( $k, $v, $t ) { $GLOBALS['transients'][ $k ] = $v; }
 function get_post_modified_time() { return 1; }
-function get_field( $k, $o ) { return array( array( 'font-name' => 'נוסטלה', 'font-file' => array( 'url' => 'https://x/d.zip' ), 'font-file-web' => array( 'url' => 'https://x/w.zip' ) ) ); }
+function get_field( $k, $o ) { return $GLOBALS['ff'] ?? array( array( 'font-name' => 'נוסטלה', 'font-file' => array( 'url' => 'https://x/d.zip' ), 'font-file-web' => array( 'url' => 'https://x/w.zip' ) ) ); }
+$GLOBALS['up'] = sys_get_temp_dir() . '/fsa-all-test-' . getmypid(); @mkdir( $GLOBALS['up'] . '/fonts', 0777, true );
+function wp_upload_dir() { return array( 'basedir' => $GLOBALS['up'], 'baseurl' => 'https://fontshok.co.il/up', 'error' => false ); }
+function get_attached_file( $id ) { return $GLOBALS['up'] . '/fonts/by-id-' . $id . '.zip'; } function wp_mkdir_p( $d ) { return is_dir( $d ) || mkdir( $d, 0777, true ); } function wp_salt() { return 'salt'; }
 class Post { function __construct( public $ID, public $post_title ) {} }
 $GLOBALS['posts'] = array( 20335 => new Post( 20335, 'נוסטלה' ), 22311 => new Post( 22311, 'פלינקו' ) );
 function get_posts( $a ) { foreach ( $GLOBALS['posts'] as $p ) if ( $p->post_title === $a['title'] ) return array( $p->ID ); return array(); }
@@ -65,4 +68,26 @@ $d = fsa_v2_data(); $l = $d['lic'][0];
 $t( 'נוסטלה' === $l['f'] && 'רגיל' === $l['w'] && 'וובפונט' === $l['t'] && 1 === $l['web'], "licence row: {$l['f']} / {$l['w']} / {$l['t']}" );
 $t( 3 === count( $d['fonts'][0]['weights'] ), 'subscription data carries the weights' );
 $t( array() === $d['domains'] && isset( $d['domNonce'], $d['domAjax'] ), 'no domains table: empty list, no error' );
+// all fonts in one ZIP: the family file of each subscription font, per format
+$u = $GLOBALS['up'];
+foreach ( array( 'A_Web', 'A_Desk', 'B_Web', 'B_Desk' ) as $n ) file_put_contents( "$u/fonts/$n.zip", "data $n" ); file_put_contents( "$u/fonts/by-id-9.zip", 'data C_Desk' );
+$GLOBALS['ff'] = array(
+	array( 'font-name' => 'א', 'font-file' => array( 'url' => 'https://fontshok.co.il/up/fonts/A_Desk.zip' ), 'font-file-web' => array( 'url' => 'https://fontshok.co.il/up/fonts/A_Web.zip' ) ),
+	array( 'font-name' => 'ב', 'font-file' => array( 'url' => 'https://fontshok.co.il/up/fonts/B_Desk.zip' ), 'font-file-web' => array( 'url' => 'https://fontshok.co.il/up/fonts/B_Web.zip' ) ),
+	array( 'font-name' => 'ג', 'font-file' => array( 'ID' => 9, 'url' => 'https://elsewhere/c.zip' ), 'font-file-web' => array() ) );
+$GLOBALS['user']->roles = array( 'customer', 'member-webstop' );
+$names = function ( $z ) { $a = new ZipArchive(); $a->open( $z ); $o = array(); for ( $i = 0; $i < $a->numFiles; $i++ ) $o[] = $a->getNameIndex( $i ); sort( $o ); return $o; };
+$zw = fsa_v2_all_zip( 'web' ); $zd = fsa_v2_all_zip( 'desk' );
+$t( array( 'A_Web.zip', 'B_Web.zip' ) === $names( $zw ), 'all-for-sites ZIP holds every family web file' );
+$t( array( 'A_Desk.zip', 'B_Desk.zip', 'by-id-9.zip' ) === $names( $zd ), 'all-for-desktop ZIP holds every family desktop file (also by attachment ID)' );
+$t( 0 === strpos( basename( $zw ), 'web-' ) && 36 < strlen( basename( $zw ) ), 'the bundle has an unguessable name' );
+$m = filemtime( $zw ); $t( $zw === fsa_v2_all_zip( 'web' ) && $m === filemtime( $zw ), 'the bundle is kept, not rebuilt each time' );
+file_put_contents( "$u/fonts/A_Web.zip", 'new data, longer' ); $zw2 = fsa_v2_all_zip( 'web' ); $t( $zw2 !== $zw && ! is_file( $zw ) && is_file( $zw2 ), 'a changed file makes a new bundle and removes the old one' );
+$GLOBALS['user']->roles = array( 'customer', 'member-desktop' ); $GLOBALS['died'] = null; try { fsa_v2_all_zip( 'web' ); } catch ( Exception $e ) {} $t( (bool) $GLOBALS['died'], 'desktop-only plan cannot get the sites bundle' );
+$GLOBALS['died'] = null; try { fsa_v2_all_zip( 'desk' ); } catch ( Exception $e ) {} $t( ! $GLOBALS['died'], 'desktop-only plan gets the desktop bundle' );
+$GLOBALS['user']->roles = array( 'customer' ); $GLOBALS['died'] = null; try { fsa_v2_all_zip( 'desk' ); } catch ( Exception $e ) {} $t( (bool) $GLOBALS['died'], 'no subscription: refused' );
+$GLOBALS['user']->roles = array( 'customer', 'member-webstop' ); $GLOBALS['transients'] = array(); $d = fsa_v2_data();
+$t( false !== strpos( $d['allDl']['web'], 'fsa_wall=web' ) && false !== strpos( $d['allDl']['desk'], 'fsa_wall=desk' ), 'the area gets both "all fonts" links' );
+$GLOBALS['user']->roles = array( 'customer', 'member-desktop' ); $d = fsa_v2_data(); $t( '' === $d['allDl']['web'] && '' !== $d['allDl']['desk'], 'desktop-only: only the desktop bundle link' );
+array_map( 'unlink', glob( "$u/*/*" ) + glob( "$u/*/*.*" ) ?: array() );
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n"; exit( $fail ? 1 : 0 );

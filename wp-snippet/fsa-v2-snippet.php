@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '100' );
+define( 'FSA_V2_BUILD', '101' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -28,6 +28,8 @@ define( 'FSA_V2_SHOTS', 'https://s.wordpress.com/mshots/v1/{url}?w=1280&h=800' )
 define( 'FSA_V2_PLAN_PRODUCTS', array( 'web' => 12652, 'extra' => 14162, 'desk' => 22785 ) );
 // the ₪79 additional domain: ID of a hidden virtual WooCommerce product. 0 = not offered yet (the button says "next stage")
 define( 'FSA_V2_ADDON_PRODUCT', 22751 );
+// reminder email to subscribers with domains left to register: this many days before the month closes (Academic: the year). 0 = off
+define( 'FSA_V2_REMIND_DAYS', 3 );
 // ─────────────────────────────────────────────────────────────────────────
 
 function fsa_v2_is_tester() {
@@ -221,6 +223,63 @@ function fsa_v2_weight_download() {
 	}
 	WC_Download_Handler::download( $dls[ $k ]->get_file(), $v->get_id() );
 	exit;
+}
+
+// 2d. all subscription fonts in one ZIP, one for sites and one for desktop: the family file of each font (ACF fonts-repeater).
+// Built on the first download and kept under an unguessable name until a file changes.
+function fsa_v2_all_files( $kind ) {
+	$files = array();
+	if ( ! function_exists( 'get_field' ) ) return $files;
+	$up = wp_upload_dir();
+	foreach ( (array) get_field( 'fonts-repeater', 'option' ) as $row ) {
+		$f = $row[ 'web' === $kind ? 'font-file-web' : 'font-file' ] ?? null;
+		if ( empty( $row['font-name'] ) || empty( $f['url'] ) ) continue;
+		$path = ! empty( $f['ID'] ) ? (string) get_attached_file( (int) $f['ID'] ) : '';
+		if ( ! $path && 0 === strpos( $f['url'], $up['baseurl'] ) ) $path = $up['basedir'] . substr( $f['url'], strlen( $up['baseurl'] ) );
+		if ( $path && is_file( $path ) ) $files[] = $path;
+	}
+	return $files;
+}
+function fsa_v2_all_url( $kind ) {
+	return add_query_arg( array( 'fsa_wall' => $kind, '_wpnonce' => wp_create_nonce( 'fsa_wdl' ) ), home_url( '/' . FSA_V2_SLUG . '/' ) );
+}
+add_action( 'template_redirect', 'fsa_v2_all_download', 5 );
+function fsa_v2_all_download() {
+	if ( empty( $_GET['fsa_wall'] ) ) return;
+	if ( ! is_user_logged_in() ) auth_redirect();
+	if ( ! fsa_v2_can_view() || ! wp_verify_nonce( isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '', 'fsa_wdl' ) ) {
+		wp_die( 'הקישור פג תוקף. רעננו את העמוד ונסו שוב.', '', array( 'response' => 403 ) );
+	}
+	$kind = 'web' === $_GET['fsa_wall'] ? 'web' : 'desk';
+	$zip  = fsa_v2_all_zip( $kind );
+	nocache_headers();
+	header( 'Content-Type: application/zip' );
+	header( 'Content-Disposition: attachment; filename="' . ( 'web' === $kind ? 'FontShok-Webfonts.zip' : 'FontShok-Desktop.zip' ) . '"' );
+	header( 'Content-Length: ' . filesize( $zip ) );
+	readfile( $zip );
+	exit;
+}
+// the bundle for the current user (refused when the plan does not include that format), built if missing
+function fsa_v2_all_zip( $kind ) {
+	list( $plan, $desktop_only ) = fsa_v2_plan_info( wp_get_current_user() );
+	$files = fsa_v2_all_files( $kind );
+	if ( ! $plan || ( 'web' === $kind && $desktop_only ) || ! $files || ! class_exists( 'ZipArchive' ) ) wp_die( 'אין גישה לקבצים האלה.', '', array( 'response' => 403 ) );
+	$sig = $kind; foreach ( $files as $p ) $sig .= '|' . $p . '|' . filemtime( $p ) . '|' . filesize( $p );
+	$up  = wp_upload_dir();
+	$dir = $up['basedir'] . '/fsa-all';
+	wp_mkdir_p( $dir );
+	if ( ! is_file( $dir . '/index.php' ) ) file_put_contents( $dir . '/index.php', '<?php // Silence' );
+	$zip = $dir . '/' . $kind . '-' . md5( $sig . wp_salt() ) . '.zip';
+	if ( ! is_file( $zip ) ) {
+		if ( function_exists( 'set_time_limit' ) ) @set_time_limit( 300 );
+		foreach ( (array) glob( $dir . '/' . $kind . '-*.zip' ) as $old ) @unlink( $old ); // an older bundle of the same kind
+		$z = new ZipArchive();
+		if ( true !== $z->open( $zip . '.tmp', ZipArchive::CREATE | ZipArchive::OVERWRITE ) ) wp_die( 'לא הצלחתי להכין את הקובץ. נסו שוב בעוד רגע.' );
+		foreach ( $files as $p ) $z->addFile( $p, basename( $p ) );
+		$z->close();
+		rename( $zip . '.tmp', $zip );
+	}
+	return $zip;
 }
 
 // 2e. domains: the same table the Easy Font Table plugin uses (wp_easy_font_domains: user, year, month, slot 1..n, name, url, fonts).
@@ -485,6 +544,67 @@ function fsa_v2_desk_role( $order_id ) {
 		$user->remove_role( 'member-desktop' );
 	}
 }
+
+// 2l. domain reminder: once a day, subscribers whose cycle closes within FSA_V2_REMIND_DAYS and who still have domains to register get one email
+// per cycle (user meta fsa_v2_remind = the cycle it was sent for). Extra (unlimited) and Desktop (no domains) get none.
+add_action( 'fsa_v2_remind', 'fsa_v2_remind_run' );
+add_action( 'init', function () {
+	if ( FSA_V2_REMIND_DAYS && function_exists( 'wp_next_scheduled' ) && ! wp_next_scheduled( 'fsa_v2_remind' ) ) wp_schedule_event( time() + 300, 'daily', 'fsa_v2_remind' );
+} );
+// what a subscriber has left this cycle: array( left, cycle key, closing date d.m.Y, days to closing, yearly ) or null when nothing applies
+function fsa_v2_remind_state( $uid, $plan ) {
+	global $wpdb;
+	$limit = fsa_v2_domain_limit( $plan );
+	$t = fsa_v2_eft_table();
+	if ( $limit <= 0 || ! $t ) return null;
+	$y = (int) current_time( 'Y' ); $m = (int) current_time( 'n' ); $d = (int) current_time( 'j' );
+	$yearly = fsa_v2_domain_yearly( $plan );
+	$end  = $yearly ? mktime( 0, 0, 0, 12, 31, $y ) : mktime( 0, 0, 0, $m, (int) current_time( 't' ), $y );
+	$days = (int) round( ( $end - mktime( 0, 0, 0, $m, $d, $y ) ) / DAY_IN_SECONDS );
+	if ( $yearly ) {
+		$used = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `$t` WHERE user_id = %d AND year = %d AND domain_url <> ''", $uid, $y ) );
+	} else {
+		$limit += fsa_v2_bonus_sub( $uid, $y, $m ) + fsa_v2_deal_extra( $uid );
+		$used = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `$t` WHERE user_id = %d AND year = %d AND month = %d AND domain_url <> ''", $uid, $y, $m ) );
+	}
+	return array( max( 0, $limit - $used ), $yearly ? (string) $y : $y . '-' . $m, date( 'd.m.Y', $end ), $days, $yearly );
+}
+function fsa_v2_remind_mail( $u, $st ) {
+	list( $left, , $date, , $yearly ) = $st;
+	$when = $yearly ? 'עד סוף השנה' : 'עד סוף החודש';
+	$n    = 1 === $left ? 'דומיין אחד' : $left . ' דומיינים';
+	$url  = ( function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ) ) . '#subdom';
+	$hi   = $u->first_name ? $u->first_name : $u->display_name;
+	$subj = 'נשאר לך ' . $n . ' לרשום ' . $when;
+	$body = '<div dir="rtl" style="font-family:Arial,sans-serif;font-size:16px;line-height:1.6;color:#1A1A1A;text-align:right">'
+		. '<p>שלום ' . esc_html( $hi ) . ',</p>'
+		. '<p>' . $when . ', ב־' . esc_html( $date ) . ', אפשר לרשום במינוי שלך עוד <b>' . $n . '</b>. דומיין שלא נרשם עד אז לא עובר ל' . ( $yearly ? 'שנה הבאה' : 'חודש הבא' ) . '.</p>'
+		. '<p><a href="' . esc_url( $url ) . '" style="display:inline-block;background:#5B3FFF;color:#fff;text-decoration:none;padding:10px 22px;border-radius:99px;font-weight:bold">לרישום דומיין</a></p>'
+		. '<p style="color:#666;font-size:14px">פונטשוק</p></div>';
+	return array( $subj, $body );
+}
+function fsa_v2_remind_run() {
+	if ( ! FSA_V2_REMIND_DAYS || ! function_exists( 'get_users' ) ) return 0;
+	$sent = 0;
+	foreach ( get_users( array( 'role__in' => array( 'member-webstop', 'member-barter', 'member-academic' ), 'fields' => 'all' ) ) as $u ) {
+		list( $plan ) = fsa_v2_plan_info( $u );
+		$st = fsa_v2_remind_state( $u->ID, $plan );
+		if ( ! $st || $st[0] < 1 || $st[3] > FSA_V2_REMIND_DAYS || $st[3] < 0 || $st[1] === (string) get_user_meta( $u->ID, 'fsa_v2_remind', true ) || ! $u->user_email ) continue;
+		list( $subj, $body ) = fsa_v2_remind_mail( $u, $st );
+		update_user_meta( $u->ID, 'fsa_v2_remind', $st[1] ); // before sending, so a slow mail server never means two emails
+		if ( wp_mail( $u->user_email, $subj, $body, array( 'Content-Type: text/html; charset=UTF-8' ) ) ) $sent++;
+	}
+	update_option( 'fsa_v2_remind_log', array( 't' => current_time( 'd.m.Y H:i' ), 'sent' => $sent ), false );
+	return $sent;
+}
+// an admin can see the email: /?fsa_remind_test=1 sends the reminder, as a Webstop subscriber with 2 domains left would get it, to their own address
+add_action( 'template_redirect', function () {
+	if ( empty( $_GET['fsa_remind_test'] ) || ! current_user_can( 'manage_options' ) ) return;
+	$u = wp_get_current_user();
+	list( $subj, $body ) = fsa_v2_remind_mail( $u, array( 2, '', date( 'd.m.Y', mktime( 0, 0, 0, (int) current_time( 'n' ), (int) current_time( 't' ), (int) current_time( 'Y' ) ) ), 3, false ) );
+	$ok = wp_mail( $u->user_email, '[בדיקה] ' . $subj, $body, array( 'Content-Type: text/html; charset=UTF-8' ) );
+	wp_die( $ok ? 'נשלח מייל בדיקה אל ' . esc_html( $u->user_email ) : 'השליחה נכשלה.', '', array( 'response' => 200 ) );
+} );
 function fsa_v2_addon_grant( $order_id ) {
 	$order = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
 	if ( ! $order || ! $order->get_meta( '_fsa_v2_addon' ) || $order->get_meta( '_fsa_v2_granted' ) || ! $order->is_paid() ) return;
@@ -647,7 +767,7 @@ function fsa_v2_data() {
 		'domAjax' => admin_url( 'admin-ajax.php' ), 'domNonce' => wp_create_nonce( 'fsa_v2_dom' ),
 		'build' => current_user_can( 'manage_options' ) ? FSA_V2_BUILD : '', 'mode' => isset( $GLOBALS['fsa_v2_mode'] ) ? $GLOBALS['fsa_v2_mode'] : 'preview', 'oldUrl' => add_query_arg( 'fsa_old', '1', function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ) ),
 		'plan' => $plan, 'planStart' => $start, 'nextPay' => '', 'card' => '',
-		'fonts' => $fonts, 'lic' => $lic, 'orders' => $orders,
+		'fonts' => $fonts, 'allDl' => array( 'web' => count( array_filter( array_column( $fonts, 'web' ) ) ) > 1 ? fsa_v2_all_url( 'web' ) : '', 'desk' => count( array_filter( array_column( $fonts, 'desk' ) ) ) > 1 ? fsa_v2_all_url( 'desk' ) : '' ), 'lic' => $lic, 'orders' => $orders,
 		'user' => fsa_v2_user_fields( $u ),
 		'features' => ( $feat = fsa_v2_features() ), 'studio' => in_array( 'studio', $feat, true ) && ( $plan || current_user_can( 'manage_options' ) ) ? fsa_v2_studio_for( $uid ) : null, // the vote is for subscribers only
 		'snaps' => in_array( 'show', $feat, true ) ? fsa_v2_user_snaps( $uid ) : array(),
@@ -755,7 +875,7 @@ function fsa_v2_deal_save( $uid ) {
 add_action( 'template_redirect', function () {
 	if ( ! FSA_V2_FIX_SITE_JS || is_admin() || wp_doing_ajax() || is_feed() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) return;
 	if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'GET' !== $_SERVER['REQUEST_METHOD'] ) return;
-	if ( isset( $_GET['fsa_wdl'] ) || isset( $_GET['download_file'] ) ) return; // file downloads are not pages
+	if ( isset( $_GET['fsa_wdl'] ) || isset( $_GET['fsa_wall'] ) || isset( $_GET['download_file'] ) ) return; // file downloads are not pages
 	ob_start( 'fsa_v2_fix_site_js' );
 }, 0 );
 function fsa_v2_fix_site_js( $html ) {
@@ -2286,11 +2406,14 @@ function subsDownloads(){
 const dlA=(u,f,k,lbl)=>u?`<a class="dl" href="${ea(u)}" aria-label="הורדת ${ea(f)} ${k}" download>${ICON.dl}<span class="dl-k">${lbl}</span></a>`:'<span class="hint" style="margin:0">—</span>';
  if(!FAMILY.length)return `<p class="empty">אין כרגע פונטים להורדה במינוי.</p>`;
  const hasW=FAMILY.some(x=>x[1]>0),web=FAMILY.some(x=>x[2]||(x[4]||[]).some(w=>w.web)); /* desktop-only plan: no web column */
+ /* last row: every font of the subscription in one ZIP, for sites and for desktop */
+ const all=FS.allDl||{},zipA=(u,k)=>u?`<a class="btn btn-line" href="${ea(u)}" aria-label="הורדת כל הפונטים ${k}" download>${ICON.dl}<span><span class="zl">הכל </span>${k}</span></a>`:'';
  return `<div class="tbl-wrap lic-wrap"><table class="tbl dl-tbl${hasW?'':' no-w'}${web?'':' no-web'}"><thead><tr><th>שם הפונט</th><th>${hasW?'משקלים':''}</th>${web?'<th>פורמט לאתרים</th>':''}<th>פורמט לדסקטופ</th>${hasW?'<th>הורדה לפי משקל</th>':''}</tr></thead><tbody>
  ${FAMILY.map(([f,n,w,d,ws])=>`<tr><td>${ea(f)}</td><td class="num wcount">${n?n+' משקלים':''}</td>
  ${web?`<td>${dlA(w,f,'לאתרים','אתרים')}</td>`:''}
  <td>${dlA(d,f,'לדסקטופ','דסקטופ')}</td>
  ${hasW?`<td class="wsel-td">${n?weightPick(f,n,ws):''}</td>`:''}</tr>`).join('')}
+ ${all.web||all.desk?`<tr class="zip-row"><td></td><td></td>${web?`<td>${zipA(all.web,'לאתרים')}</td>`:''}<td>${zipA(all.desk,'לדסקטופ')}</td>${hasW?'<td></td>':''}</tr>`:''}
  </tbody></table></div>`;
 }
 
