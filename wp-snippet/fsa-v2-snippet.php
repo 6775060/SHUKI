@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '105' );
+define( 'FSA_V2_BUILD', '106' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -28,6 +28,13 @@ define( 'FSA_V2_SHOTS', 'https://s.wordpress.com/mshots/v1/{url}?w=1280&h=800' )
 define( 'FSA_V2_PLAN_PRODUCTS', array( 'web' => 12652, 'extra' => 14162, 'desk' => 22785 ) );
 // the ₪79 additional domain: ID of a hidden virtual WooCommerce product. 0 = not offered yet (the button says "next stage")
 define( 'FSA_V2_ADDON_PRODUCT', 22751 );
+// purchase area (section 2m): choose weights and licence on a font page, order details, then the store's checkout.
+// 'admins' = admins and the test account only (to check before launch) · 'all' = every visitor, logged in or not
+define( 'FSA_V2_BUY_FOR', 'admins' );
+// a plan with a commitment: months, shown next to its renewal line. Terms approved by the owner (desktop: 24 months)
+// how the chooser opens on a font page: 'full' = the whole screen, like the theme's window today · 'sheet' = a window over the page
+define( 'FSA_V2_BUY_LOOK', 'full' );
+define( 'FSA_V2_PLAN_COMMIT', array( 'desk' => 24 ) );
 // "built something?" email after a web-font download (section 2l), and the FontShok email frame
 define( 'FSA_V2_NUDGE_DAYS', 14 );  // days after a web-font download before the "built something?" email; 0 = off
 define( 'FSA_V2_NUDGE_STALE', 45 ); // a download older than this sends nothing
@@ -716,6 +723,359 @@ add_filter( 'woocommerce_get_return_url', function ( $url, $order ) {
 	return add_query_arg( $args, wc_get_page_permalink( 'myaccount' ) );
 }, 20, 2 );
 
+// 2m. purchase area: on a font page "קנה אותי" opens our chooser (licence tabs, family or single weights, live total) instead of the
+// theme's window; a plan button goes straight to the order details. The order details are the store's own cart (WC()->cart), so the
+// header cart and the checkout always match it, and payment is the store's checkout as before (Grow). No order is created here:
+// the checkout creates it, and WooCommerce resumes the same unpaid order when the customer comes back (one unpaid order per need).
+// Prices come only from WooCommerce, VAT included. Switch: FSA_V2_BUY_FOR.
+function fsa_v2_buy_on() {
+	return 'all' === FSA_V2_BUY_FOR || current_user_can( 'manage_options' ) || fsa_v2_is_tester();
+}
+// price of one unit as the customer pays it, and the VAT inside it (the store's prices include VAT; with taxes off in WooCommerce, 18% of the price)
+function fsa_v2_money( $p ) {
+	$in = function_exists( 'wc_get_price_including_tax' ) ? (float) wc_get_price_including_tax( $p ) : (float) $p->get_price();
+	$ex = function_exists( 'wc_get_price_excluding_tax' ) ? (float) wc_get_price_excluding_tax( $p ) : $in;
+	$vat = $in - $ex > 0.004 ? $in - $ex : $in - $in / 1.18;
+	return array( round( $in, 2 ), round( $vat, 2 ) );
+}
+// the price before a sale (VAT included), or 0 when there is no sale; shown struck through, as the store shows it
+function fsa_v2_was( $p ) {
+	$reg = method_exists( $p, 'get_regular_price' ) ? (float) $p->get_regular_price() : 0;
+	if ( $reg <= 0 ) return 0;
+	$was = function_exists( 'wc_get_price_including_tax' ) ? (float) wc_get_price_including_tax( $p, array( 'price' => $reg ) ) : $reg;
+	return $was - fsa_v2_money( $p )[0] > 0.004 ? round( $was, 2 ) : 0;
+}
+function fsa_v2_lic_kind( $slug_or_name ) {
+	return ( false !== stripos( $slug_or_name, 'desk' ) || false !== strpos( $slug_or_name, 'דסקטופ' ) ) ? 'desk' : 'web';
+}
+const FSA_V2_LIC_LABEL = array( 'web' => 'וובפונט', 'desk' => 'דסקטופ' );
+const FSA_V2_PLAN_NAME = array( 'web' => 'וובסטופ', 'extra' => 'אקסטרה', 'desk' => 'דסקטופ' );
+// a font product for sale: its licences, each with the full family first and then the single weights (cached per product version)
+function fsa_v2_buy_font( $p ) {
+	if ( ! $p || ! $p->is_type( 'variable' ) ) return null;
+	$pid = $p->get_id();
+	$key = 'fsa_v2_buy_' . $pid . '_' . get_post_modified_time( 'U', true, $pid ) . '_' . FSA_V2_BUILD;
+	$out = get_transient( $key );
+	if ( false !== $out ) return $out ?: null;
+	$lics = array();
+	foreach ( $p->get_children() as $vid ) {
+		$v = wc_get_product( $vid );
+		if ( ! $v || ! $v->is_purchasable() || ! $v->is_in_stock() ) continue;
+		$att = $v->get_attributes();
+		$w = isset( $att['pa_weight'] ) ? (string) $att['pa_weight'] : '';
+		$l = isset( $att['pa_license'] ) ? (string) $att['pa_license'] : '';
+		if ( '' === $w || '' === $l ) continue;
+		$k = fsa_v2_lic_kind( $l );
+		$term = 'family' === $w ? null : get_term_by( 'slug', $w, 'pa_weight' );
+		list( $price, $vat ) = fsa_v2_money( $v );
+		if ( $price <= 0 ) continue;
+		$lics[ $k ][] = array( 'vid' => (int) $vid, 'w' => $w, 'n' => 'family' === $w ? 'משפחת ' . $p->get_name() : ( $term ? $term->name : $w ), 'fam' => 'family' === $w, 'price' => $price, 'vat' => $vat, 'was' => fsa_v2_was( $v ) );
+	}
+	$res = array();
+	foreach ( array( 'web', 'desk' ) as $k ) {
+		if ( empty( $lics[ $k ] ) ) continue;
+		usort( $lics[ $k ], function ( $a, $b ) { return $a['fam'] === $b['fam'] ? (int) $a['w'] - (int) $b['w'] : ( $a['fam'] ? -1 : 1 ); } );
+		$res[] = array( 'k' => $k, 'label' => FSA_V2_LIC_LABEL[ $k ], 'items' => $lics[ $k ] );
+	}
+	$out = $res ? array( 'id' => $pid, 'name' => $p->get_name(), 'lics' => $res ) : array();
+	set_transient( $key, $out, 12 * HOUR_IN_SECONDS );
+	return $out ?: null;
+}
+// the plans for sale (price, renewal), from the plan products
+function fsa_v2_buy_plans() {
+	$out = array();
+	if ( ! function_exists( 'wc_get_product' ) ) return $out;
+	foreach ( FSA_V2_PLAN_PRODUCTS as $k => $id ) {
+		$p = $id ? wc_get_product( $id ) : null;
+		if ( ! $p || ! $p->is_purchasable() ) continue;
+		list( $price, $vat ) = fsa_v2_money( $p );
+		if ( $price <= 0 ) continue;
+		$out[ $k ] = array( 'id' => (int) $id, 'name' => 'מינוי ' . FSA_V2_PLAN_NAME[ $k ], 'price' => $price, 'vat' => $vat, 'url' => get_permalink( $id ), 'commit' => (int) ( FSA_V2_PLAN_COMMIT[ $k ] ?? 0 ) );
+	}
+	return $out;
+}
+function fsa_v2_plan_key( $id ) {
+	$k = array_search( (int) $id, array_map( 'intval', FSA_V2_PLAN_PRODUCTS ), true );
+	return false === $k ? '' : $k;
+}
+// renewal line of a plan: how often, the commitment if there is one, and the next charge
+function fsa_v2_renew_text( $k ) {
+	$c = (int) ( FSA_V2_PLAN_COMMIT[ $k ] ?? 0 );
+	$next = date( 'd.m.Y', strtotime( '+1 month', current_time( 'timestamp' ) ) );
+	return 'מתחדש כל חודש' . ( $c ? ', בהתחייבות ל־' . $c . ' חודשים' : '' ) . '. החיוב הבא ב־' . $next;
+}
+function fsa_v2_wc_cart() {
+	if ( ! function_exists( 'WC' ) ) return null;
+	if ( null === WC()->cart && function_exists( 'wc_load_cart' ) ) wc_load_cart();
+	return WC()->cart;
+}
+// the order details as the area shows them: every line of the store cart, priced from the store
+function fsa_v2_buy_lines( $cart ) {
+	$lines = array(); $tot = 0; $vat = 0;
+	foreach ( $cart->get_cart() as $key => $ci ) {
+		$p = $ci['data'];
+		if ( ! $p ) continue;
+		$qty = max( 1, (int) $ci['quantity'] );
+		list( $u, $uv ) = fsa_v2_money( $p );
+		$pk = fsa_v2_plan_key( $ci['product_id'] );
+		$parent = wc_get_product( $ci['product_id'] );
+		$line = array( 'key' => (string) $key, 'pid' => (int) $ci['product_id'], 'vid' => (int) ( $ci['variation_id'] ?? 0 ), 'qty' => $qty, 'price' => round( $u * $qty, 2 ), 'vat' => round( $uv * $qty, 2 ), 'was' => round( fsa_v2_was( $p ) * $qty, 2 ) );
+		if ( $pk ) {
+			$line += array( 'kind' => 'plan', 'plan' => $pk, 'name' => 'מינוי ' . FSA_V2_PLAN_NAME[ $pk ], 'sub' => fsa_v2_renew_text( $pk ) );
+		} elseif ( $line['vid'] ) {
+			$att = $p->get_attributes();
+			$w = (string) ( $att['pa_weight'] ?? '' );
+			$term = 'family' === $w || '' === $w ? null : get_term_by( 'slug', $w, 'pa_weight' );
+			$line += array( 'kind' => 'font', 'name' => $parent ? $parent->get_name() : $p->get_name(), 'sub' => ( 'family' === $w ? 'משפחה מלאה' : ( $term ? $term->name : $w ) ) . ' · רישיון ' . FSA_V2_LIC_LABEL[ fsa_v2_lic_kind( (string) ( $att['pa_license'] ?? '' ) ) ] );
+		} else {
+			$line += array( 'kind' => 'other', 'name' => $p->get_name(), 'sub' => $qty > 1 ? $qty . ' יחידות' : '' );
+		}
+		$lines[] = $line; $tot += $line['price']; $vat += $line['vat'];
+	}
+	return array( 'lines' => $lines, 'total' => round( $tot, 2 ), 'vat' => round( $vat, 2 ) );
+}
+// a variation of a font product that may be sold here (purchasable, with weight and licence)
+function fsa_v2_buy_variation( $vid, $pid ) {
+	$v = wc_get_product( (int) $vid );
+	if ( ! $v || ! $v->is_type( 'variation' ) || (int) $v->get_parent_id() !== (int) $pid || ! $v->is_purchasable() || ! $v->is_in_stock() ) return null;
+	$att = $v->get_attributes();
+	return ( ! empty( $att['pa_weight'] ) && ! empty( $att['pa_license'] ) ) ? $v : null;
+}
+// cart actions for the purchase area. No nonce on purpose: like the store's own add-to-cart it only changes the visitor's own cart,
+// and product pages are cached for guests (a nonce in the page would go stale). Payment happens only on the checkout page.
+add_action( 'wp_ajax_fsa_v2_buy', 'fsa_v2_buy_ajax' );
+add_action( 'wp_ajax_nopriv_fsa_v2_buy', 'fsa_v2_buy_ajax' );
+function fsa_v2_buy_ajax() {
+	$err = function ( $m ) { wp_send_json_error( array( 'message' => $m ) ); };
+	if ( ! fsa_v2_buy_on() ) $err( 'הרכישה כאן עוד לא פתוחה. אפשר לקנות כרגיל בעמוד המוצר.' );
+	$cart = fsa_v2_wc_cart();
+	if ( ! $cart ) $err( 'העגלה לא זמינה כרגע. רעננו את העמוד ונסו שוב.' );
+	if ( WC()->session && method_exists( WC()->session, 'has_session' ) && ! WC()->session->has_session() ) WC()->session->set_customer_session_cookie( true );
+	$op = isset( $_POST['op'] ) ? sanitize_key( $_POST['op'] ) : 'cart';
+	if ( 'set' === $op ) {
+		// this font's lines become exactly the chosen ones (choosing again replaces, never adds a second copy)
+		$pid  = isset( $_POST['product'] ) ? (int) $_POST['product'] : 0;
+		$vids = array_values( array_unique( array_filter( array_map( 'intval', explode( ',', isset( $_POST['vids'] ) ? (string) $_POST['vids'] : '' ) ) ) ) );
+		$vs = array();
+		foreach ( $vids as $vid ) { $v = fsa_v2_buy_variation( $vid, $pid ); if ( ! $v ) $err( 'אחד המשקלים כבר לא זמין. רעננו את העמוד ובחרו שוב.' ); $vs[] = $v; }
+		foreach ( $cart->get_cart() as $key => $ci ) { if ( (int) $ci['product_id'] === $pid ) $cart->remove_cart_item( $key ); }
+		foreach ( $vs as $v ) $cart->add_to_cart( $pid, 1, $v->get_id(), $v->get_variation_attributes(), array( 'fsa_v2_buy' => 1 ) );
+	} elseif ( 'plan' === $op ) {
+		// one plan per order: choosing a plan replaces another plan in the cart
+		$k = isset( $_POST['k'] ) ? sanitize_key( $_POST['k'] ) : '';
+		$plans = fsa_v2_buy_plans();
+		if ( ! isset( $plans[ $k ] ) ) $err( 'המינוי הזה לא זמין כרגע.' );
+		$has = false;
+		foreach ( $cart->get_cart() as $key => $ci ) {
+			$pk = fsa_v2_plan_key( $ci['product_id'] );
+			if ( $pk && $pk !== $k ) $cart->remove_cart_item( $key );
+			if ( $pk === $k ) { $has = true; if ( (int) $ci['quantity'] !== 1 ) $cart->set_quantity( $key, 1 ); }
+		}
+		if ( ! $has ) $cart->add_to_cart( $plans[ $k ]['id'], 1, 0, array(), array( 'fsa_v2_buy' => 1 ) );
+	} elseif ( 'del' === $op ) {
+		$key = isset( $_POST['key'] ) ? sanitize_key( $_POST['key'] ) : '';
+		if ( $key ) $cart->remove_cart_item( $key );
+	} elseif ( 'pay' === $op ) {
+		if ( $cart->is_empty() ) $err( 'העגלה ריקה. בחרו פונט או מינוי ונמשיך משם.' );
+		wp_send_json_success( array_merge( fsa_v2_buy_lines( $cart ), array( 'url' => wc_get_checkout_url() ) ) );
+	}
+	wp_send_json_success( fsa_v2_buy_lines( $cart ) );
+}
+// lines bought through the area are marked on the order, so the "order received" page can say thank you in the area's look
+add_action( 'woocommerce_checkout_create_order_line_item', function ( $item, $key, $values ) {
+	if ( ! empty( $values['fsa_v2_buy'] ) ) $item->add_meta_data( '_fsa_v2_buy', 1, true );
+}, 10, 3 );
+// what the page needs: a font page, a plan page, the pricing page (its buttons lead to the plan products), or the order received page
+function fsa_v2_buy_context() {
+	$d = array( 'look' => FSA_V2_BUY_LOOK, 'ajax' => admin_url( 'admin-ajax.php' ), 'plans' => fsa_v2_buy_plans(), 'account' => function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ), 'pricing' => 'https://fontshok.co.il/מחירון-רישיונות-ומנויים/' );
+	if ( function_exists( 'is_order_received_page' ) && is_order_received_page() ) {
+		$o = wc_get_order( absint( get_query_var( 'order-received' ) ) );
+		$k = isset( $_GET['key'] ) ? wc_clean( wp_unslash( $_GET['key'] ) ) : '';
+		if ( ! $o || ! hash_equals( (string) $o->get_order_key(), (string) $k ) ) return null;
+		$ours = false; $plan = false;
+		foreach ( $o->get_items() as $it ) { if ( $it->get_meta( '_fsa_v2_buy' ) ) $ours = true; if ( fsa_v2_plan_key( $it->get_product_id() ) ) $plan = true; }
+		if ( ! $ours ) return null;
+		$d['done'] = array( 'id' => (int) $o->get_id(), 'state' => $o->is_paid() ? 'ok' : ( $o->has_status( 'failed' ) ? 'fail' : 'wait' ), 'plan' => $plan, 'retry' => $o->get_checkout_payment_url() );
+		return $d;
+	}
+	if ( is_page( 13376 ) ) return $d;
+	if ( ! function_exists( 'is_product' ) || ! is_product() ) return null;
+	$id = (int) get_queried_object_id();
+	if ( fsa_v2_plan_key( $id ) ) { $d['planPage'] = fsa_v2_plan_key( $id ); return $d; }
+	$f = fsa_v2_buy_font( wc_get_product( $id ) );
+	if ( ! $f ) return null;
+	$d['font'] = $f;
+	return $d;
+}
+add_action( 'wp_footer', function () {
+	if ( is_admin() || ! fsa_v2_buy_on() ) return;
+	$d = fsa_v2_buy_context();
+	if ( $d ) echo fsa_v2_buy_markup( $d, true ); // phpcs:ignore -- our own markup
+}, 50 );
+// the area's styles, only the parts the purchase screens use (cached per build)
+function fsa_v2_buy_css() {
+	$key = 'fsa_v2_buycss_' . FSA_V2_BUILD;
+	$css = function_exists( 'get_transient' ) ? get_transient( $key ) : false;
+	if ( false === $css ) {
+		$css = fsa_v2_css_pick( fsa_v2_css(), '/\.(btn|ibtn|icon|num|hint|sub|sr|tabs|modal|sheet|cart|offers?|of-[a-z]+|chips|toast|spin|ok-ic|linkbtn|buy-?[a-z]*)\b/', array( 'spin' ) );
+		if ( function_exists( 'set_transient' ) ) set_transient( $key, $css, DAY_IN_SECONDS );
+	}
+	return $css;
+}
+// keeps the rules whose selector matches $re (and those inside @media), plus the named @keyframes
+function fsa_v2_css_pick( $css, $re, $frames ) {
+	$out = ''; $n = strlen( $css ); $i = 0;
+	while ( $i < $n ) {
+		$o = strpos( $css, '{', $i );
+		if ( false === $o ) break;
+		$sel = trim( substr( $css, $i, $o - $i ) );
+		$d = 1; $j = $o + 1;
+		while ( $j < $n && $d ) { if ( '{' === $css[ $j ] ) $d++; elseif ( '}' === $css[ $j ] ) $d--; $j++; }
+		$body = substr( $css, $o + 1, $j - $o - 2 );
+		if ( 0 === strpos( $sel, '@media' ) ) {
+			$in = fsa_v2_css_pick( $body, $re, $frames );
+			if ( '' !== $in ) $out .= $sel . '{' . $in . "}\n";
+		} elseif ( preg_match( '/^@keyframes\s+([\w-]+)/', $sel, $m ) ) {
+			if ( in_array( $m[1], $frames, true ) ) $out .= $sel . '{' . $body . "}\n";
+		} elseif ( '@' !== ( $sel[0] ?? '' ) ) {
+			// one matching part keeps the whole rule; parts without any class or id (the scope, element resets, tokens) always match
+			foreach ( preg_split( '/,(?![^(]*\))/', $sel ) as $part ) {
+				$bare = str_replace( ':is(#fsa,#fsa-layer)', '', $part );
+				if ( preg_match( $re, $part ) || ( false === strpos( $bare, '.' ) && false === strpos( $bare, '#' ) ) ) { $out .= $sel . '{' . $body . "}\n"; break; }
+			}
+		}
+		$i = $j;
+	}
+	return $out;
+}
+// the purchase screens: data, script and (outside the area) the styles. The script reuses the area's icons, plan logos and confetti.
+function fsa_v2_buy_markup( $d, $with_css ) {
+	$src = fsa_v2_js(); $part = array();
+	foreach ( array( '/^const ICON=\{.*?^\};$/ms', '/^const SUBS=\{.*?^\};$/ms', '/^function party\(\).*?\n(?=function toast)/ms', '/^function toast\(t\).*$/m', '/^const ils=.*$/m', '/^const ea=.*$/m' ) as $re ) {
+		if ( preg_match( $re, $src, $m ) ) $part[] = trim( $m[0] );
+	}
+	$data = wp_json_encode( $d, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP );
+	return ( $with_css ? '<style id="fsa-buy-css">' . fsa_v2_buy_css() . '</style>' : '' )
+		. '<script id="fsa-buy-js">window.FS_BUY=' . $data . ";\n(function(){\n" . implode( "\n", $part ) . "\n" . fsa_v2_buy_js() . "\n})();</script>";
+}
+
+// the purchase screens' own script; runs inside fsa_v2_buy_markup() next to the area's icons (ICON), plan logos (SUBS), party(), toast(), ils(), ea()
+function fsa_v2_buy_js() {
+	return <<<'FSABUY'
+const B=window.FS_BUY||{},F=B.font||null,$=s=>document.querySelector(s);
+let L=document.getElementById('fsa-layer');
+if(!L){L=document.createElement('div');L.id='fsa-layer';L.className='buy-only';document.body.appendChild(L)}else if(L.parentElement!==document.body)document.body.appendChild(L);
+L.insertAdjacentHTML('beforeend',`<div class="modal buy${B.look==='full'?' buy-full':''}" id="buyModal" hidden role="dialog" aria-modal="true" aria-labelledby="buyTitle"><div class="sheet buy-sheet"><div class="sheet-bar"><b id="buyTitle"></b><button class="ibtn" data-buyx="1" aria-label="סגירה">${ICON.close}</button></div><div class="buy-body" id="buyBody"></div></div></div>
+<div class="cart" id="buyCart" hidden role="dialog" aria-modal="true" aria-labelledby="buyCartTitle"><div class="cart-sheet"><div class="cart-head"><b id="buyCartTitle">פרטי ההזמנה</b><button class="ibtn" data-cartx="1" aria-label="סגירה">${ICON.close}</button></div><div class="cart-body" id="buyCartBody"></div></div></div>`+($('#toast')?'':'<div class="toast" id="toast" role="status"></div>'));
+const M=$('#buyModal'),C=$('#buyCart'),RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+let cart={lines:[],total:0,vat:0},busy=false,opener=null,lic=F?F.lics[0].k:'',face='',base='',demo='',dirty=false,infoOpen=false;
+const sel={};if(F)F.lics.forEach(l=>sel[l.k]=new Set());
+const r2=n=>Math.round(n*100)/100,sum=(ls,k='price')=>r2(ls.reduce((a,l)=>a+l[k],0));
+function api(op,d){const b=new URLSearchParams(Object.assign({action:'fsa_v2_buy',op},d||{}));
+ return fetch(B.ajax,{method:'POST',credentials:'same-origin',body:b}).then(r=>r.json()).catch(()=>null).then(j=>{if(!j||!j.success)throw new Error((j&&j.data&&j.data.message)||'משהו לא עבד. נסו שוב בעוד רגע.');cart=j.data;
+  if(window.jQuery)try{window.jQuery(document.body).trigger('wc_fragment_refresh')}catch(e){}return j.data})}
+/* dialogs: focus moves in, Tab stays inside, Escape closes, focus returns to the button that opened them */
+function show(el,f){el.hidden=false;void el.offsetWidth;el.classList.add('show');const t=el.querySelector(f)||el.querySelector('button');t&&t.focus({preventScroll:true})}
+function hide(el,back=true){if(el.hidden)return;el.classList.remove('show');setTimeout(()=>{el.hidden=true},RM()?0:380);if(back&&opener&&opener.focus){opener.focus({preventScroll:true});opener=null}}
+const open=()=>!C.hidden?C:!M.hidden?M:null;
+document.addEventListener('keydown',e=>{const d=open();if(!d)return;
+ if(e.key==='Escape'){e.preventDefault();if(d===C&&busy)return;hide(d);return}
+ if(e.key==='Tab'){const f=[...d.querySelectorAll('button:not([disabled]),a[href],input,[contenteditable],[tabindex]:not([tabindex="-1"])')].filter(x=>x.offsetWidth||x.offsetHeight);if(!f.length)return;const a=f[0],z=f[f.length-1];
+  if(!d.contains(document.activeElement)){e.preventDefault();a.focus();return}
+  if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus()}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus()}}
+ if(d===M&&(e.key==='ArrowLeft'||e.key==='ArrowRight')&&e.target.dataset&&e.target.dataset.buylic){const ks=F.lics.map(l=>l.k),i=ks.indexOf(lic),n=ks[(i+(e.key==='ArrowLeft'?1:-1)+ks.length)%ks.length];lic=n;chooser(`[data-buylic="${n}"]`)}});
+
+/* 1. choose: licence tabs, the full family (one card) or single weights; the total follows every tap */
+const items=()=>F.lics.flatMap(l=>l.items),byVid=v=>items().find(i=>i.vid===v),chosen=()=>Object.values(sel).flatMap(s=>[...s]);
+const total=()=>r2(chosen().reduce((a,v)=>a+((byVid(v)||{}).price||0),0));
+/* what the theme's purchase window already has on the page stays the source: licence summaries, demo text, the type tester's font */
+const oldInfo=k=>{const e=document.querySelector(k==='desk'?'.r-license-info-desktop':'.r-license-info-webstop');if(!e)return '';const c=e.cloneNode(true);c.querySelectorAll('script,style,svg').forEach(x=>x.remove());
+ const h=c.querySelector('.elementor-heading-title');const t=h?h.textContent.trim():'';if(h)h.remove();
+ const parts=[...c.querySelectorAll('p,li')].map(x=>x.tagName==='LI'?`<li>${ea(x.textContent.trim())}</li>`:x.querySelector('a[href]')?`<p><a href="${ea(x.querySelector('a[href]').href)}" target="_blank" rel="noopener">${ea(x.textContent.trim())}</a></p>`:`<p>${ea(x.textContent.trim().replace(t,'').replace(/^\S+ \S+ בקצרה\s*/,'').trim())}</p>`).join('').replace(/(<li>.*<\/li>)/s,'<ul>$1</ul>').replace(/<p><\/p>/g,'');
+ return parts?`<b>${ea(t||'הרישיון בקצרה')}</b>${parts}`:''};
+const oldLink=t=>{const a=[...document.querySelectorAll('.r-font-purchase a[href]')].find(x=>x.textContent.includes(t));return a?a.href:''};
+const was=it=>it.was?`<del class="num">${ils(it.was)}</del> `:'';
+const steps=n=>`<ol class="buy-steps" aria-label="שלבי הרכישה">${['בחירה','פרטי ההזמנה','תשלום'].map((t,i)=>`<li${i===n?' aria-current="step"':''}>${t}</li>`).join('')}</ol>`;
+function chooser(focus){const L0=F.lics.find(l=>l.k===lic)||F.lics[0],fam=L0.items.find(i=>i.fam),ws=L0.items.filter(i=>!i.fam),S=sel[L0.k],ff=face?`font-family:${ea(face)};`:'',info=oldInfo(L0.k);
+ const one=ws.length?Math.min(...ws.map(w=>w.price)):0;
+ const singles=ws.filter(w=>S.has(w.vid)).reduce((a,w)=>a+w.price,0),more=oldLink('רישיונות')||B.pricing,talk=oldLink('דברו'),n=cart.lines.length;
+ const keep=$('#buyDemo');if(keep&&keep.textContent.trim())demo=keep.textContent;
+ $('#buyTitle').textContent=`${F.name}: בחרו את הרישיון`;
+ $('#buyBody').innerHTML=`${steps(0)}${F.lics.length>1?`<div class="tabs" role="tablist" aria-label="סוג הרישיון">${F.lics.map(l=>`<button role="tab" aria-selected="${l.k===L0.k}" tabindex="${l.k===L0.k?0:-1}" data-buylic="${l.k}">${l.label}${sel[l.k].size?` · ${sel[l.k].size}`:''}</button>`).join('')}</div>`:''}
+ <div class="buy-lic"><p class="sub">${L0.k==='web'?'לשימוש בפונט באתר. אחרי הרכישה רושמים את האתר באזור האישי ומקבלים תעודה.':'להתקנה במחשב ולעבודה בתוכנות עיצוב.'}</p>${info?`<button class="linkbtn" data-buyinfo="1" aria-expanded="${infoOpen}" aria-controls="buyInfo">מה כולל רישיון ${L0.label}?</button>`:''}</div>
+ ${info?`<div class="buy-info" id="buyInfo"${infoOpen?'':' hidden'}>${info}</div>`:''}
+ <p class="hint buy-list"><b>מחירון ${L0.label}:</b> ${one?`משקל בודד ${ils(one)}`:''}${one&&fam?', ':''}${fam?`משפחה מלאה ${was(fam)}${ils(fam.price)}`:''} · כולל מע״מ</p>
+ <div class="buy-preview"><p class="hint">עמדו על משקל לתצוגה מקדימה, או הקלידו טקסט משלכם</p><p class="buy-demo" id="buyDemo" style="${ff}${base?`font-weight:${base};`:''}" contenteditable="plaintext-only" spellcheck="false" role="textbox" aria-label="טקסט לתצוגה מקדימה">${ea(demo)}</p></div>
+ ${fam?`<div class="offers"><button class="offer offer-${L0.k}" data-buyv="${fam.vid}" aria-pressed="${S.has(fam.vid)}"><div class="of-id"><div><div class="of-name">${ea(fam.n)} <span class="of-top">הכי משתלם</span></div><div class="of-line">${ws.length?`כל ${ws.length} המשקלים ברישיון אחד`:'כל המשקלים ברישיון אחד'}</div></div></div><div class="of-price">${fam.was?`<span>${was(fam)}<span class="buy-save">חיסכון ${ils(r2(fam.was-fam.price))}</span></span>`:''}<b class="num">${ils(fam.price)}</b><small>כולל מע״מ</small></div></button></div>`:''}
+ ${ws.length?`<p class="buy-or">${fam?'או משקלים בודדים':'בחרו משקלים'}</p><div class="chips buy-w" role="group" aria-label="משקלים">${ws.map(w=>`<button data-buyv="${w.vid}" data-fw="${+w.w||400}" aria-pressed="${S.has(w.vid)}"><span style="${ff}font-weight:${+w.w||400}">${ea(w.n)}</span><small class="num">${ils(w.price)}</small></button>`).join('')}</div>`:''}
+ ${fam&&!S.has(fam.vid)&&singles>=fam.price?`<p class="hint buy-tip">המשפחה המלאה עולה פחות מהמשקלים שבחרת. <button class="linkbtn" data-buyv="${fam.vid}">לבחור משפחה</button></p>`:''}
+ <div class="buy-foot"><div><b class="num" id="buyTot">${ils(total())}</b> <span class="hint">סה״כ, כולל מע״מ</span></div><div class="buy-acts">${n?`<button class="btn btn-ghost" data-buycart="1">${ICON.cart} לסל · ${n}</button>`:''}<button class="btn btn-grad" id="buyNext"${chosen().length||inCart()?'':' disabled'}>לפרטי ההזמנה</button></div></div>
+ <p class="hint buy-links"><a href="${ea(more)}">מידע על רישיונות שימוש</a>${talk?`<a href="${ea(talk)}">צריכים רישיון מותאם? דברו איתנו</a>`:''}</p>`;
+ if(focus){const f=$('#buyBody').querySelector(focus);f&&f.focus({preventScroll:true})}}
+const inCart=()=>F&&cart.lines.some(l=>l.pid===F.id);
+function pick(v){const it=byVid(v);if(!it)return;const k=F.lics.find(l=>l.items.includes(it)).k,S=sel[k];lic=k;
+ if(it.fam){if(S.has(v))S.delete(v);else{S.clear();S.add(v)}}else{const fam=F.lics.find(l=>l.k===k).items.find(i=>i.fam);if(fam)S.delete(fam.vid);S.has(v)?S.delete(v):S.add(v)}
+ dirty=true;chooser(`[data-buyv="${v}"]:not(.linkbtn)`)}
+function openBuy(){const g=document.querySelector('.gliph_box_large')||document.querySelector('.r-font-text-demo'),dt=document.querySelector('.r-font-text-demo'),fw=document.querySelector('.fonts-weight');
+ face=g?getComputedStyle(g).fontFamily:'';if(!demo)demo=(dt&&dt.textContent.trim())||'אבגדהוזחטיכלמנסעפצקרשת';base=fw&&/^\d{3}$/.test(fw.textContent.trim())?fw.textContent.trim():'';chooser();show(M,'[aria-selected="true"],[data-buyv]');
+ /* a choice not sent yet stays as it was; otherwise the chooser shows what is in the cart */
+ api('cart').then(c=>{if(dirty)return;F.lics.forEach(l=>sel[l.k].clear());c.lines.filter(l=>l.pid===F.id).forEach(l=>{const it=byVid(l.vid);if(it)sel[F.lics.find(x=>x.items.includes(it)).k].add(l.vid)});if(!M.hidden){const a=document.activeElement,q=a&&a.dataset&&a.dataset.buyv?`[data-buyv="${a.dataset.buyv}"]`:a&&a.dataset&&a.dataset.buylic?`[data-buylic="${a.dataset.buylic}"]`:null;chooser(q)}}).catch(()=>{})}
+L.addEventListener('mouseover',e=>{const w=e.target.closest&&e.target.closest('[data-fw]'),d=$('#buyDemo');if(d)d.style.fontWeight=w?w.dataset.fw:base});
+L.addEventListener('focusin',e=>{const w=e.target.closest&&e.target.closest('[data-fw]'),d=$('#buyDemo');if(d&&w)d.style.fontWeight=w.dataset.fw});
+
+/* 2. order details: the store cart, every line with its price and a remove button; the total is the sum of the lines */
+function cartView(){const ls=cart.lines,st=F||ls.length?steps(1):'';
+ if(!ls.length)return `<div class="cart-empty"><p>העגלה ריקה.<br>פונטים, כמו קפה טוב, שווה לבחור בנחת.</p></div>${F?`<button class="btn btn-grad cart-go" data-buyback="1">לבחירת משקלים</button>`:''}`;
+ return `${st}${ls.map(l=>`<div class="cart-item"><span class="cart-ic${l.kind==='plan'?' is-plan':''}">${l.kind==='plan'&&SUBS[l.plan]?`<img src="${SUBS[l.plan].logo}" alt="" width="40" height="40" decoding="async">`:ICON.font}</span><div><b>${ea(l.name)}</b>${l.sub?`<span>${ea(l.sub)}</span>`:''}</div><b class="num">${l.was?`<del>${ils(l.was)}</del> `:''}${ils(l.price)}</b><button class="ibtn" data-buydel="${ea(l.key)}" aria-label="הסרת ${ea(l.name)}">${ICON.trash}</button></div>`).join('')}
+ <dl class="cart-sum"><dt class="tot">סה״כ לתשלום</dt><dd class="tot num" id="buySum">${ils(sum(ls))}</dd><dt class="vat">מתוכם מע״מ</dt><dd class="vat num">${ils(sum(ls,'vat'))}</dd></dl>
+ ${F?`<button class="linkbtn" data-buyback="1">לשינוי הבחירה ב${ea(F.name)}</button>`:''}
+ <button class="btn btn-grad cart-go" id="buyPay">לתשלום</button>
+ <p class="hint cart-note">התשלום בעמוד התשלום המאובטח של האתר. את פרטי הכרטיס מזינים שם, לא כאן.</p>`}
+function openCart(){$('#buyCartTitle').textContent='פרטי ההזמנה';$('#buyCartBody').innerHTML=cartView();show(C,'#buyPay')}
+function wait(t){$('#buyCartBody').innerHTML=`<div class="cart-wait" role="status"><span class="spin" aria-hidden="true"></span>${t}</div>`}
+function next(){if(busy)return;busy=true;const b=$('#buyNext');b.disabled=true;
+ api('set',{product:F.id,vids:chosen().join(',')}).then(()=>{busy=false;dirty=false;hide(M,false);openCart()}).catch(x=>{busy=false;b.disabled=false;toast(x.message)})}
+function openPlan(k){C.hidden||hide(C,false);wait('מכינים את פרטי ההזמנה…');show(C,'[data-cartx]');busy=true;
+ api('plan',{k}).then(()=>{busy=false;$('#buyCartBody').innerHTML=cartView();$('#buyPay')&&$('#buyPay').focus({preventScroll:true})}).catch(x=>{busy=false;hide(C);toast(x.message)})}
+function del(key){busy=true;api('del',{key}).then(()=>{busy=false;$('#buyCartBody').innerHTML=cartView();const f=C.querySelector('[data-buydel]')||C.querySelector('#buyPay,[data-buyback],[data-cartx]');f&&f.focus({preventScroll:true});toast('הוסר מההזמנה')}).catch(x=>{busy=false;toast(x.message)})}
+/* 3. pay: the store's checkout page (no order is made here, so a second click cannot make a second one) */
+function pay(){if(busy)return;busy=true;wait('מעבירים לעמוד התשלום…');
+ api('pay').then(r=>{location.href=r.url}).catch(x=>{busy=false;$('#buyCartBody').innerHTML=cartView();toast(x.message)})}
+L.addEventListener('click',e=>{if(e.target===M){hide(M);return}if(e.target===C){if(!busy)hide(C);return}
+ const t=e.target.closest('button,a');if(!t||!L.contains(t))return;const d=t.dataset;
+ if(d.buyx){hide(M);return}
+ if(d.cartx){if(!busy)hide(C);return}
+ if(d.buylic){lic=d.buylic;chooser(`[data-buylic="${lic}"]`);return}
+ if(d.buyv){pick(+d.buyv);return}
+ if(d.buyinfo){infoOpen=!infoOpen;t.setAttribute('aria-expanded',infoOpen);$('#buyInfo').hidden=!infoOpen;return}
+ if(d.buycart){hide(M,false);openCart();return}
+ if(t.id==='buyNext'){next();return}
+ if(d.buydel){if(!busy)del(d.buydel);return}
+ if(d.buyback){hide(C,false);openBuy();return}
+ if(t.id==='buyPay'){pay();return}});
+
+/* who opens what: "קנה אותי" on a font page; a plan button anywhere (pricing page, the area's offers, the plan's own page) */
+const samePath=(a,b)=>{try{const x=new URL(a,location.href),y=new URL(b,location.href);return x.origin===y.origin&&decodeURI(x.pathname).replace(/\/$/,'')===decodeURI(y.pathname).replace(/\/$/,'')}catch(e){return false}};
+function planOf(a){const P=B.plans||{};if(a.dataset.buyplan)return P[a.dataset.buyplan]?a.dataset.buyplan:'';const h=a.getAttribute('href');if(!h)return '';
+ let atc='';try{atc=new URL(h,location.href).searchParams.get('add-to-cart')||''}catch(e){}
+ const btn=atc||a.matches('.btn,.button,.elementor-button,[class*="btn"]');if(!btn)return '';
+ for(const [k,p] of Object.entries(P))if(+atc===p.id||(!atc&&samePath(h,p.url)))return k;return ''}
+document.addEventListener('click',e=>{if(!e.target.closest)return;
+ const o=e.target.closest('.r-open-purchase');if(o&&F){e.preventDefault();e.stopImmediatePropagation();opener=o;openBuy();return}
+ const a=e.target.closest('a[href],[data-buyplan]');if(a&&!L.contains(a)){const k=planOf(a);if(k){e.preventDefault();e.stopImmediatePropagation();opener=a;openPlan(k)}}},true);
+document.addEventListener('submit',e=>{if(B.planPage&&e.target.matches&&e.target.matches('form.cart')){e.preventDefault();e.stopImmediatePropagation();opener=e.submitter||null;openPlan(B.planPage)}},true);
+
+/* 4. back from the checkout ("order received"): paid -> confetti once and a toast; failed -> what happened and how to try again */
+if(B.done){const d=B.done,key='fsa-buy-done-'+d.id;let seen=false;try{seen=!!sessionStorage.getItem(key)}catch(e){}
+ const T={ok:['ההזמנה התקבלה',`<div class="cart-ok" role="status"><span class="ok-ic">${ICON.check}</span><b>תודה, התשלום התקבל</b><span>${d.plan?'המינוי פעיל. כל הפונטים מחכים לך באזור האישי.':'הפונטים מחכים לך באזור האישי, ב״פונטים שלי״, עם תעודת הרישיון. קישורי ההורדה נשלחו גם למייל.'}</span><a class="btn btn-grad cart-go" href="${ea(B.account)}">לאזור האישי</a></div>`],
+  wait:['ההזמנה התקבלה',`<div class="cart-wait" role="status"><span class="spin" aria-hidden="true"></span><b>מחכים לאישור התשלום</b><span class="hint">זה לוקח בדרך כלל דקה. כשהתשלום יאושר יגיע מייל, והפונטים יחכו באזור האישי.</span></div>`],
+  fail:['התשלום לא עבר',`<div class="cart-ok" role="alert"><b>התשלום לא עבר, ולא חויבת</b><span>אפשר לנסות שוב, עם אותו כרטיס או עם כרטיס אחר. אם זה חוזר, כתבו לנו ונעזור.</span><a class="btn btn-grad cart-go" href="${ea(d.retry)}">לנסות שוב</a></div>`]}[d.state]||null;
+ if(T&&!seen){$('#buyCartTitle').textContent=T[0];$('#buyCartBody').innerHTML=T[1];show(C,'.cart-go,[data-cartx]');
+  if(d.state==='ok'){party();setTimeout(()=>toast('מזל טוב! הרכישה הושלמה'),500)}try{sessionStorage.setItem(key,'1')}catch(e){}}}
+window.fsaBuy={plan:openPlan,font:F?openBuy:null};
+FSABUY;
+}
+
 // 2. data (everything the area shows, read from what already exists on the site)
 function fsa_v2_he_date( $ts ) {
 	$m = array( 'ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר' );
@@ -828,7 +1188,7 @@ function fsa_v2_data() {
 	$shop = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/' );
 	return array(
 		'domains' => fsa_v2_domains( $uid ), 'domainFonts' => fsa_v2_domain_fonts(),
-		'bonus' => fsa_v2_bonus_sub( $uid, (int) current_time( 'Y' ), (int) current_time( 'n' ) ), 'extra' => fsa_v2_deal_extra( $uid ), 'addon' => (bool) fsa_v2_addon_product(), 'addonPrice' => fsa_v2_addon_price(), 'offers' => fsa_v2_plan_offers(),
+		'bonus' => fsa_v2_bonus_sub( $uid, (int) current_time( 'Y' ), (int) current_time( 'n' ) ), 'extra' => fsa_v2_deal_extra( $uid ), 'addon' => (bool) fsa_v2_addon_product(), 'addonPrice' => fsa_v2_addon_price(), 'offers' => fsa_v2_plan_offers(), 'buy' => fsa_v2_buy_on(),
 		'domAjax' => admin_url( 'admin-ajax.php' ), 'domNonce' => wp_create_nonce( 'fsa_v2_dom' ),
 		'build' => current_user_can( 'manage_options' ) ? FSA_V2_BUILD : '', 'mode' => isset( $GLOBALS['fsa_v2_mode'] ) ? $GLOBALS['fsa_v2_mode'] : 'preview', 'oldUrl' => add_query_arg( 'fsa_old', '1', function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ) ),
 		'plan' => $plan, 'planStart' => $start, 'nextPay' => '', 'card' => '',
@@ -1427,7 +1787,16 @@ add_shortcode( 'fs_account_v2', function () {
 	if ( ! fsa_v2_can_view() ) return '';
 	if ( isset( $_GET['fsa_debug'] ) ) return fsa_v2_debug();
 	$data = wp_json_encode( fsa_v2_data(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP );
-	$css  = <<<'FSACSS'
+	$css = fsa_v2_css();
+	$html = fsa_v2_html();
+	$js = fsa_v2_js();
+	// the purchase screens too, for the plan offers (their styles are already in the area's)
+	$buy = fsa_v2_buy_on() ? fsa_v2_buy_markup( array( 'ajax' => admin_url( 'admin-ajax.php' ), 'plans' => fsa_v2_buy_plans(), 'account' => function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ), 'pricing' => 'https://fontshok.co.il/מחירון-רישיונות-ומנויים/' ), false ) : '';
+	return '<style id="fsa-v2-css">' . $css . '</style>' . $html . '<script id="fsa-v2-js">window.FS_DATA=' . $data . ";\n" . $js . '</script>' . $buy;
+} );
+// the area's styles, markup and script (the purchase area reuses parts of them, see 2m)
+function fsa_v2_css() {
+	return <<<'FSACSS'
 :is(#fsa,#fsa-layer){direction:rtl;text-align:right;width:100vw;margin-inline:calc(50% - 50vw);position:relative;padding-block:1px}
 :is(#fsa,#fsa-layer) button,:is(#fsa,#fsa-layer) input,:is(#fsa,#fsa-layer) select,:is(#fsa,#fsa-layer) textarea{font:inherit;color:inherit;background:none;border:0;border-radius:0;box-shadow:none;text-transform:none;letter-spacing:inherit;margin:0;min-height:0}
 :is(#fsa,#fsa-layer) :where(button):hover,:is(#fsa,#fsa-layer) :where(button):focus{background:none;color:inherit}
@@ -2252,8 +2621,86 @@ html body.fsa-v2{overflow-x:clip}
 :is(#fsa,#fsa-layer) .wsel-menu a.wdl:hover,:is(#fsa,#fsa-layer) .wsel-menu a.wdl:focus-visible{background:var(--soft);border-color:#BDBDBD}
 :is(#fsa,#fsa-layer) .wsel-menu a.wdl .icon{width:15px;height:15px}
 :is(#fsa,#fsa-layer) .pop-menu.wsel-menu{max-width:min(340px,92vw)}
+/* purchase area (2m): the chooser sheet, the family card, weight tiles, the total bar. Everything else is .tabs, .offer, .chips and .cart */
+#fsa-layer.buy-only{width:auto;margin:0;padding:0;background:none}
+:is(#fsa,#fsa-layer) .cart{z-index:100000}
+:is(#fsa,#fsa-layer) .sheet.buy-sheet{max-width:760px}
+:is(#fsa,#fsa-layer) .buy-body{padding:22px 28px 26px}
+:is(#fsa,#fsa-layer) .buy-body .tabs{margin-bottom:14px}
+:is(#fsa,#fsa-layer) .buy-demo{font-size:40px;line-height:1.3;text-align:center;margin:14px 0 20px;overflow-wrap:anywhere;transition:font-weight .25s var(--ease)}
+:is(#fsa,#fsa-layer) .buy-body .offers{margin-top:0}
+:is(#fsa,#fsa-layer) button.offer{width:100%;text-align:start;cursor:pointer;grid-template-columns:minmax(0,1fr) auto;transition:box-shadow .25s var(--ease)}
+:is(#fsa,#fsa-layer) .offer[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--violet)}
+:is(#fsa,#fsa-layer) .buy-or{font-size:15px;color:var(--muted);margin:20px 0 10px}
+:is(#fsa,#fsa-layer) .chips.buy-w{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));margin:0}
+:is(#fsa,#fsa-layer) .chips.buy-w button{display:flex;flex-direction:column;align-items:center;border-radius:12px;padding:10px 8px;text-align:center;color:var(--ink);line-height:1.35}
+:is(#fsa,#fsa-layer) .chips.buy-w button span{font-size:17px}
+:is(#fsa,#fsa-layer) .chips.buy-w button small{font-size:13px;color:var(--muted);font-weight:400}
+:is(#fsa,#fsa-layer) .chips.buy-w button[aria-pressed="true"]{border-color:var(--violet);box-shadow:inset 0 0 0 1px var(--violet)}
+:is(#fsa,#fsa-layer) .buy-tip{margin-top:12px;font-size:14px}
+:is(#fsa,#fsa-layer) .buy-tip .linkbtn{font-size:14px}
+:is(#fsa,#fsa-layer) .buy-foot{display:flex;align-items:center;justify-content:space-between;gap:12px 14px;flex-wrap:wrap;margin-top:22px;padding:14px 18px;border-radius:12px;background:var(--softer)}
+:is(#fsa,#fsa-layer) .buy-foot b{font-size:22px;font-weight:700}
+:is(#fsa,#fsa-layer) .buy-foot .hint{display:inline;margin:0}
+:is(#fsa,#fsa-layer) .buy-foot .btn-grad{height:44px;padding:0 26px;min-width:170px}
+:is(#fsa,#fsa-layer) .buy-foot .btn-grad:disabled{opacity:.45;cursor:default;filter:none}
+:is(#fsa,#fsa-layer) .buy-links{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px}
+:is(#fsa,#fsa-layer) .buy-links a{color:var(--violet-text);text-decoration:underline;text-underline-offset:3px}
+:is(#fsa,#fsa-layer) .cart-item .ibtn{flex:none}
+:is(#fsa,#fsa-layer) .cart-ic.is-plan{background:none}
+:is(#fsa,#fsa-layer) .cart-ic.is-plan img{width:40px;height:40px}
+:is(#fsa,#fsa-layer) .cart-body>.linkbtn{align-self:flex-start;font-size:14px}
+:is(#fsa,#fsa-layer) .cart-empty{flex:1;display:grid;place-items:center;text-align:center;color:var(--muted);font-size:15px}
+:is(#fsa,#fsa-layer) .cart-ok .btn-grad{text-decoration:none}
+:is(#fsa,#fsa-layer) .buy-steps{display:flex;gap:6px;list-style:none;margin:0 0 18px;padding:0;font-size:13px;color:var(--faint);counter-reset:st}
+:is(#fsa,#fsa-layer) .buy-steps li{counter-increment:st;display:flex;align-items:center;gap:6px}
+:is(#fsa,#fsa-layer) .buy-steps li::before{content:counter(st);display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--soft);font-size:12px}
+:is(#fsa,#fsa-layer) .buy-steps li+li::after{order:-1;content:"";width:18px;height:1px;background:var(--line)}
+:is(#fsa,#fsa-layer) .buy-steps li[aria-current="step"]{color:var(--ink);font-weight:600}
+:is(#fsa,#fsa-layer) .buy-steps li[aria-current="step"]::before{background:var(--violet);color:#fff}
+:is(#fsa,#fsa-layer) .buy-lic{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px}
+:is(#fsa,#fsa-layer) .buy-lic .linkbtn{font-size:14px}
+:is(#fsa,#fsa-layer) .buy-info{margin-top:10px;padding:14px 18px;border-radius:12px;background:var(--softer);font-size:14px;line-height:1.6}
+:is(#fsa,#fsa-layer) .buy-info ul{margin:4px 0;padding-inline-start:20px}
+:is(#fsa,#fsa-layer) .buy-info p{margin:4px 0}
+:is(#fsa,#fsa-layer) .buy-info a{color:var(--violet-text);text-decoration:underline;text-underline-offset:3px}
+:is(#fsa,#fsa-layer) .buy-list{margin-top:10px;font-size:14px}
+:is(#fsa,#fsa-layer) .buy-list b{font-weight:700;color:var(--ink)}
+:is(#fsa,#fsa-layer) del{color:var(--faint);font-weight:400}
+:is(#fsa,#fsa-layer) .buy-preview{margin:16px 0 20px;text-align:center}
+:is(#fsa,#fsa-layer) .buy-preview .hint{margin:0}
+:is(#fsa,#fsa-layer) .buy-preview .buy-demo{margin:4px 0 0;outline:0;border-radius:8px;cursor:text}
+:is(#fsa,#fsa-layer) .buy-preview .buy-demo:focus-visible{box-shadow:0 0 0 2px var(--violet)}
+:is(#fsa,#fsa-layer) .offer .of-price>span{display:flex;gap:8px;align-items:baseline}
+:is(#fsa,#fsa-layer) .offer .of-price .buy-save{font-size:12px;font-weight:700;color:var(--violet);background:#fff;border-radius:99px;padding:0 8px}
+:is(#fsa,#fsa-layer) .buy-acts{display:flex;gap:10px;flex-wrap:wrap}
+:is(#fsa,#fsa-layer) .buy-foot .btn-ghost{height:44px;border-radius:99px;padding:0 20px}
+:is(#fsa,#fsa-layer) .buy-foot .btn-ghost .icon{width:20px;height:20px}
+/* 'full': the whole screen, the content in a centred column (like the theme's window) */
+:is(#fsa,#fsa-layer) .modal.buy-full{padding:0;place-items:stretch}
+:is(#fsa,#fsa-layer) .modal.buy-full .sheet{max-width:none;max-height:none;height:100%;border-radius:0;box-shadow:none}
+:is(#fsa,#fsa-layer) .modal.buy-full .sheet-bar{padding:16px max(16px,calc((100% - 1140px)/2))}
+:is(#fsa,#fsa-layer) .modal.buy-full .sheet-bar b{font-size:19px}
+:is(#fsa,#fsa-layer) .modal.buy-full .buy-body{max-width:1140px;margin:0 auto;padding:28px 16px 40px}
+:is(#fsa,#fsa-layer) .modal.buy-full .buy-demo{font-size:64px}
+@media (max-width:760px){
+  :is(#fsa,#fsa-layer) .modal.buy{padding:0;place-items:end stretch}
+  :is(#fsa,#fsa-layer) .modal.buy .sheet{max-height:94vh;border-radius:20px 20px 0 0}
+  :is(#fsa,#fsa-layer) .buy-body{padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+  :is(#fsa,#fsa-layer) .buy-demo{font-size:28px;margin:8px 0 14px}
+  :is(#fsa,#fsa-layer) .chips.buy-w{grid-template-columns:repeat(2,minmax(0,1fr))}
+  :is(#fsa,#fsa-layer) .buy-foot .btn-grad{width:100%}
+  :is(#fsa,#fsa-layer) .buy-acts{width:100%}:is(#fsa,#fsa-layer) .buy-acts .btn{flex:1}
+  :is(#fsa,#fsa-layer) .modal.buy-full .buy-demo{font-size:34px}
+  :is(#fsa,#fsa-layer) .modal.buy-full .sheet{height:100%;max-height:none;border-radius:0}
+  :is(#fsa,#fsa-layer) button.offer{padding:16px 18px 16px 30px}
+  /* a sheet covers the bottom of a phone: the message shows at the top instead of over its button */
+  :is(#fsa,#fsa-layer) .cart.show~.toast{bottom:auto;top:calc(16px + env(safe-area-inset-top,0px))}
+}
 FSACSS;
-	$html = <<<'FSAHTML'
+}
+function fsa_v2_html() {
+	return <<<'FSAHTML'
 <div id="fsa"><main class="page">
   <div class="top-row">
   <p class="hello x-new" data-new="ברכה עדינה"><span id="greet">ערב טוב</span>, <b id="fsaName"></b> <span class="smiley" aria-hidden="true"><svg viewBox="0 0 24 24"><g class="sm-face"><circle class="sm-ring" cx="12" cy="12" r="10"/><ellipse class="sm-cheek" cx="7.2" cy="14" rx="1.6" ry="1"/><ellipse class="sm-cheek" cx="16.8" cy="14" rx="1.6" ry="1"/><ellipse class="sm-eye sm-eye-l" cx="9" cy="10.2" rx=".75" ry="1.2"/><ellipse class="sm-eye sm-eye-r" cx="15" cy="10.2" rx=".75" ry="1.2"/><path class="sm-mouth" d="M9 15.4c.85.63 1.88 1 3 1s2.15-.37 3-1"/><path class="sm-grin" d="M8 14h8c0 2.4-1.8 4-4 4s-4-1.6-4-4Z"/></g></svg><i class="sm-spark s1"></i><i class="sm-spark s2"></i><i class="sm-spark s3"></i></span></p>
@@ -2291,7 +2738,9 @@ FSACSS;
 </div>
 <div class="toast" id="toast" role="status"></div></div>
 FSAHTML;
-	$js   = <<<'FSAJS'
+}
+function fsa_v2_js() {
+	return <<<'FSAJS'
 (function(){
 /* overlays (certificate, cart, messages) go straight under <body>: theme wrappers with transform would trap position:fixed */
 {const L=document.getElementById('fsa-layer');if(L&&L.parentElement!==document.body)document.body.appendChild(L)}
@@ -2479,7 +2928,7 @@ const noPlan=()=>`<div class="head-row"><div><h1 class="h1">המינוי שלי<
  <div class="offers">${OFFER.map(o=>`<div class="offer offer-${o.k}">
   <div class="of-id">${logo(o.k,'')}<div><div class="of-name">${o.name}${o.top?` <span class="of-top">${o.top}</span>`:''}</div><div class="of-line">${o.line}</div><div class="of-uses">${o.uses.map((u,i)=>`${i===3?'<i class="of-br"></i>':''}<span>${u}</span>`).join('')}</div></div></div>
   <div class="of-price">${offerPrice(o)?`<b class="num">₪${offerPrice(o)}</b><small>לחודש, כולל מע״מ</small>`:'<small>המחיר בעמוד המינויים</small>'}</div>
-  <a class="btn ${offerPrice(o)?'btn-grad':'btn-line'} of-cta" href="${ea(offerHref(o))}">${o.cta}</a>
+  <a class="btn ${offerPrice(o)?'btn-grad':'btn-line'} of-cta" href="${ea(offerHref(o))}"${FS.buy?` data-buyplan="${o.k}"`:''}>${o.cta}</a>
  </div>`).join('')}</div>
  <section class="cmp" id="cmp"><h2><button class="cmp-tg" data-cmp="1" aria-expanded="${!!state.cmpOpen}" aria-controls="cmpBody">השוואת המינויים${ICON.chev}</button></h2><div class="hist-body cmp-body ${state.cmpOpen?'open':''}" id="cmpBody"><div><div class="tbl-wrap cmp-in"><i class="web-col" aria-hidden="true"></i><table>
   <thead><tr><th></th>${CMP_COLS.map(k=>`<th>${PLAN[k].label} <img class="cmp-sym" src="${SYM[k]}" alt=""></th>`).join('')}</tr></thead>
@@ -3036,5 +3485,5 @@ setTimeout(smile,700);$('.hello').addEventListener('click',smile);
 
 })();
 FSAJS;
-	return '<style id="fsa-v2-css">' . $css . '</style>' . $html . '<script id="fsa-v2-js">window.FS_DATA=' . $data . ";\n" . $js . '</script>';
-} );
+}
+

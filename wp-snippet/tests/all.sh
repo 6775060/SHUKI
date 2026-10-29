@@ -4,7 +4,7 @@
 set -e
 D=$(cd "$(dirname "$0")" && pwd)
 { echo '<?php'; cat "$D/../fsa-v2-snippet.php"; } > "${TMPDIR:-/tmp}/fsa-lint.php" && php -l "${TMPDIR:-/tmp}/fsa-lint.php" >/dev/null && echo "syntax: ok"
-for t in data domains rollout addon profile studio; do
+for t in data domains rollout addon profile studio buy; do
 	out=$(php "$D/$t-test.php" 2>&1) || { echo "$out"; echo "$t: FAILED"; exit 1; }
 	echo "$out" | tail -1 | grep -q 'ALL PASSED' || { echo "$out"; echo "$t: FAILED"; exit 1; }
 	echo "$t: ok"
@@ -15,4 +15,7 @@ out=$(NODE_PATH=${NODE_PATH:-/opt/node-tools/node_modules} node "$D/sitejs.js" "
 echo "site scripts: ok"
 out=$(sh "$D/run.sh" 2>&1) ; echo "$out" | tail -1 | grep -q 'ALL PASSED' || { echo "$out" | tail -20; echo "browser: FAILED"; exit 1; }
 echo "browser: ok"
+php "$D/harness-buy.php" "$O" >/dev/null || { echo "purchase pages: FAILED"; exit 1; }
+out=$(NODE_PATH=${NODE_PATH:-/opt/node-tools/node_modules} node "$D/buy.js" "$O" 2>&1); echo "$out" | tail -1 | grep -q 'ALL PASSED' || { echo "$out" | tail -20; echo "purchase browser: FAILED"; exit 1; }
+echo "purchase browser: ok"
 echo "ALL CHECKS PASSED"
