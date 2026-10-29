@@ -138,6 +138,15 @@ $t( strpos( $g, 'og.co.il' ) < strpos( $g, 'lavana.co.il' ) && 2 === substr_coun
 $t( false !== strpos( $g, 'data-f="פורטו">פורטו<small>1' ) && false !== strpos( $g, 'data-f="תניא"' ) && false !== strpos( $g, 'data-f="">הכל<small>2' ), 'one filter button per font, with counts' );
 $t( false !== strpos( $g, '<dt>עיצוב</dt><dd>סטודיו נועה</dd>' ) && false !== strpos( $g, 'loading="lazy"' ) && false === strpos( $g, 'mshots' ), 'designer credit; lazy pictures kept on the site (never from the service)' );
 $GLOBALS['opt']['fsa_v2_showcase'] = array(); $t( $g === fsa_v2_gallery_html(), 'kept ready: the next visit does no work' );
+if ( ! function_exists( 'home_url' ) ) { function home_url( $p = '' ) { return 'https://fontshok.co.il' . $p; } }
+// header menu: "גלריה" after "פונט־בלוג" in both mega-menus, with its own empty panel; nothing twice, other templates untouched
+$hd = json_decode( file_get_contents( __DIR__ . '/../../docs/backups/header-10689-elementor-before-gallery.json' ), true ); $hd = is_string( $hd ) ? json_decode( $hd, true ) : ( isset( $hd['value'] ) ? json_decode( $hd['value'], true ) : $hd );
+$menus = function ( $d ) { $o = array(); $w = function ( $els ) use ( &$w, &$o ) { foreach ( $els as $e ) { if ( 'mega-menu' === ( $e['widgetType'] ?? '' ) ) $o[ $e['id'] ] = array( array_map( 'trim', array_column( $e['settings']['menu_items'], 'item_title' ) ), count( $e['elements'] ), $e['settings']['menu_items'] ); if ( ! empty( $e['elements'] ) ) $w( $e['elements'] ); } }; $w( $d ); return $o; };
+$after = $menus( fsa_v2_menu_gallery( $hd, 10689 ) ); $ok = 2 === count( $after );
+foreach ( $after as $mm ) { $k = array_search( 'גלריה', $mm[0], true ); $ok = $ok && false !== $k && 'פונט־בלוג' === $mm[0][ $k - 1 ] && count( $mm[0] ) === $mm[1] && false !== strpos( $mm[2][ $k ]['item_link']['url'], '/gallery/' ); }
+$t( $ok, 'menu: gallery after the blog in both menus, items and panels line up' );
+$twice = $menus( fsa_v2_menu_gallery( fsa_v2_menu_gallery( $hd, 10689 ), 10689 ) ); $t( array_map( function ( $m ) { return $m[0]; }, $twice ) === array_map( function ( $m ) { return $m[0]; }, $after ), 'menu: added once' );
+$t( $hd === fsa_v2_menu_gallery( $hd, 999 ), 'menu: other templates untouched' );
 delete_transient( 'fsa_v2_gallery' ); $t( false !== strpos( fsa_v2_gallery_html(), 'קרנינג' ) && false === strpos( fsa_v2_gallery_html(), '<button' ), 'empty gallery: a short friendly line, no filter' );
 $GLOBALS['shot'] = ''; $GLOBALS['opt']['fsa_v2_snaps']['gone.co.il'] = array( 'u' => '', 'n' => 6, 't' => 0, 'w' => 1 );
 // share page: a token per customer, found again from the link; nonsense tokens find nobody

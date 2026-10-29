@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '106' );
+define( 'FSA_V2_BUILD', '107' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -1574,6 +1574,32 @@ function fsa_v2_gallery_html() {
 }
 add_shortcode( 'fontshok_gallery', 'fsa_v2_gallery_html' );
 foreach ( array( 'fsa_v2_showcase', 'fsa_v2_snaps' ) as $o ) foreach ( array( 'add_option_', 'update_option_' ) as $w ) add_action( $w . $o, function () { delete_transient( 'fsa_v2_gallery' ); } );
+// header menu: "גלריה" right after "פונט־בלוג" in both mega-menus (desktop and phone) of the header template, added as the header renders; the saved header is not touched, and once the owner adds the item in Elementor this does nothing
+define( 'FSA_V2_HEADER', 10689 );
+add_filter( 'elementor/frontend/builder_content_data', 'fsa_v2_menu_gallery', 10, 2 );
+function fsa_v2_menu_gallery( $data, $post_id ) {
+	if ( FSA_V2_HEADER !== (int) $post_id || ! is_array( $data ) ) return $data;
+	$walk = function ( &$els ) use ( &$walk ) {
+		foreach ( $els as &$e ) {
+			if ( ! is_array( $e ) ) continue;
+			$items = $e['settings']['menu_items'] ?? null;
+			if ( 'mega-menu' === ( $e['widgetType'] ?? '' ) && is_array( $items ) ) {
+				$titles = array_map( function ( $m ) { return trim( (string) ( $m['item_title'] ?? '' ) ); }, $items );
+				$i = array_search( 'פונט־בלוג', $titles, true );
+				if ( false !== $i && ! in_array( 'גלריה', $titles, true ) && isset( $e['elements'][ $i ] ) ) {
+					$m = $items[ $i ]; $m['item_title'] = 'גלריה'; $m['_id'] = substr( md5( $e['id'] . 'gal' ), 0, 7 );
+					$m['item_link'] = array_merge( is_array( $m['item_link'] ?? null ) ? $m['item_link'] : array(), array( 'url' => home_url( '/gallery/' ), 'is_external' => '', 'nofollow' => '' ) );
+					array_splice( $e['settings']['menu_items'], $i + 1, 0, array( $m ) );
+					$c = $e['elements'][ $i ]; $c['id'] = substr( md5( $e['id'] . 'galc' ), 0, 7 ); $c['elements'] = array();
+					array_splice( $e['elements'], $i + 1, 0, array( $c ) );
+				}
+			}
+			if ( ! empty( $e['elements'] ) && is_array( $e['elements'] ) ) $walk( $e['elements'] );
+		}
+	};
+	$walk( $data );
+	return $data;
+}
 
 // admin screen "בסטודיו" (Admin menu → בסטודיו): the three fonts of the vote, results, and the gallery
 add_action( 'admin_menu', function () {
