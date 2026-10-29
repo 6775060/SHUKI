@@ -2,7 +2,7 @@
 // The public gallery of sites built with FontShok fonts, and its item in the site menu. Separate from the personal area:
 // it only reads the list the owner approves in Admin → בסטודיו → גלריה, and the site cards, from the snippet "FS · אזור אישי v2".
 // Turning this snippet off removes the gallery page content and the menu item; nothing else changes.
-define( 'FSG_BUILD', '1' );
+define( 'FSG_BUILD', '2' );
 
 // public gallery page: shortcode [fontshok_gallery] on a normal page (גלריה, in the site menu). Shows the approved list (בסטודיו → גלריה),
 // newest first, with a filter by font. Light: plain HTML from the server, kept ready (transient) until the list or a picture changes,
@@ -14,8 +14,8 @@ function fsa_v2_gallery_html() {
 	$list = array_reverse( fsa_v2_showcase_public() ); $count = array();
 	foreach ( $list as $x ) foreach ( $x['fonts'] as $f ) $count[ $f ] = ( $count[ $f ] ?? 0 ) + 1;
 	arsort( $count );
-	$html = '<div class="fsa-sites fsa-gal" dir="rtl"><style>' . fsa_v2_sites_css() . '.fsa-gal{padding-top:10px}.fsa-gal .lede{font-size:19px;margin:-8px 0 22px;max-width:640px}.fsa-gal .fl{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 30px}.fsa-gal .fl button{font:inherit;font-size:16px;background:#fff;color:#151515;border:1.5px solid #151515;border-radius:99px;padding:5px 15px;cursor:pointer}.fsa-gal .fl button[aria-pressed=true]{background:#151515;color:#fff}.fsa-gal .fl small{opacity:.6;margin-inline-start:4px}.fsa-gal .sc[hidden]{display:none}.fsa-gal .none{font-size:19px;color:#6E6E6E}</style>'
-		. '<span class="eb">הפונטים בפעולה</span><h1>אתרים שנבנו עם פונטשוק</h1>';
+	$html = '<div class="fsa-sites fsa-gal" dir="rtl"><style>' . fsa_v2_sites_css() . '.fsa-gal{max-width:1288px;padding:86px 20px 70px}.fsa-gal h1{font-size:40px;line-height:1;color:#333;margin:0 0 28px;padding-bottom:20px;border-bottom:1px solid #333}@media (max-width:760px){.fsa-gal{padding-top:40px}.fsa-gal h1{font-size:30px}}.fsa-gal .lede{font-size:19px;margin:-8px 0 22px;max-width:640px}.fsa-gal .fl{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 30px}.fsa-gal .fl button{font:inherit;font-size:16px;background:#fff;color:#151515;border:1.5px solid #151515;border-radius:99px;padding:5px 15px;cursor:pointer}.fsa-gal .fl button[aria-pressed=true]{background:#151515;color:#fff}.fsa-gal .fl small{opacity:.6;margin-inline-start:4px}.fsa-gal .sc[hidden]{display:none}.fsa-gal .none{font-size:19px;color:#6E6E6E}</style>'
+		. '<h1>אתרים שנבנו עם פונטשוק</h1>';
 	if ( ! $list ) $html .= '<p class="none">הגלריה נבנית עכשיו. אתרים, כמו קרנינג טוב, לוקחים זמן.</p>';
 	else {
 		$html .= '<p class="lede">עבודות של לקוחות פונטשוק, עם פונטים ברישיון מסודר. בחרו פונט כדי לראות איפה הוא עובד.</p>';

@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '109' );
+define( 'FSA_V2_BUILD', '110' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -1826,8 +1826,10 @@ function fsa_v2_css() {
 :is(#fsa,#fsa-layer) .side .logout:hover{color:var(--ink)}
 :is(#fsa,#fsa-layer) .main{padding:68px 64px 64px;min-width:0}
 :is(#fsa,#fsa-layer){--ease:cubic-bezier(.22,.61,.36,1)}
-:is(#fsa,#fsa-layer) .main.enter{animation:viewIn .45s var(--ease)}
-@keyframes viewIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+:is(#fsa,#fsa-layer) .main.leave{opacity:0;transform:translateY(-3px);transition:opacity .14s ease,transform .14s ease}
+:is(#fsa,#fsa-layer) .main.enter>*{animation:viewIn .55s var(--ease) both}
+:is(#fsa,#fsa-layer) .main.enter>:nth-child(2){animation-delay:.05s}:is(#fsa,#fsa-layer) .main.enter>:nth-child(3){animation-delay:.1s}:is(#fsa,#fsa-layer) .main.enter>:nth-child(n+4){animation-delay:.15s}
+@keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes drawerIn{from{opacity:0;transform:translateY(-8px);clip-path:inset(0 0 100% 0 round 10px)}to{opacity:1;transform:none;clip-path:inset(0 0 0 0 round 10px)}}
 @keyframes drawerOut{from{opacity:1;clip-path:inset(0 0 0 0 round 10px)}to{opacity:0;transform:translateY(-6px);clip-path:inset(0 0 100% 0 round 10px)}}
 @keyframes rowIn{from{background:#EEE9FF}to{background:transparent}}
@@ -1890,19 +1892,6 @@ function fsa_v2_css() {
   :is(#fsa,#fsa-layer) .plan .plan-more-in>div:nth-child(3){grid-column:1/-1}
   :is(#fsa,#fsa-layer) .note{gap:6px;font-size:14px;padding-inline:0}
   :is(#fsa,#fsa-layer) .note .note-ic{display:none}
-  :is(#fsa,#fsa-layer) .sub-reg:not(.reg-on){background:transparent;padding:0}
-  :is(#fsa,#fsa-layer) .sub-reg .reg-open{display:flex;width:100%;height:46px;font-size:16px;gap:8px}
-  :is(#fsa,#fsa-layer) .sub-reg .reg-open .icon{width:20px;height:20px}
-  :is(#fsa,#fsa-layer) .sub-reg.reg-on .reg-open{display:none}
-  :is(#fsa,#fsa-layer) .sub-reg .reg-head{display:flex;align-items:center;justify-content:space-between;margin:-6px 0 10px;font-size:16px}
-  :is(#fsa,#fsa-layer) .sub-reg .reg-close{width:32px;height:32px;color:var(--muted)}
-  :is(#fsa,#fsa-layer) .sub-reg .reg-close .icon{width:20px;height:20px}
-  :is(#fsa,#fsa-layer) .reg-fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s var(--ease)}
-  :is(#fsa,#fsa-layer) .reg-fold>div{overflow:hidden}
-  :is(#fsa,#fsa-layer) .reg-fold>div>*{opacity:0;transform:translateY(-6px);transition:opacity .3s ease,transform .4s var(--ease)}
-  :is(#fsa,#fsa-layer) .sub-reg.reg-on .reg-fold{grid-template-rows:1fr}
-  :is(#fsa,#fsa-layer) .sub-reg.reg-done .reg-fold>div{overflow:visible}
-  :is(#fsa,#fsa-layer) .sub-reg.reg-on .reg-fold>div>*{opacity:1;transform:none;transition:opacity .4s ease .12s,transform .45s var(--ease) .08s}
   :is(#fsa,#fsa-layer) .dom-tbl>tbody>tr>td.num{margin-inline-start:auto!important}
   :is(#fsa,#fsa-layer) .tbl tbody tr.zip-row{flex-wrap:nowrap;gap:8px}
   :is(#fsa,#fsa-layer) .tbl tbody tr.zip-row>td:empty{display:none}
@@ -2249,11 +2238,23 @@ function fsa_v2_css() {
 :is(#fsa,#fsa-layer) .reg-row .reg-add{height:42px;padding:0 24px;gap:8px}
 :is(#fsa,#fsa-layer) .reg-row .reg-add .icon{width:20px;height:20px}
 :is(#fsa,#fsa-layer) .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-:is(#fsa,#fsa-layer) .reg-open{display:none}
-:is(#fsa,#fsa-layer) .reg-head{display:none}
 :is(#fsa,#fsa-layer) .head-act .btn>.icon{display:none}
 :is(#fsa,#fsa-layer) .sec-add{display:none}
 :is(#fsa,#fsa-layer) .reg-fold>div{min-height:0}
+/* registration box: closed it is one "הוסף דומיין" button; open it unfolds into the form, saved with "שמור דומיין" */
+:is(#fsa,#fsa-layer) .sub-reg:not(.reg-on){background:transparent;border-color:transparent;padding:0}
+:is(#fsa,#fsa-layer) .sub-reg .reg-open{display:inline-flex;height:44px;padding:0 26px;font-size:16px;gap:8px}
+:is(#fsa,#fsa-layer) .sub-reg .reg-open .icon{width:20px;height:20px}
+:is(#fsa,#fsa-layer) .sub-reg.reg-on .reg-open{display:none}
+:is(#fsa,#fsa-layer) .sub-reg .reg-head{display:flex;align-items:center;justify-content:space-between;margin:-6px 0 10px;font-size:16px}
+:is(#fsa,#fsa-layer) .sub-reg .reg-close{width:32px;height:32px;color:var(--muted)}
+:is(#fsa,#fsa-layer) .sub-reg .reg-close .icon{width:20px;height:20px}
+:is(#fsa,#fsa-layer) .reg-fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s var(--ease)}
+:is(#fsa,#fsa-layer) .reg-fold>div{overflow:hidden}
+:is(#fsa,#fsa-layer) .reg-fold>div>*{opacity:0;transform:translateY(-6px);transition:opacity .3s ease,transform .4s var(--ease)}
+:is(#fsa,#fsa-layer) .sub-reg.reg-on .reg-fold{grid-template-rows:1fr}
+:is(#fsa,#fsa-layer) .sub-reg.reg-done .reg-fold>div{overflow:visible}
+:is(#fsa,#fsa-layer) .sub-reg.reg-on .reg-fold>div>*{opacity:1;transform:none;transition:opacity .4s ease .12s,transform .45s var(--ease) .08s}
 :is(#fsa,#fsa-layer) .dom-box .form-err{margin:10px 0 0}
 :is(#fsa,#fsa-layer) .dom-box .quota-line{padding:0}
 :is(#fsa,#fsa-layer) .mini.lined{margin-top:22px}
@@ -2333,12 +2334,11 @@ function fsa_v2_css() {
   :is(#fsa,#fsa-layer) .plan>.plan-id>.name>.chip::before{width:5px;height:5px}
   :is(#fsa,#fsa-layer) .dl-tbl tbody tr.zip-row>td:first-child{display:none}
   :is(#fsa,#fsa-layer) .dl-tbl.tbl tbody tr.zip-row>td:last-child:empty{display:block;flex:1 1 0}
-  :is(#fsa,#fsa-layer) .sub-reg:not(.reg-on){border-color:transparent}
   :is(#fsa,#fsa-layer) .sub-reg .reg-row{grid-template-columns:1fr;gap:10px}
   :is(#fsa,#fsa-layer) .sub-reg .reg-row .reg-host input{font-size:14px;padding:0 42px 0 12px}
   :is(#fsa,#fsa-layer) .sub-reg .reg-row .reg-host>.icon{inset-inline-start:14px}
   :is(#fsa,#fsa-layer) .sub-reg .reg-row .reg-add{width:100%;justify-content:center}
-  :is(#fsa,#fsa-layer) .sub-reg .reg-open{height:44px}
+  :is(#fsa,#fsa-layer) .sub-reg .reg-open{display:flex;width:100%;justify-content:center}
   :is(#fsa,#fsa-layer) .dom-tbl .acts{justify-content:flex-end}
   :is(#fsa,#fsa-layer) .dom-tbl .acts>.ibtn.ph{display:none}
   :is(#fsa,#fsa-layer) .hist-scroll{max-height:none;overflow:visible}
@@ -2781,6 +2781,8 @@ const editBtns=()=>`<div class="acts"><button class="ibtn ok-btn" data-edsave="1
 function fontPicker(sel){const on=sel.length>=2;return `<div class="fld fontpick ed-fonts"><button type="button" class="fp-btn" aria-haspopup="true" aria-expanded="false" aria-label="פונטים"><span class="fp-val">${sel.join(', ')||'בחירת פונטים'}</span>${ICON.chev}</button>
  <div class="fp-menu">${DOMF.map(f=>{const c=sel.includes(f);return `<label class="${!c&&on?'off':''}"><input type="checkbox" value="${ea(f)}" ${c?'checked':''} ${!c&&on?'disabled':''}> ${ea(f)}</label>`}).join('')}<p class="fp-hint ${on?'max':''}">אפשר לבחור עד 2 פונטים לכל אתר</p></div></div>`}
 const logo=(k,cls='sublogo')=>`<img class="${cls}" src="${SUBS[k].logo}" alt="${SUBS[k].name}">`;
+/* a new site is in: its row glows, confetti, one toast */
+function newSite(host){render({fresh:host});party();toast('מזל טוב, האתר נרשם! התעודה מוכנה להורדה')}
 /* a new site: a short confetti burst fanning up from its new row, in the brand colours; none with reduced motion */
 function party(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const c=document.createElement('canvas'),x=c.getContext('2d'),d=Math.min(devicePixelRatio||1,2),W=innerWidth,H=innerHeight;c.width=W*d;c.height=H*d;c.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2147483000';c.setAttribute('aria-hidden','true');document.body.appendChild(c);x.scale(d,d);
  const C=['#5B3FFF','#9B4DFF','#BCB6FF','#EACCFF','#151515','#FFC700'],P=[],row=document.querySelector('#fsa tr.fresh'),o=row?row.getBoundingClientRect():null,ox=o?o.left+o.width/2:W/2,oy=o?o.top+o.height/2:H*.6;for(let i=0;i<110;i++){const a=Math.PI*(1.12+Math.random()*.76),v=9+Math.random()*11;P.push({x:ox+(Math.random()-.5)*(o?o.width*.6:80),y:oy,vx:Math.cos(a)*v,vy:Math.sin(a)*v,w:5+Math.random()*6,h:8+Math.random()*8,r:Math.random()*6,s:(Math.random()-.5)*.3,f:Math.random()*6,c:C[i%C.length]})}
@@ -2926,14 +2928,14 @@ function subsDomains(){
  </div>
  <p class="hint why-reg">הרישום הוא לא מעקב. הוא האישור שלך שהפונט ברישיון באתר הזה, וממנו יוצאת התעודה של האתר.</p>
  <div class="box dom-box sub-reg ${state.regOpen?'reg-on reg-done':''}">
-   ${full?quotaFullPlan():`<button class="btn btn-grad reg-open" data-regopen="1" aria-expanded="${!!state.regOpen}" aria-controls="regFold">${ICON.plus} רישום דומיין חדש</button>
+   ${full?quotaFullPlan():`<button class="btn btn-grad reg-open" data-regopen="1" aria-expanded="${!!state.regOpen}" aria-controls="regFold">${ICON.plus}הוסף דומיין</button>
    <div class="reg-fold" id="regFold"><div><div class="reg-head"><b>רישום דומיין חדש</b><button type="button" class="ibtn reg-close" data-regclose="1" aria-label="סגירה וקיפול הטופס">${ICON.close}</button></div><form class="form-row reg-row" data-subadd="1" novalidate>
      <div class="fld reg-host">${ICON.globe}<input id="sd2" placeholder="הזן דומיין חדש (למשל: example.co.il)" aria-label="כתובת הדומיין" inputmode="url" autocomplete="off" required></div>
      <div class="fld fontpick"><span id="fpl" class="sr">פונטים, עד 2</span>
        <button type="button" class="fp-btn" aria-haspopup="true" aria-expanded="false" aria-labelledby="fpl"><span class="fp-val">בחירת פונטים (עד 2)</span>${ICON.chev}</button>
        <div class="fp-menu">${DOMF.map(f=>`<label><input type="checkbox" value="${ea(f)}"> ${ea(f)}</label>`).join('')}<p class="fp-hint">אפשר לבחור עד 2 פונטים לכל אתר</p></div>
      </div>
-     <button class="btn btn-grad reg-add">${ICON.plus}הוסף דומיין</button>
+     <button class="btn btn-grad reg-add">שמור דומיין</button>
    </form><p class="form-err" id="sdErr" hidden></p></div></div>`}
  </div>
  <div class="tbl-wrap"><table class="tbl dom-tbl reg-tbl">${DOM_THEAD}<tbody>
@@ -3243,10 +3245,16 @@ const _dom=V.dom;V.dom=()=>{if(!FEAT.includes('show'))return _dom();const g=stat
 
 const siteName=h=>{const parts=h.split('.');const sld=['co','org','net','ac','gov','muni'];let i=parts.length-2;if(i>0&&sld.includes(parts[i]))i--;return (parts[Math.max(i,0)]||h).split('-').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ')};
 const today=()=>{const d=new Date();return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`};
-/* render({page}) fades the whole page in only when the page changes; {opening} lets a just-opened drawer unfold; {fresh} highlights a just-added row */
+/* render({page}) changes the page softly: the old one fades out for a moment, the new one rises in; {opening} lets a just-opened drawer unfold; {fresh} highlights a just-added row */
+const CALM=matchMedia('(prefers-reduced-motion: reduce)');
 function render(o={}){
+ const el=$('#view');clearTimeout(render.t);
+ if(o.page&&el.childElementCount&&!CALM.matches&&!o.now){el.classList.remove('enter');el.classList.add('leave');render.t=setTimeout(()=>paint(o),140);return}
+ paint(o);
+}
+function paint(o){
  document.querySelectorAll('.side button[data-view]').forEach(b=>b.setAttribute('aria-current',b.dataset.view===state.view?'page':'false'));
- const v=state.view,el=$('#view');
+ const v=state.view,el=$('#view');el.classList.remove('leave');
  /* phones: keep the active tab visible in the scrolling tab bar */
  const cur=document.querySelector(`.side button[data-view="${v}"]`),bar=cur&&cur.parentElement;
  if(cur&&bar.scrollWidth>bar.clientWidth)bar.scrollTo({left:cur.offsetLeft-(bar.clientWidth-cur.offsetWidth)/2,behavior:o.page?'auto':'smooth'});
@@ -3403,10 +3411,10 @@ document.addEventListener('submit',e=>{
   const msg=!host||!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)?'צריך להזין כתובת אתר תקינה, למשל studio.co.il':!picked.length?'צריך לבחור לפחות פונט אחד':'';
   if(msg){err.textContent=msg;err.hidden=false;(msg.includes('כתובת')?$('#sd2'):f.querySelector('.fp-btn')).focus();return}
   const btn=f.querySelector('.reg-add');if(btn)btn.disabled=true;
-  domApi('add',{host,name:siteName(host),fonts:picked.join(', '),}).then(()=>{state.regOpen=false;render({fresh:host});party();toast('מזל טוב, האתר נרשם! התעודה מוכנה להורדה')}).catch(x=>{if(btn)btn.disabled=false;err.textContent=x.message;err.hidden=false});return}
+  domApi('add',{host,name:siteName(host),fonts:picked.join(', ')}).then(()=>{state.regOpen=false;newSite(host)}).catch(x=>{if(btn)btn.disabled=false;err.textContent=x.message;err.hidden=false});return}
  if(f.dataset.add!==undefined){const i=+f.dataset.add;const host=cleanHost(f.querySelector('[data-namefor]').value);if(!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)){toast('צריך להזין כתובת אתר תקינה');return}
   const btn=f.querySelector('button');if(btn)btn.disabled=true;
-  licApi(i,'add',{host,name:f.querySelector('.sitename').value.trim()||siteName(host)}).then(()=>{render({fresh:host});party();toast('מזל טוב, האתר נרשם! התעודה מוכנה להורדה')}).catch(x=>{if(btn)btn.disabled=false;toast(x.message)});return}
+  licApi(i,'add',{host,name:f.querySelector('.sitename').value.trim()||siteName(host)}).then(()=>newSite(host)).catch(x=>{if(btn)btn.disabled=false;toast(x.message)});return}
  toast('השינויים נשמרו');
 });
 document.addEventListener('change',e=>{
