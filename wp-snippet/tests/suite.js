@@ -89,7 +89,10 @@ for(const w of [390,1280]){
  if(!(await p.evaluate(()=>document.querySelector('#fsa .dom-tbl').innerText.includes('studio-new.co.il'))))bad(`${w} edit was not saved`);
  if(!(await toastNow()).includes('עודכן'))bad(`${w} no message after edit`);
  const before=await p.locator('#fsa .dom-tbl tbody tr').count();
- await p.evaluate(()=>document.querySelector('#fsa [data-sddel]').click());await p.waitForTimeout(500);
+ await p.evaluate(()=>document.querySelector('#fsa [data-sddel]').click());await p.waitForTimeout(450);
+ {const ak=await p.evaluate(()=>{const m=document.querySelector('#askModal');if(!m||m.hidden)return 'not shown';const s=m.querySelector('.sheet').getBoundingClientRect();return document.activeElement!==m.querySelector('[data-ask="no"]')?'focus is not on cancel':s.width>innerWidth?'wider than the screen':/להסיר את/.test(m.innerText)?'':'no question'});if(ak)bad(`${w} remove: our dialog ${ak}`);
+  await p.keyboard.press('Escape');await p.waitForTimeout(400);if(!await p.evaluate(()=>document.querySelector('#fsa .dom-tbl').innerText.includes('studio-new.co.il')))bad(`${w} Escape in the remove dialog still removed`);
+  await p.evaluate(()=>document.querySelector('#fsa [data-sddel]').click());await p.waitForTimeout(450);await p.click('#askModal [data-ask="yes"]');await p.waitForTimeout(500)}
  if(await p.evaluate(()=>document.querySelector('#fsa .dom-tbl').innerText.includes('studio-new.co.il')))bad(`${w} remove did not remove`);
  if(await inView('#toast')!==true)bad(`${w} toast off screen after remove`);
  const licEdit=await p.$('#fsa [data-edit^="dom:"]');if(licEdit){await licEdit.click();await p.waitForTimeout(300);
@@ -154,7 +157,7 @@ for(const w of [390,1280]){
  {const fs=require('fs');const src=fs.readFileSync(S+'/page-plain.html','utf8').replace('"bonus":0','"bonus":0,"extra":2');fs.writeFileSync(S+'/page-deal.html',src);
   const dp=await b.newPage({viewport:{width:w,height:800}});await dp.goto('file://'+S+'/page-deal.html');await dp.waitForTimeout(400);await dp.evaluate(()=>document.querySelector('#fsa [data-subtab="reg"]').click());await dp.waitForTimeout(400);
   const tx=await dp.evaluate(()=>document.querySelector('#fsa .main').innerText);if(!tx.includes('כלול במינוי: עד 5 אתרים בכל חודש')||/מתוך \d/.test(tx))bad(`${w} arrangement quota not shown, or a countdown is (${(tx.match(/כלול במינוי[^.]*|\d מתוך \d/g)||[]).join(' | ')})`);
-  if(!tx.includes('הרישום הוא לא מעקב'))bad(`${w} the "not tracking" line is missing`);
+  if(tx.includes('הרישום הוא לא מעקב'))bad(`${w} the "not tracking" line is back`);
   await dp.evaluate(()=>document.querySelector('#fsa [data-regopen]')&&document.querySelector('#fsa [data-regopen]').click());await dp.waitForTimeout(500);
   if(await dp.evaluate(()=>!!document.querySelector('#fsa .reg-row input[type=checkbox]:not(.fp-menu input)')))bad(`${w} the registration form still asks for a tick`);await dp.close()}
  const fs=require('fs');const src=fs.readFileSync(S+'/page-theme.html','utf8');const cut=src.replace(/"lic":\[.*?\],"orders"/s,'"lic":[],"orders"');if(cut===src)bad(`${w} could not empty the purchases for the empty-state check`);fs.writeFileSync(S+'/page-empty.html',cut);

@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '110' );
+define( 'FSA_V2_BUILD', '111' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -1909,7 +1909,6 @@ function fsa_v2_css() {
 :is(#fsa,#fsa-layer) .demo button{all:unset;cursor:pointer;padding:3px 12px;border-radius:99px;font-weight:700;color:var(--ink)}
 :is(#fsa,#fsa-layer) .demo button.on{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 :is(#fsa,#fsa-layer) .dom-head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px}
-:is(#fsa,#fsa-layer) .why-reg{margin:-6px 0 16px;color:var(--muted)}
 /* "אפשר להציג כדוגמה": a quiet tick under the registration row */
 :is(#fsa,#fsa-layer) .usage{display:flex;flex-direction:column;gap:6px;min-width:200px;font-size:14px}
 :is(#fsa,#fsa-layer) .usage .track{height:6px;border-radius:9px;background:var(--soft);overflow:hidden;display:block}
@@ -2236,25 +2235,29 @@ function fsa_v2_css() {
 :is(#fsa,#fsa-layer) .reg-row .fp-btn{height:44px;border:1px solid #E3C8F5;border-radius:99px;padding:0 18px;background:#fff;color:#828F9D}
 :is(#fsa,#fsa-layer) .reg-row .fp-btn:has(+ .fp-menu input:checked){color:var(--ink)}
 :is(#fsa,#fsa-layer) .reg-row .reg-add{height:42px;padding:0 24px;gap:8px}
-:is(#fsa,#fsa-layer) .reg-row .reg-add .icon{width:20px;height:20px}
+:is(#fsa,#fsa-layer) .reg-row .reg-add .icon,:is(#fsa,#fsa-layer) .lic-save .icon{width:20px;height:20px}
 :is(#fsa,#fsa-layer) .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 :is(#fsa,#fsa-layer) .head-act .btn>.icon{display:none}
 :is(#fsa,#fsa-layer) .sec-add{display:none}
 :is(#fsa,#fsa-layer) .reg-fold>div{min-height:0}
-/* registration box: closed it is one "הוסף דומיין" button; open it unfolds into the form, saved with "שמור דומיין" */
-:is(#fsa,#fsa-layer) .sub-reg:not(.reg-on){background:transparent;border-color:transparent;padding:0}
-:is(#fsa,#fsa-layer) .sub-reg .reg-open{display:inline-flex;height:44px;padding:0 26px;font-size:16px;gap:8px}
-:is(#fsa,#fsa-layer) .sub-reg .reg-open .icon{width:20px;height:20px}
-:is(#fsa,#fsa-layer) .sub-reg.reg-on .reg-open{display:none}
-:is(#fsa,#fsa-layer) .sub-reg .reg-head{display:flex;align-items:center;justify-content:space-between;margin:-6px 0 10px;font-size:16px}
-:is(#fsa,#fsa-layer) .sub-reg .reg-close{width:32px;height:32px;color:var(--muted)}
-:is(#fsa,#fsa-layer) .sub-reg .reg-close .icon{width:20px;height:20px}
-:is(#fsa,#fsa-layer) .reg-fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s var(--ease)}
-:is(#fsa,#fsa-layer) .reg-fold>div{overflow:hidden}
-:is(#fsa,#fsa-layer) .reg-fold>div>*{opacity:0;transform:translateY(-6px);transition:opacity .3s ease,transform .4s var(--ease)}
-:is(#fsa,#fsa-layer) .sub-reg.reg-on .reg-fold{grid-template-rows:1fr}
-:is(#fsa,#fsa-layer) .sub-reg.reg-done .reg-fold>div{overflow:visible}
-:is(#fsa,#fsa-layer) .sub-reg.reg-on .reg-fold>div>*{opacity:1;transform:none;transition:opacity .4s ease .12s,transform .45s var(--ease) .08s}
+/* registration box: on computers the form is always open; on phones it is one "הוסף דומיין" button that unfolds into the form. Both save with "שמור" */
+:is(#fsa,#fsa-layer) .reg-open{display:none}
+:is(#fsa,#fsa-layer) .reg-head{display:none}
+@media (max-width:760px){
+  :is(#fsa,#fsa-layer) .sub-reg:not(.reg-on){background:transparent;border-color:transparent;padding:0}
+  :is(#fsa,#fsa-layer) .sub-reg .reg-open{display:flex;width:100%;justify-content:center;height:44px;font-size:16px;gap:8px}
+  :is(#fsa,#fsa-layer) .sub-reg .reg-open .icon{width:20px;height:20px}
+  :is(#fsa,#fsa-layer) .sub-reg.reg-on .reg-open{display:none}
+  :is(#fsa,#fsa-layer) .sub-reg .reg-head{display:flex;align-items:center;justify-content:space-between;margin:-6px 0 10px;font-size:16px}
+  :is(#fsa,#fsa-layer) .sub-reg .reg-close{width:32px;height:32px;color:var(--muted)}
+  :is(#fsa,#fsa-layer) .sub-reg .reg-close .icon{width:20px;height:20px}
+  :is(#fsa,#fsa-layer) .reg-fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s var(--ease)}
+  :is(#fsa,#fsa-layer) .reg-fold>div{overflow:hidden}
+  :is(#fsa,#fsa-layer) .reg-fold>div>*{opacity:0;transform:translateY(-6px);transition:opacity .3s ease,transform .4s var(--ease)}
+  :is(#fsa,#fsa-layer) .sub-reg.reg-on .reg-fold{grid-template-rows:1fr}
+  :is(#fsa,#fsa-layer) .sub-reg.reg-done .reg-fold>div{overflow:visible}
+  :is(#fsa,#fsa-layer) .sub-reg.reg-on .reg-fold>div>*{opacity:1;transform:none;transition:opacity .4s ease .12s,transform .45s var(--ease) .08s}
+}
 :is(#fsa,#fsa-layer) .dom-box .form-err{margin:10px 0 0}
 :is(#fsa,#fsa-layer) .dom-box .quota-line{padding:0}
 :is(#fsa,#fsa-layer) .mini.lined{margin-top:22px}
@@ -2338,7 +2341,6 @@ function fsa_v2_css() {
   :is(#fsa,#fsa-layer) .sub-reg .reg-row .reg-host input{font-size:14px;padding:0 42px 0 12px}
   :is(#fsa,#fsa-layer) .sub-reg .reg-row .reg-host>.icon{inset-inline-start:14px}
   :is(#fsa,#fsa-layer) .sub-reg .reg-row .reg-add{width:100%;justify-content:center}
-  :is(#fsa,#fsa-layer) .sub-reg .reg-open{display:flex;width:100%;justify-content:center}
   :is(#fsa,#fsa-layer) .dom-tbl .acts{justify-content:flex-end}
   :is(#fsa,#fsa-layer) .dom-tbl .acts>.ibtn.ph{display:none}
   :is(#fsa,#fsa-layer) .hist-scroll{max-height:none;overflow:visible}
@@ -2549,6 +2551,15 @@ function fsa_v2_css() {
 :is(#fsa,#fsa-layer) .bye-go{all:unset;cursor:pointer;font-size:15px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;padding:6px 10px;border-radius:8px}
 :is(#fsa,#fsa-layer) .bye-go:hover{color:var(--ink)}
 :is(#fsa,#fsa-layer) .bye-go:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+:is(#fsa,#fsa-layer) .ask-sheet{max-width:400px;border-radius:22px;padding:28px 28px 24px;text-align:center}
+:is(#fsa,#fsa-layer) .ask-ic{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;margin:0 auto 14px;background:var(--bad-track);color:var(--bad)}
+:is(#fsa,#fsa-layer) .ask-ic .icon{width:24px;height:24px}
+:is(#fsa,#fsa-layer) .ask-sheet h2{font-size:21px;font-weight:700;margin:0;line-height:1.3;overflow-wrap:anywhere}
+:is(#fsa,#fsa-layer) .ask-sheet p{color:var(--muted);font-size:15px;margin:6px 0 22px}
+:is(#fsa,#fsa-layer) .ask-acts{display:flex;gap:10px}
+:is(#fsa,#fsa-layer) .ask-acts .btn{flex:1;height:44px;border-radius:99px}
+:is(#fsa,#fsa-layer) .ask-yes{background:var(--ink);color:#fff}
+:is(#fsa,#fsa-layer) .ask-yes:hover{filter:brightness(1.35)}
 @media (max-width:420px){:is(#fsa,#fsa-layer) .bye-t{width:42px;height:50px;font-size:26px}:is(#fsa,#fsa-layer) .bye-in{padding:20px 18px 22px}}
 :is(#fsa,#fsa-layer) .lic-empty{display:flex;align-items:center;gap:40px;margin-top:28px;padding:32px 40px;background:#FAF6FE;border:1px solid #F1E8FB;border-radius:20px}
 :is(#fsa,#fsa-layer) .lic-empty .le-art{flex:none;width:260px;height:auto;display:block}
@@ -2691,6 +2702,9 @@ function fsa_v2_html() {
   </div>
 </main></div>
 <div id="fsa-layer">
+<div class="modal ask" id="askModal" hidden role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askText">
+  <div class="sheet ask-sheet"><span class="ask-ic" aria-hidden="true"></span><h2 id="askTitle"></h2><p id="askText"></p><div class="ask-acts"><button class="btn btn-ghost" data-ask="no">ביטול</button><button class="btn ask-yes" data-ask="yes"></button></div></div>
+</div>
 <div class="modal bye" id="byeModal" hidden role="dialog" aria-modal="true" aria-labelledby="byeTitle">
   <div class="sheet bye-sheet" id="byeBody"></div>
 </div>
@@ -2725,6 +2739,7 @@ const ICON={
   doc:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M16.755 2H7.24502C6.08614 2 5.50671 2 5.03939 2.16261C4.15322 2.47096 3.45748 3.18719 3.15795 4.09946C3 4.58055 3 5.17705 3 6.37006V20.3742C3 21.2324 3.985 21.6878 4.6081 21.1176C4.97417 20.7826 5.52583 20.7826 5.8919 21.1176L6.375 21.5597C7.01659 22.1468 7.98341 22.1468 8.625 21.5597C9.26659 20.9726 10.2334 20.9726 10.875 21.5597C11.5166 22.1468 12.4834 22.1468 13.125 21.5597C13.7666 20.9726 14.7334 20.9726 15.375 21.5597C16.0166 22.1468 16.9834 22.1468 17.625 21.5597L18.1081 21.1176C18.4742 20.7826 19.0258 20.7826 19.3919 21.1176C20.015 21.6878 21 21.2324 21 20.3742V6.37006C21 5.17705 21 4.58055 20.842 4.09946C20.5425 3.18719 19.8468 2.47096 18.9606 2.16261C18.4933 2 17.9139 2 16.755 2Z" opacity=".5"/><path d="M10.5 11L17 11"/><path d="M7 11H7.5"/><path d="M7 7.5H7.5"/><path d="M7 14.5H7.5"/><path d="M10.5 7.5H17"/><path d="M10.5 14.5H17"/></g></svg>',
   trash:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M9.17065 4C9.58249 2.83481 10.6937 2 11.9999 2C13.3062 2 14.4174 2.83481 14.8292 4" opacity=".5"/><path d="M20.5001 6H3.5"/><path d="M18.8334 8.5L18.3735 15.3991C18.1965 18.054 18.108 19.3815 17.243 20.1907C16.378 21 15.0476 21 12.3868 21H11.6134C8.9526 21 7.6222 21 6.75719 20.1907C5.89218 19.3815 5.80368 18.054 5.62669 15.3991L5.16675 8.5"/><path d="M9.5 11L10 16" opacity=".5"/><path d="M14.5 11L14 16" opacity=".5"/></g></svg>',
   cart:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M7.5 18C8.32843 18 9 18.6716 9 19.5C9 20.3284 8.32843 21 7.5 21C6.67157 21 6 20.3284 6 19.5C6 18.6716 6.67157 18 7.5 18Z" opacity=".5"/><path d="M16.5 18.0001C17.3284 18.0001 18 18.6716 18 19.5001C18 20.3285 17.3284 21.0001 16.5 21.0001C15.6716 21.0001 15 20.3285 15 19.5001C15 18.6716 15.6716 18.0001 16.5 18.0001Z" opacity=".5"/><path d="M2 3L2.26121 3.09184C3.5628 3.54945 4.2136 3.77826 4.58584 4.32298C4.95808 4.86771 4.95808 5.59126 4.95808 7.03836V9.76C4.95808 12.7016 5.02132 13.6723 5.88772 14.5862C6.75412 15.5 8.14857 15.5 10.9375 15.5H16.2404C17.8014 15.5 18.5819 15.5 19.1336 15.0504C19.6853 14.6008 19.8429 13.8364 20.158 12.3075L20.6578 9.88275C21.0049 8.14369 21.1784 7.27417 20.7345 6.69708C20.2906 6.12 18.7738 6.12 17.0888 6.12H4.95808"/></g></svg>',
+  save:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   check:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><circle cx="12" cy="12" r="10" opacity=".5"/><path stroke-linejoin="round" d="M8.5 12.5L10.5 14.5L15.5 9.5"/></g></svg>',
   cert:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M7 17.9983C4.82497 17.9862 3.64706 17.8897 2.87868 17.1213C2 16.2426 2 14.8284 2 12L2 8C2 5.17157 2 3.75736 2.87868 2.87868C3.75736 2 5.17157 2 8 2L16 2C18.8284 2 20.2426 2 21.1213 2.87868C22 3.75736 22 5.17157 22 8V12C22 14.8284 22 16.2426 21.1213 17.1213C20.3915 17.8512 19.2921 17.9748 17.3197 17.9957L16.5 17.9983" opacity=".5"/><path d="M9 6L15 6" opacity=".5"/><path d="M7 9.5H17" opacity=".5"/><path d="M10.8907 13.9454C11.53 13.4007 12.4702 13.4007 13.1094 13.9454C13.3833 14.1789 13.7239 14.32 14.0827 14.3486C14.9199 14.4154 15.5847 15.0802 15.6515 15.9174C15.6802 16.2762 15.8212 16.6168 16.0547 16.8907C16.5994 17.53 16.5994 18.4702 16.0547 19.1094C15.8212 19.3833 15.6802 19.7239 15.6515 20.0827C15.5847 20.9199 14.9199 21.5847 14.0827 21.6515C13.7239 21.6802 13.3833 21.8212 13.1094 22.0547C12.4702 22.5994 11.53 22.5994 10.8907 22.0547C10.6168 21.8212 10.2762 21.6802 9.91743 21.6515C9.08021 21.5847 8.41539 20.9199 8.34858 20.0827C8.31995 19.7239 8.17888 19.3833 7.94543 19.1094C7.40068 18.4702 7.40068 17.53 7.94543 16.8907C8.17888 16.6168 8.31995 16.2762 8.34858 15.9174C8.4154 15.0802 9.08021 14.4154 9.91743 14.3486C10.2762 14.32 10.6168 14.1789 10.8907 13.9454Z"/><path stroke-linejoin="round" d="M10.5 18.2L11.3571 19L13.5 17"/></g></svg>',
   search:'<svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><defs><mask id="SVGcfiNQVot"><g fill="none" stroke-width="1.5"><circle cx="11.5" cy="11.5" r="9.5" stroke="gray"/><path stroke="#fff" stroke-linecap="round" d="M18.5 18.5L22 22"/></g></mask></defs><path fill="currentColor" d="M0 0h24v24H0z" mask="url(#SVGcfiNQVot)"/></svg>',
@@ -2926,7 +2941,6 @@ function subsDomains(){
    <div class="hint" style="margin:2px 0 0">${lim?`כלול במינוי: עד ${p.n+EXTRA} אתרים ${PER.every}${BONUS?`, ועוד ${BONUS} שהוספת`:''}.`:'רישום אתרים ללא הגבלה, כל עוד המינוי פעיל.'}</div></div>
    <span class="chip">${sites?`${sites===1?'אתר אחד רשום':sites+' אתרים רשומים'} אצלך`:'עוד אין אתרים רשומים'}</span>
  </div>
- <p class="hint why-reg">הרישום הוא לא מעקב. הוא האישור שלך שהפונט ברישיון באתר הזה, וממנו יוצאת התעודה של האתר.</p>
  <div class="box dom-box sub-reg ${state.regOpen?'reg-on reg-done':''}">
    ${full?quotaFullPlan():`<button class="btn btn-grad reg-open" data-regopen="1" aria-expanded="${!!state.regOpen}" aria-controls="regFold">${ICON.plus}הוסף דומיין</button>
    <div class="reg-fold" id="regFold"><div><div class="reg-head"><b>רישום דומיין חדש</b><button type="button" class="ibtn reg-close" data-regclose="1" aria-label="סגירה וקיפול הטופס">${ICON.close}</button></div><form class="form-row reg-row" data-subadd="1" novalidate>
@@ -2935,7 +2949,7 @@ function subsDomains(){
        <button type="button" class="fp-btn" aria-haspopup="true" aria-expanded="false" aria-labelledby="fpl"><span class="fp-val">בחירת פונטים (עד 2)</span>${ICON.chev}</button>
        <div class="fp-menu">${DOMF.map(f=>`<label><input type="checkbox" value="${ea(f)}"> ${ea(f)}</label>`).join('')}<p class="fp-hint">אפשר לבחור עד 2 פונטים לכל אתר</p></div>
      </div>
-     <button class="btn btn-grad reg-add">שמור דומיין</button>
+     <button class="btn btn-grad reg-add">${ICON.save}שמור</button>
    </form><p class="form-err" id="sdErr" hidden></p></div></div>`}
  </div>
  <div class="tbl-wrap"><table class="tbl dom-tbl reg-tbl">${DOM_THEAD}<tbody>
@@ -3061,7 +3075,7 @@ function licDrawer(i,cols,full){const l=LIC[i];
    <form class="form-row lic-form" data-add="${i}">
      <div class="fld"><label for="su${i}">כתובת האתר *</label><input id="su${i}" data-namefor="sn${i}" placeholder="fontshok.co.il" dir="ltr" inputmode="url" autocomplete="off" required></div>
      <div class="fld"><label for="sn${i}">שם האתר <span style="color:var(--muted)">(רשות)</span></label><input id="sn${i}" class="sitename" placeholder="יתמלא אוטומטית מהכתובת"></div>
-     <button class="btn btn-grad" style="height:40px">רישום אתר</button>
+     <button class="btn btn-grad lic-save" style="height:40px">${ICON.save}שמור</button>
    </form>`}
    </div>
    <table class="mini lined"><thead><tr><th>תאריך</th><th>שם האתר</th><th>כתובת אתר</th><th></th></tr></thead><tbody>
@@ -3330,6 +3344,14 @@ function openBye(){
   <ul class="bye-list">${byeFacts().map(x=>`<li>${x}</li>`).join('')}</ul>
   <div class="bye-acts"><button class="btn btn-grad" data-bye="stay">נשארים עוד קצת</button><button class="bye-go" data-bye="go">להתנתק</button></div></div>`;
  bye.hidden=false;void bye.offsetWidth;bye.classList.add('show');$('#byeBody [data-bye="stay"]').focus()}
+/* our own "are you sure?" in the area's look, instead of the browser's confirm(): ask({title,text,yes}) → Promise<true|false> */
+const askM=$('#askModal');let askDone=null,askFrom=null;
+function ask(o){askFrom=document.activeElement;askM.querySelector('.ask-ic').innerHTML=ICON.trash;$('#askTitle').innerHTML=o.title;$('#askText').textContent=o.text||'';askM.querySelector('[data-ask="yes"]').textContent=o.yes||'אישור';
+ askM.hidden=false;void askM.offsetWidth;askM.classList.add('show');askM.querySelector('[data-ask="no"]').focus({preventScroll:true});return new Promise(r=>{askDone=r})}
+function closeAsk(yes){if(askM.hidden)return;askM.classList.remove('show');setTimeout(()=>{askM.hidden=true},300);const r=askDone;askDone=null;if(!yes&&askFrom&&askFrom.focus)askFrom.focus({preventScroll:true});r&&r(!!yes)}
+askM.addEventListener('click',e=>{if(e.target===askM){closeAsk(false);return}const b=e.target.closest('[data-ask]');if(b)closeAsk(b.dataset.ask==='yes')});
+askM.addEventListener('keydown',e=>{if(e.key!=='Tab')return;const b=[...askM.querySelectorAll('button')],i=b.indexOf(document.activeElement);e.preventDefault();b[(i+(e.shiftKey?-1:1)+b.length)%b.length].focus()});
+const askRemove=(host,where)=>ask({title:`להסיר את <bdi>${ea(host)}</bdi>?`,text:`האתר יוסר מהרשימה, והמקום ${where} יתפנה.`,yes:'להסיר'});
 function closeBye(){if(bye.hidden)return;bye.classList.remove('show');setTimeout(()=>{bye.hidden=true},350);const l=$('#logout');if(l)l.focus()}
 bye.addEventListener('click',e=>{if(e.target===bye)closeBye()});
 function hideModal(){if(modal.hidden)return;modal.classList.remove('show');setTimeout(()=>{modal.hidden=true},350)}
@@ -3355,7 +3377,7 @@ function openCert(spec){
 }
 $('#certClose').onclick=hideModal;
 modal.addEventListener('click',e=>{if(e.target.id==='certModal')hideModal()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){hideModal();closeMenus();closeCart();closeBye()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!askM.hidden){closeAsk(false);return}hideModal();closeMenus();closeCart();closeBye()}});
 document.addEventListener('click',e=>{
  const t=e.target.closest('button,a');if(!t||!t.closest('#fsa,#fsa-layer'))return;
  if((t.dataset.addon||t.dataset.planaddon)&&!FS.addon){e.preventDefault();soon();return}
@@ -3373,7 +3395,7 @@ document.addEventListener('click',e=>{
  if(t.dataset.oopen!==undefined){toggleDrawer('orders',+t.dataset.oopen);return}
  if(t.dataset.cert){openCert(t.dataset.cert);return}
  if(t.dataset.del){const[i,j]=t.dataset.del.split(':').map(Number);const s=LIC[i].sites[j];if(!s)return;if(licFixed(i,j)){toast('האתר שנרשם ברכישה קבוע ולא ניתן להסיר אותו');return}
-  if(!confirm(`להסיר את ${s[2]}?`))return;t.disabled=true;licApi(i,'del',{id:s[3]}).then(()=>{render();toast(`${s[2]} הוסר והמקום ברישיון התפנה`)}).catch(x=>{t.disabled=false;toast(x.message)});return}
+  askRemove(s[2],'ברישיון').then(ok=>{if(!ok)return;t.disabled=true;licApi(i,'del',{id:s[3]}).then(()=>{render();toast(`${s[2]} הוסר והמקום ברישיון התפנה`)}).catch(x=>{t.disabled=false;toast(x.message)})});return}
  if(t.id==='cartPay'){payCart();return}
  if(t.id==='cartBack'||t.id==='cartClose'){closeCart();return}
  if(t.dataset.addon){const i=+t.dataset.addon,l=LIC[i];openCart({kind:'lic',key:l.key,name:`אתר נוסף · ${l.f} ${l.w}`,desc:'מקום נוסף ברישיון הוובפונט, לצמיתות',price:ADDON_P,
@@ -3387,8 +3409,8 @@ document.addEventListener('click',e=>{
  if(t.dataset.planaddon){openCart({kind:'sub',name:`דומיין נוסף · מינוי ${PLAN[state.plan].label}`,desc:`רישום אחד נוסף לחודש ${CYCLE.label}`,price:ADDON_P,
    okText:`נוסף רישום אחד למכסת ${CYCLE.label}.`,backText:'חזרה לרישום הדומיין',
    grant:()=>{BONUS+=1},back:()=>{state.view='subs';state.sub.subs='reg';render();backTo('#sd2','אפשר לרשום את הדומיין הנוסף')}});return}
- if(t.dataset.sddel){const s=SUBDOM[state.plan][+t.dataset.sddel];if(!s||!confirm(`להסיר את ${s[2]}?`))return;t.disabled=true;
-  domApi('del',{id:s[4]}).then(()=>{render();toast(`${s[2]} הוסר והמקום במכסה התפנה`)}).catch(x=>{t.disabled=false;toast(x.message)});return}
+ if(t.dataset.sddel){const s=SUBDOM[state.plan][+t.dataset.sddel];if(!s)return;
+  askRemove(s[2],'במכסה').then(ok=>{if(!ok)return;t.disabled=true;domApi('del',{id:s[4]}).then(()=>{render();toast(`${s[2]} הוסר והמקום במכסה התפנה`)}).catch(x=>{t.disabled=false;toast(x.message)})});return}
  if(t.dataset.go2){state.sub.subs='reg';goPage(t.dataset.go2);return}
  if(t.id==='logout'){openBye();return}
  if(t.dataset.vote){const id=t.dataset.vote;if(FS.studio.vote===id)return;t.disabled=true;postApi('fsa_v2_vote',{font:id}).then(r=>{Object.assign(FS.studio,r);state.stOpen=true;const nb=document.querySelector('#fsa .side button[data-view="studio"]');if(nb)nb.classList.remove('has-dot');render();toast('הבחירה נשמרה. אפשר לשנות עד שההצבעה נסגרת.')}).catch(x=>{t.disabled=false;toast(x.message)});return}
