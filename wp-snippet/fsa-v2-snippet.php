@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '104' );
+define( 'FSA_V2_BUILD', '105' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -2362,9 +2362,9 @@ const editBtns=()=>`<div class="acts"><button class="ibtn ok-btn" data-edsave="1
 function fontPicker(sel){const on=sel.length>=2;return `<div class="fld fontpick ed-fonts"><button type="button" class="fp-btn" aria-haspopup="true" aria-expanded="false" aria-label="פונטים"><span class="fp-val">${sel.join(', ')||'בחירת פונטים'}</span>${ICON.chev}</button>
  <div class="fp-menu">${DOMF.map(f=>{const c=sel.includes(f);return `<label class="${!c&&on?'off':''}"><input type="checkbox" value="${ea(f)}" ${c?'checked':''} ${!c&&on?'disabled':''}> ${ea(f)}</label>`}).join('')}<p class="fp-hint ${on?'max':''}">אפשר לבחור עד 2 פונטים לכל אתר</p></div></div>`}
 const logo=(k,cls='sublogo')=>`<img class="${cls}" src="${SUBS[k].logo}" alt="${SUBS[k].name}">`;
-/* a new site: a short confetti burst from both top corners, in the brand colours; none with reduced motion */
+/* a new site: a short confetti burst fanning up from its new row, in the brand colours; none with reduced motion */
 function party(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const c=document.createElement('canvas'),x=c.getContext('2d'),d=Math.min(devicePixelRatio||1,2),W=innerWidth,H=innerHeight;c.width=W*d;c.height=H*d;c.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2147483000';c.setAttribute('aria-hidden','true');document.body.appendChild(c);x.scale(d,d);
- const C=['#5B3FFF','#9B4DFF','#BCB6FF','#EACCFF','#151515','#FFC700'],P=[];for(let i=0;i<110;i++){const l=i%2,a=.35+Math.random()*.6,v=7+Math.random()*9;P.push({x:l?W+10:-10,y:H*.18,vx:(l?-1:1)*Math.cos(a)*v,vy:-Math.sin(a)*v,w:5+Math.random()*6,h:8+Math.random()*8,r:Math.random()*6,s:(Math.random()-.5)*.3,f:Math.random()*6,c:C[i%C.length]})}
+ const C=['#5B3FFF','#9B4DFF','#BCB6FF','#EACCFF','#151515','#FFC700'],P=[],row=document.querySelector('#fsa tr.fresh'),o=row?row.getBoundingClientRect():null,ox=o?o.left+o.width/2:W/2,oy=o?o.top+o.height/2:H*.6;for(let i=0;i<110;i++){const a=Math.PI*(1.12+Math.random()*.76),v=9+Math.random()*11;P.push({x:ox+(Math.random()-.5)*(o?o.width*.6:80),y:oy,vx:Math.cos(a)*v,vy:Math.sin(a)*v,w:5+Math.random()*6,h:8+Math.random()*8,r:Math.random()*6,s:(Math.random()-.5)*.3,f:Math.random()*6,c:C[i%C.length]})}
  const t0=performance.now();(function f(t){const k=(t-t0)/2600;x.clearRect(0,0,W,H);if(k>=1){c.remove();return}x.globalAlpha=k<.7?1:1-(k-.7)/.3;for(const p of P){p.vy+=.18;p.vx*=.985;p.x+=p.vx;p.y+=p.vy;p.r+=p.s;p.f+=.15;x.save();x.translate(p.x,p.y);x.rotate(p.r);x.scale(1,Math.cos(p.f));x.fillStyle=p.c;x.fillRect(-p.w/2,-p.h/2,p.w,p.h);x.restore()}requestAnimationFrame(f)})(t0)}
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1900)}
 function meter(u,n){if(!n)return `<span class="chip">ללא הגבלה</span>`;const p=u/n;const c=p>=1?'bad':p>=.66?'warn':'';return `<span class="meter ${c}"><span class="num">${u}/${n}</span><span class="bar"><i style="width:${Math.max(p*100,8)}%"></i></span></span>`}
