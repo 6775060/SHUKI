@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '103' );
+define( 'FSA_V2_BUILD', '104' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -381,7 +381,6 @@ function fsa_v2_dom_ajax() {
 		$err( 'פעולה לא מוכרת.' );
 	}
 	if ( false === $ok ) $err( 'השמירה נכשלה. נסו שוב.' );
-	if ( 'del' !== $op && ! empty( $_POST['show'] ) ) fsa_v2_show_consent( $uid, $host ); // "אפשר להציג כדוגמה": the owner sees it in the gallery queue
 	wp_send_json_success( array( 'domains' => fsa_v2_domains( $uid ) ) );
 }
 
@@ -1029,9 +1028,6 @@ function fsa_v2_showcase_public() {
 	foreach ( fsa_v2_showcase_all() as $x ) if ( ! empty( $x['ok'] ) ) $out[] = array( 'name' => $x['name'], 'host' => $x['host'], 'fonts' => $x['fonts'], 'year' => $x['year'], 'by' => $x['by'], 'img' => $x['img'] ? $x['img'] : fsa_v2_snap( $x['host'] ) );
 	return $out;
 }
-// sites the customer agreed to show (ticked "אפשר להציג כדוגמה" when registering): user meta fsa_v2_show_ok = host => d.m.Y
-function fsa_v2_show_ok( $uid ) { $l = get_user_meta( $uid, 'fsa_v2_show_ok', true ); return is_array( $l ) ? $l : array(); }
-function fsa_v2_show_consent( $uid, $host ) { $l = fsa_v2_show_ok( $uid ); $l[ $host ] = current_time( 'd.m.Y' ); update_user_meta( $uid, 'fsa_v2_show_ok', $l ); }
 // every site this customer registered (subscription domains + sites on purchased licences): host => [name, fonts, year]
 function fsa_v2_user_sites( $uid ) {
 	$out = array();
@@ -1352,20 +1348,18 @@ FSAJS;
 }
 function fsa_v2_show_admin() {
 	$list = fsa_v2_showcase_all(); $q = fsa_v2_showcase_queue();
-	$agreed = function ( $x, $h ) { $ok = fsa_v2_show_ok( (int) $x['uid'] ); return $ok[ $h ] ?? ''; };
-	uksort( $q, function ( $a, $b ) use ( $q, $agreed ) { return (int) ( '' === $agreed( $q[ $a ], $a ) ) - (int) ( '' === $agreed( $q[ $b ], $b ) ); } ); // the ones who agreed first
 	$page = max( 1, (int) ( $_GET['p'] ?? 1 ) ); $per = 40;
 	$form = function ( $op, $host, $label, $extra = '' ) { return '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="hidden" name="action" value="fsa_v2_show_save"><input type="hidden" name="op" value="' . $op . '"><input type="hidden" name="host" value="' . esc_attr( $host ) . '">' . wp_nonce_field( 'fsa_v2_show', '_wpnonce', true, false ) . $extra . '<button class="button' . ( 'ok' === $op ? ' button-primary' : '' ) . '">' . $label . '</button></form>'; };
 	$pic = function ( $host, $img = '' ) { $u = $img ? $img : fsa_v2_snap( $host ); return $u ? '<img src="' . esc_url( $u ) . '" alt="" loading="lazy" style="width:150px;aspect-ratio:16/10;object-fit:cover;object-position:top;border-radius:4px;border:1px solid #DCDCDE;display:block">' : '<span style="display:grid;place-items:center;width:150px;aspect-ratio:16/10;border-radius:4px;background:#F0F0F1;color:#787C82;font-size:12px">' . ( FSA_V2_SHOTS ? 'התמונה בהכנה' : 'אין תמונה' ) . '</span>'; };
 	$site = function ( $x, $host ) { return '<b>' . esc_html( $x['name'] ) . '</b><br><a href="https://' . esc_attr( $host ) . '" target="_blank" rel="noopener" dir="ltr">' . esc_html( $host ) . '</a>'; };
-	echo '<h2>ממתינים לאישור (' . count( $q ) . ')</h2><p style="max-width:70ch">כל אתר שלקוח רושם, במינוי או ברישיון שקנה, מגיע לכאן. מי שסימן "אפשר להציג כדוגמה" מופיע ראשון. מה שמאשרים עולה לגלריה; "לא להציג" מוציא אותו מהרשימה. התמונות נלקחות מהאתרים עצמם, כמה בכל שעה.</p>';
+	echo '<h2>ממתינים לאישור (' . count( $q ) . ')</h2><p style="max-width:70ch">כל אתר שלקוח רושם, במינוי או ברישיון שקנה, מגיע לכאן. רישיון השימוש מתיר להציג אותם, אז אין צורך בהסכמה נפרדת. מה שמאשרים עולה לגלריה; "לא להציג" מוציא אותו מהרשימה. התמונות נלקחות מהאתרים עצמם, כמה בכל שעה.</p>';
 	$lg = get_option( 'fsa_v2_snap_log' );
 	echo '<p>' . ( FSA_V2_SHOTS ? ( is_array( $lg ) ? 'סבב צילומים אחרון: ' . esc_html( $lg['t'] ) . ' · נשלחו ' . (int) $lg['asked'] . ' · התקבלו ' . (int) $lg['got'] . ( $lg['err'] ? ' · ' . esc_html( $lg['err'] ) : '' ) : 'עוד לא היה סבב צילומים (הוא רץ פעם בשעה, כשיש כניסות לאתר).' ) . ' ' . $form( 'snaprun', '', 'סבב צילומים עכשיו' ) : 'הצילום האוטומטי כבוי (FSA_V2_SHOTS).' ) . '</p>';
-	echo '<table class="widefat striped"><thead><tr><th style="width:160px">תמונה</th><th>אתר</th><th>פונטים</th><th>שנה</th><th>לקוח</th><th>הסכים להצגה</th><th></th></tr></thead><tbody>';
+	echo '<table class="widefat striped"><thead><tr><th style="width:160px">תמונה</th><th>אתר</th><th>פונטים</th><th>שנה</th><th>לקוח</th><th></th></tr></thead><tbody>';
 	foreach ( array_slice( $q, ( $page - 1 ) * $per, $per, true ) as $h => $x ) { $u = get_userdata( $x['uid'] );
-		echo '<tr><td>' . $pic( $h ) . '</td><td>' . $site( $x, $h ) . '</td><td>' . esc_html( implode( ', ', $x['fonts'] ) ) . '</td><td>' . esc_html( $x['year'] ) . '</td><td>' . esc_html( $u ? $u->user_email : '' ) . '</td><td>' . ( $agreed( $x, $h ) ? '<b style="color:#008A20">✓ ' . esc_html( $agreed( $x, $h ) ) . '</b>' : '<span style="color:#787C82">לא סימן</span>' ) . '</td><td>'
+		echo '<tr><td>' . $pic( $h ) . '</td><td>' . $site( $x, $h ) . '</td><td>' . esc_html( implode( ', ', $x['fonts'] ) ) . '</td><td>' . esc_html( $x['year'] ) . '</td><td>' . esc_html( $u ? $u->user_email : '' ) . '</td><td>'
  			. ( FSA_V2_SHOTS ? $form( 'snap', $h, 'צילום' ) . ' ' : '' ) . $form( 'ok', $h, 'אישור', '<input name="by" placeholder="עיצוב (לא חובה)" style="width:130px"> <input type="url" name="img" placeholder="תמונה אחרת (קישור)" dir="ltr" style="width:150px"> ' ) . ' ' . $form( 'no', $h, 'לא להציג' ) . '</td></tr>'; }
-	if ( ! $q ) echo '<tr><td colspan="7">אין אתרים שממתינים.</td></tr>';
+	if ( ! $q ) echo '<tr><td colspan="6">אין אתרים שממתינים.</td></tr>';
 	echo '</tbody></table>';
 	if ( count( $q ) > $per ) { echo '<p>'; for ( $i = 1; $i <= ceil( count( $q ) / $per ); $i++ ) echo $i === $page ? '<b>' . $i . '</b> ' : '<a href="' . esc_url( admin_url( 'admin.php?page=fsa-studio&tab=show&p=' . $i ) ) . '">' . $i . '</a> '; echo '</p>'; }
 	echo '<h2>בגלריה (' . count( $list ) . ')</h2><table class="widefat striped"><thead><tr><th style="width:160px">תמונה</th><th>אתר</th><th>פונטים</th><th>שנה</th><th>עיצוב</th><th></th></tr></thead><tbody>';
@@ -1589,8 +1583,6 @@ add_shortcode( 'fs_account_v2', function () {
 :is(#fsa,#fsa-layer) .dom-head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px}
 :is(#fsa,#fsa-layer) .why-reg{margin:-6px 0 16px;color:var(--muted)}
 /* "אפשר להציג כדוגמה": a quiet tick under the registration row */
-:is(#fsa,#fsa-layer) .show-ok{display:flex;align-items:flex-start;gap:8px;margin:12px 2px 0;font-size:14px;color:var(--muted);cursor:pointer;line-height:1.45}
-:is(#fsa,#fsa-layer) .show-ok input{appearance:auto;-webkit-appearance:checkbox;width:16px;height:16px;min-width:16px;margin:2px 0 0;accent-color:var(--violet);cursor:pointer}
 :is(#fsa,#fsa-layer) .usage{display:flex;flex-direction:column;gap:6px;min-width:200px;font-size:14px}
 :is(#fsa,#fsa-layer) .usage .track{height:6px;border-radius:9px;background:var(--soft);overflow:hidden;display:block}
 :is(#fsa,#fsa-layer) .usage .track i{display:block;height:100%;border-radius:9px;margin-inline-start:auto}
@@ -2370,6 +2362,10 @@ const editBtns=()=>`<div class="acts"><button class="ibtn ok-btn" data-edsave="1
 function fontPicker(sel){const on=sel.length>=2;return `<div class="fld fontpick ed-fonts"><button type="button" class="fp-btn" aria-haspopup="true" aria-expanded="false" aria-label="פונטים"><span class="fp-val">${sel.join(', ')||'בחירת פונטים'}</span>${ICON.chev}</button>
  <div class="fp-menu">${DOMF.map(f=>{const c=sel.includes(f);return `<label class="${!c&&on?'off':''}"><input type="checkbox" value="${ea(f)}" ${c?'checked':''} ${!c&&on?'disabled':''}> ${ea(f)}</label>`}).join('')}<p class="fp-hint ${on?'max':''}">אפשר לבחור עד 2 פונטים לכל אתר</p></div></div>`}
 const logo=(k,cls='sublogo')=>`<img class="${cls}" src="${SUBS[k].logo}" alt="${SUBS[k].name}">`;
+/* a new site: a short confetti burst from both top corners, in the brand colours; none with reduced motion */
+function party(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const c=document.createElement('canvas'),x=c.getContext('2d'),d=Math.min(devicePixelRatio||1,2),W=innerWidth,H=innerHeight;c.width=W*d;c.height=H*d;c.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2147483000';c.setAttribute('aria-hidden','true');document.body.appendChild(c);x.scale(d,d);
+ const C=['#5B3FFF','#9B4DFF','#BCB6FF','#EACCFF','#151515','#FFC700'],P=[];for(let i=0;i<110;i++){const l=i%2,a=.35+Math.random()*.6,v=7+Math.random()*9;P.push({x:l?W+10:-10,y:H*.18,vx:(l?-1:1)*Math.cos(a)*v,vy:-Math.sin(a)*v,w:5+Math.random()*6,h:8+Math.random()*8,r:Math.random()*6,s:(Math.random()-.5)*.3,f:Math.random()*6,c:C[i%C.length]})}
+ const t0=performance.now();(function f(t){const k=(t-t0)/2600;x.clearRect(0,0,W,H);if(k>=1){c.remove();return}x.globalAlpha=k<.7?1:1-(k-.7)/.3;for(const p of P){p.vy+=.18;p.vx*=.985;p.x+=p.vx;p.y+=p.vy;p.r+=p.s;p.f+=.15;x.save();x.translate(p.x,p.y);x.rotate(p.r);x.scale(1,Math.cos(p.f));x.fillStyle=p.c;x.fillRect(-p.w/2,-p.h/2,p.w,p.h);x.restore()}requestAnimationFrame(f)})(t0)}
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1900)}
 function meter(u,n){if(!n)return `<span class="chip">ללא הגבלה</span>`;const p=u/n;const c=p>=1?'bad':p>=.66?'warn':'';return `<span class="meter ${c}"><span class="num">${u}/${n}</span><span class="bar"><i style="width:${Math.max(p*100,8)}%"></i></span></span>`}
 const ils=n=>'₪'+n.toLocaleString('he-IL',{minimumFractionDigits:n%1?2:0,maximumFractionDigits:2});
@@ -2519,7 +2515,7 @@ function subsDomains(){
        <div class="fp-menu">${DOMF.map(f=>`<label><input type="checkbox" value="${ea(f)}"> ${ea(f)}</label>`).join('')}<p class="fp-hint">אפשר לבחור עד 2 פונטים לכל אתר</p></div>
      </div>
      <button class="btn btn-grad reg-add">${ICON.plus}הוסף דומיין</button>
-   </form><label class="show-ok"><input type="checkbox" id="sdShow"><span>אפשר להציג את האתר כדוגמה בפונטשוק, עם קרדיט וקישור אליך</span></label><p class="form-err" id="sdErr" hidden></p></div></div>`}
+   </form><p class="form-err" id="sdErr" hidden></p></div></div>`}
  </div>
  <div class="tbl-wrap"><table class="tbl dom-tbl reg-tbl">${DOM_THEAD}<tbody>
  ${list.map(subRow).filter(r=>canEdit(r.s[0])).sort((a,b)=>parseD(b.s[0])-parseD(a.s[0])).map(domRow).join('')||`<tr><td colspan="5" class="hint" style="padding:18px 0">עוד לא נרשמו דומיינים ${PER.now}</td></tr>`}
@@ -2988,10 +2984,10 @@ document.addEventListener('submit',e=>{
   const msg=!host||!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)?'צריך להזין כתובת אתר תקינה, למשל studio.co.il':!picked.length?'צריך לבחור לפחות פונט אחד':'';
   if(msg){err.textContent=msg;err.hidden=false;(msg.includes('כתובת')?$('#sd2'):f.querySelector('.fp-btn')).focus();return}
   const btn=f.querySelector('.reg-add');if(btn)btn.disabled=true;
-  domApi('add',{host,name:siteName(host),fonts:picked.join(', '),show:$('#sdShow')&&$('#sdShow').checked?1:''}).then(()=>{state.regOpen=false;render({fresh:host});toast('האתר נרשם במינוי. התעודה מוכנה להורדה')}).catch(x=>{if(btn)btn.disabled=false;err.textContent=x.message;err.hidden=false});return}
+  domApi('add',{host,name:siteName(host),fonts:picked.join(', '),}).then(()=>{state.regOpen=false;render({fresh:host});party();toast('מזל טוב, האתר נרשם! התעודה מוכנה להורדה')}).catch(x=>{if(btn)btn.disabled=false;err.textContent=x.message;err.hidden=false});return}
  if(f.dataset.add!==undefined){const i=+f.dataset.add;const host=cleanHost(f.querySelector('[data-namefor]').value);if(!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)){toast('צריך להזין כתובת אתר תקינה');return}
   const btn=f.querySelector('button');if(btn)btn.disabled=true;
-  licApi(i,'add',{host,name:f.querySelector('.sitename').value.trim()||siteName(host)}).then(()=>{render({fresh:host});toast('האתר נרשם. התעודה מוכנה להורדה')}).catch(x=>{if(btn)btn.disabled=false;toast(x.message)});return}
+  licApi(i,'add',{host,name:f.querySelector('.sitename').value.trim()||siteName(host)}).then(()=>{render({fresh:host});party();toast('מזל טוב, האתר נרשם! התעודה מוכנה להורדה')}).catch(x=>{if(btn)btn.disabled=false;toast(x.message)});return}
  toast('השינויים נשמרו');
 });
 document.addEventListener('change',e=>{

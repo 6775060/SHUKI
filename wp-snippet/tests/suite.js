@@ -98,7 +98,7 @@ for(const w of [390,1280]){
  // registration
  await go('subs');await p.evaluate(()=>document.querySelector('#fsa [data-subtab="reg"]').click());await p.waitForTimeout(400);
  const ro=await p.locator('#fsa [data-regopen]').isVisible();if(ro){await p.click('#fsa [data-regopen]');await p.waitForTimeout(600)}
- await p.fill('#sd2','x.co.il');await p.evaluate(()=>{const f=document.querySelector('#fsa .reg-row .fp-menu input');f.checked=true;f.dispatchEvent(new Event('change',{bubbles:true}))});await p.click('#fsa .reg-add');await p.waitForTimeout(500);const rt=await toastNow();if(!rt.includes('נרשם'))bad(`${w} register gives "${rt}"`);
+ await p.fill('#sd2','x.co.il');await p.evaluate(()=>{const f=document.querySelector('#fsa .reg-row .fp-menu input');f.checked=true;f.dispatchEvent(new Event('change',{bubbles:true}))});await p.click('#fsa .reg-add');await p.waitForTimeout(500);const rt=await toastNow();if(!rt.includes('נרשם'))bad(`${w} register gives "${rt}"`);const cf=await p.evaluate(()=>{const c=[...document.querySelectorAll('body > canvas')].pop();if(!c)return 'none';const s=getComputedStyle(c);return s.position==='fixed'&&s.pointerEvents==='none'?'':'blocks the page'});if(cf)bad(`${w} confetti after registering: ${cf}`);
  if(!(await p.evaluate(()=>document.querySelector('#fsa .sub-reg ~ .tbl-wrap').innerText.includes('x.co.il'))))bad(`${w} registered domain not in the list`);
  const regFonts=await p.evaluate(()=>[...document.querySelectorAll('#fsa .reg-row .fp-menu input')].map(i=>i.value));if(regFonts.join()!=='פורטו,טאלנט,דיסקברי')bad(`${w} font list is not the site's list: ${regFonts}`);
  // hover/focus keep our button look
@@ -156,7 +156,7 @@ for(const w of [390,1280]){
   const tx=await dp.evaluate(()=>document.querySelector('#fsa .main').innerText);if(!tx.includes('כלול במינוי: עד 5 אתרים בכל חודש')||/מתוך \d/.test(tx))bad(`${w} arrangement quota not shown, or a countdown is (${(tx.match(/כלול במינוי[^.]*|\d מתוך \d/g)||[]).join(' | ')})`);
   if(!tx.includes('הרישום הוא לא מעקב'))bad(`${w} the "not tracking" line is missing`);
   await dp.evaluate(()=>document.querySelector('#fsa [data-regopen]')&&document.querySelector('#fsa [data-regopen]').click());await dp.waitForTimeout(500);
-  const so=await dp.evaluate(()=>{const l=document.querySelector('#fsa .show-ok'),i=document.querySelector('#sdShow');if(!l||!i)return 'missing';const r=l.getBoundingClientRect(),f=document.querySelector('#fsa .reg-row').getBoundingClientRect();return i.checked?'ticked by default':r.width<1?'hidden':r.top<f.bottom-1?'overlaps the form':''});if(so)bad(`${w} "show as example" tick: ${so}`);await dp.close()}
+  if(await dp.evaluate(()=>!!document.querySelector('#fsa .reg-row input[type=checkbox]:not(.fp-menu input)')))bad(`${w} the registration form still asks for a tick`);await dp.close()}
  const fs=require('fs');const src=fs.readFileSync(S+'/page-theme.html','utf8');const cut=src.replace(/"lic":\[.*?\],"orders"/s,'"lic":[],"orders"');if(cut===src)bad(`${w} could not empty the purchases for the empty-state check`);fs.writeFileSync(S+'/page-empty.html',cut);
  const ep=await b.newPage({viewport:{width:w,height:800}});const eerr=[];ep.on('pageerror',e=>eerr.push(e.message));await ep.goto('file://'+S+'/page-empty.html');await ep.waitForTimeout(400);
  await ep.evaluate(()=>document.querySelector('#fsa .side button[data-view="lic"]').click());await ep.waitForTimeout(500);

@@ -105,9 +105,9 @@ $add( 'q1.co.il' ); $add( 'q2.co.il' ); $t( array() === $GLOBALS['mails'], 'quot
 $add( 'q3.co.il' ); $t( 1 === count( $GLOBALS['mails'] ) && 'owner@x' === $GLOBALS['mails'][0][0] && false !== strpos( $GLOBALS['mails'][0][2], 'user_id=40' ), 'quota alert: the owner gets one email when the third site is registered' );
 $call( array( 'op' => 'del', 'id' => $wpdb->rows[ count( $wpdb->rows ) - 1 ]['id'] ) ); $add( 'q4.co.il' ); $t( 1 === count( $GLOBALS['mails'] ), 'quota alert: once per month, even when the customer fills it again' );
 $r = $add( 'q5.co.il' ); $t( ! $r->ok && false === strpos( $r->data['message'], 'ניצלת' ), 'full month: the refusal does not say "used up"' );
-// "אפשר להציג כדוגמה" is kept for the owner's gallery queue
-$GLOBALS['user']->ID = 41; $call( array( 'op' => 'add', 'host' => 'show.co.il', 'name' => '', 'fonts' => 'פורטו', 'show' => '1' ) ); $call( array( 'op' => 'add', 'host' => 'quiet.co.il', 'name' => '', 'fonts' => 'פורטו' ) );
-$t( array( 'show.co.il' ) === array_keys( fsa_v2_show_ok( 41 ) ), 'show consent: only the site that was ticked' );
+// no "show as example" consent: the licence already allows it, so a stray field stores nothing
+$GLOBALS['user']->ID = 41; $call( array( 'op' => 'add', 'host' => 'show.co.il', 'name' => '', 'fonts' => 'פורטו', 'show' => '1' ) );
+$t( ! isset( $GLOBALS['meta'][41]['fsa_v2_show_ok'] ), 'no show consent is stored' );
 // "built something?" email: about two weeks after a web-font download, once, never with a site registered since, stoppable
 function get_users( $a ) { return $GLOBALS['subs']; } function update_option( $k, $v, $a = null ) { $GLOBALS['opt'][ $k ] = $v; }
 function wc_get_page_permalink( $p ) { return 'https://fontshok.co.il/my-account/'; }
