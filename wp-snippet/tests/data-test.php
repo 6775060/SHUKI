@@ -89,5 +89,7 @@ $GLOBALS['user']->roles = array( 'customer' ); $GLOBALS['died'] = null; try { fs
 $GLOBALS['user']->roles = array( 'customer', 'member-webstop' ); $GLOBALS['transients'] = array(); $d = fsa_v2_data();
 $t( false !== strpos( $d['allDl']['web'], 'fsa_wall=web' ) && false !== strpos( $d['allDl']['desk'], 'fsa_wall=desk' ), 'the area gets both "all fonts" links' );
 $GLOBALS['user']->roles = array( 'customer', 'member-desktop' ); $d = fsa_v2_data(); $t( '' === $d['allDl']['web'] && '' !== $d['allDl']['desk'], 'desktop-only: only the desktop bundle link' );
+$GLOBALS['user']->roles = array( 'customer', 'member-desktop', 'member-barter' ); $d = fsa_v2_data(); $t( 'desk' === $d['plan'] && '' === $d['allDl']['web'] && ! array_filter( array_column( $d['fonts'], 'web' ) ) && ! array_filter( array_merge( ...array_map( function ( $f ) { return array_column( $f['weights'], 'web' ); }, $d['fonts'] ) ) ), 'Desktop shown with a leftover barter role: no web files at all' );
+$GLOBALS['died'] = null; try { fsa_v2_all_zip( 'web' ); } catch ( Exception $e ) {} $t( (bool) $GLOBALS['died'], 'Desktop + barter cannot get the sites bundle' );
 array_map( 'unlink', glob( "$u/*/*" ) + glob( "$u/*/*.*" ) ?: array() );
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n"; exit( $fail ? 1 : 0 );

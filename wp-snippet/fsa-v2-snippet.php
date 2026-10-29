@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '108' );
+define( 'FSA_V2_BUILD', '109' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -167,7 +167,7 @@ function fsa_v2_plan_info( $u ) {
 	elseif ( in_array( 'member-academic', $roles, true ) )  $plan = 'acad';
 	elseif ( in_array( 'member-desktop', $roles, true ) )   $plan = 'desk';
 	elseif ( in_array( 'member-barter', $roles, true ) )    $plan = 'barter'; // given by arrangement, same as Webstop, not for sale
-	$desktop_only = in_array( 'member-desktop', $roles, true ) && ! in_array( 'member-webstop', $roles, true ) && ! in_array( 'member-extra', $roles, true ) && ! in_array( 'member-barter', $roles, true );
+	$desktop_only = 'desk' === $plan; // the plan shown is Desktop: no web files anywhere (also with a leftover barter role)
 	return array( $plan, $desktop_only );
 }
 
@@ -1104,7 +1104,7 @@ function fsa_v2_data() {
 	// subscription fonts (ACF option repeater, same rules as snippet #7)
 	$fonts = array();
 	if ( $plan && function_exists( 'get_field' ) ) {
-		$desktop_only = in_array( 'member-desktop', $roles, true ) && ! in_array( 'member-webstop', $roles, true ) && ! in_array( 'member-extra', $roles, true ) && ! in_array( 'member-barter', $roles, true );
+		$desktop_only = 'desk' === $plan; // same rule as fsa_v2_plan_info()
 		foreach ( (array) get_field( 'fonts-repeater', 'option' ) as $row ) {
 			if ( empty( $row['font-name'] ) ) continue;
 			$fonts[] = array(
