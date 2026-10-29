@@ -48,6 +48,7 @@ class FakeDB { public $usermeta = 'wp_usermeta', $prefix = 'wp_';
 	function get_results( $q ) { if ( false === strpos( $q[0], 'GROUP BY meta_value' ) ) return array(); $c = array(); foreach ( $GLOBALS['meta'] as $m ) if ( isset( $m[ $q[1][0] ] ) ) $c[ $m[ $q[1][0] ] ] = ( $c[ $m[ $q[1][0] ] ] ?? 0 ) + 1; $o = array(); foreach ( $c as $v => $n ) $o[] = (object) array( 'v' => $v, 'n' => $n ); return $o; } }
 $GLOBALS['wpdb'] = new FakeDB();
 eval( file_get_contents( __DIR__ . '/../fsa-v2-snippet.php' ) );
+eval( file_get_contents( __DIR__ . '/../fsa-gallery-snippet.php' ) ); // "FS · גלריה": gallery page + menu item
 $fail = 0; $t = function ( $ok, $m ) use ( &$fail ) { echo ( $ok ? 'ok   ' : 'FAIL ' ) . $m . "\n"; if ( ! $ok ) $fail++; };
 $call = function ( $fn, $post ) { $_POST = $post; try { $fn(); } catch ( Done $d ) { return $d; } catch ( Exception $e ) { return (object) array( 'ok' => 'x', 'data' => array( 'message' => $e->getMessage() ) ); } return null; };
 $vote = function ( $f, $why = null ) use ( $call ) { $p = array( 'font' => $f ); if ( null !== $why ) $p['why'] = $why; return $call( 'fsa_v2_vote_ajax', $p ); };
