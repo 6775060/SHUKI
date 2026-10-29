@@ -38,6 +38,11 @@ Needs `fontshok.co.il` in the environment's allowed network domains and the owne
 - **Build 103 was sent to the owner:** gallery shortcode `[fontshok_gallery]` and the light picture round (wake, then collect; og:image fallback). See item 112.
 - **After the paste:** create page **גלריה** (slug `gallery`, content: a shortcode block `[fontshok_gallery]`), publish it, and add "גלריה" after "פונט־בלוג" in both mega-menus of header template 10689 (`fea6a12`, `f43e924`): a new `menu_items` entry plus a matching empty child container in `elements` at the same index. Backup: `docs/backups/header-10689-elementor-before-gallery.json`. Then clear the Elementor cache. The WordPress connector got 403 on writes, so this needs FSPW (REST as claude-test) or the owner.
 
+## Build 106 (29.10.2026): the purchase area
+- Built and checked, **not live for customers**: `FSA_V2_BUY_FOR = 'admins'`. To open it, the owner sets `'all'` and pastes. Details: item 115 in `docs/HANDOFF-snippet.md`.
+- Before opening: a real test purchase as claude-test (font weight + desktop plan) through Grow, then refund. Check that the font pages' "קנה אותי" opens the new chooser and the old window no longer appears.
+- Open questions for the owner: full screen or window (`FSA_V2_BUY_LOOK`); the theme's price line says "המחירים לפני מע״מ" (300 / 2400) while the store shows 354 / 2549 incl. VAT. The new area always shows the store price incl. VAT.
+
 ## Open with the owner
 1. After the paste of 102: send yourself the sample (`/?fsa_remind_test=1` as admin) and ask the owner how it looks in their inbox (Gmail and phone).
 2. A test purchase of the desktop subscription (payment → role member-desktop → the right area), and refund it afterwards if the owner wants.
