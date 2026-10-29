@@ -85,3 +85,22 @@ Use the variables. Never write a raw colour that already has a token.
 4. Run `CHROMIUM=/opt/pw-browsers/chromium sh wp-snippet/tests/all.sh`. Send the file only when it says ALL CHECKS PASSED.
 5. Compare your screenshots with `tests/out/suite-*.png` before sending.
 6. The owner pastes the snippet; nothing goes live otherwise.
+
+## 9. The purchase area: choose products, cart, pay
+
+The next area to build is choosing products, then order details (the cart), then payment. The pieces already exist in the personal area, so build it from them.
+
+**Rules first (CLAUDE.md):** do not change payment settings, store prices or the pricing page (post 13376) without the owner's explicit approval. Prices always come from WooCommerce (`wc_get_product()->get_price()`) and are never written in the code. Store prices are final and include VAT, so show "כולל מע"מ".
+
+| Step | Reuse | Notes |
+|---|---|---|
+| Choose products | `.offers` / `.offer` cards (`.offer-web`, `.offer-extra`, `.offer-desk`): soft gradient, plan colour strip on the end edge, logo, name, `.of-top` badge ("הכי משתלם"), muted `.of-line`, price, button | one card per product or plan, prices filled from the store (see the "offer prices" check in `tests/suite.js`). A chosen card gets a violet edge and `aria-pressed="true"` |
+| Order details (cart) | `.cart` sheet: `.cart-head`, `.cart-item` with `.cart-ic`, `.cart-sum` (`dt`/`dd`, `.tot`, `.vat`), `.cart-pay`, `.cart-go` (`.btn-grad`), `.cart-note` | the sheet slides in from the side, full width on phone. Remove an item with an `.ibtn`. Totals are recalculated from store prices only |
+| Payment | the existing path in `fsa_v2_addon_ajax()`: create the WooCommerce order on the server, then go to its payment URL (Meshulam / Grow) | keep the "one unpaid order per need" rule (reuse a pending order on a second click). The customer never types card details in our page |
+| Waiting / done | `cartStep()` states: `pay` → `.cart-wait` → `.cart-ok` | when payment succeeds: `party()` once, then a toast. If it fails, say plainly what happened and what to do next |
+
+**Wording:** short and calm. Write "לתשלום", not "בצע רכישה". Show the full price the customer will pay, with nothing hidden in later steps. A recurring plan always says how often it renews and when the next charge is.
+
+**Checks to add:** prices match the store; the total equals the sum of the lines; a second click does not create a second order; the phone layout has no sideways scroll; keyboard focus moves into the sheet and back; reduced motion means no animation.
+
+**Ask the owner at the start:** whether the area lives inside the personal area (logged-in customers) or replaces the public store pages, and which products it sells first.
