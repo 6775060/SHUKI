@@ -1,5 +1,5 @@
 <?php
-define('ABSPATH','/');
+define('ABSPATH','/'); define('FSA_V2_ASSETS','inline'); // the test pages are opened as files, so style and script stay inside them
 $GLOBALS['sc']=null;
 function add_action(...$a){} function add_filter(...$a){}
 function add_shortcode($n,$f){if($n==='fs_account_v2')$GLOBALS['sc']=$f;}

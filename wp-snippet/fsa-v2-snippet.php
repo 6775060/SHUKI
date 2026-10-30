@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '111' );
+define( 'FSA_V2_BUILD', '112' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -28,6 +28,8 @@ define( 'FSA_V2_SHOTS', 'https://s.wordpress.com/mshots/v1/{url}?w=1280&h=800' )
 define( 'FSA_V2_PLAN_PRODUCTS', array( 'web' => 12652, 'extra' => 14162, 'desk' => 22785 ) );
 // the ₪79 additional domain: ID of a hidden virtual WooCommerce product. 0 = not offered yet (the button says "next stage")
 define( 'FSA_V2_ADDON_PRODUCT', 22751 );
+// the area's style and script: 'file' = two files the browser keeps (a new version gets a new address by itself) · 'inline' = inside the page, as before
+defined( 'FSA_V2_ASSETS' ) || define( 'FSA_V2_ASSETS', 'file' );
 // purchase area (section 2m): choose weights and licence on a font page, order details, then the store's checkout.
 // 'admins' = admins and the test account only (to check before launch) · 'all' = every visitor, logged in or not
 define( 'FSA_V2_BUY_FOR', 'admins' );
@@ -1085,14 +1087,7 @@ function fsa_v2_he_date( $ts ) {
 function fsa_v2_data() {
 	$u   = wp_get_current_user();
 	$uid = $u->ID;
-	$roles = (array) $u->roles;
-
-	$plan = null;
-	if ( in_array( 'member-extra', $roles, true ) )         $plan = 'extra';
-	elseif ( in_array( 'member-webstop', $roles, true ) )   $plan = 'web';
-	elseif ( in_array( 'member-academic', $roles, true ) )  $plan = 'acad';
-	elseif ( in_array( 'member-desktop', $roles, true ) )   $plan = 'desk';
-	elseif ( in_array( 'member-barter', $roles, true ) )    $plan = 'barter'; // given by arrangement, same as Webstop, not for sale
+	list( $plan, $desktop_only ) = fsa_v2_plan_info( $u ); // the one place that reads the plan from the roles
 
 	$start = '';
 	$raw = get_user_meta( $uid, 'membership-date', true ); // d/m/Y (snippet #8)
@@ -1104,7 +1099,6 @@ function fsa_v2_data() {
 	// subscription fonts (ACF option repeater, same rules as snippet #7)
 	$fonts = array();
 	if ( $plan && function_exists( 'get_field' ) ) {
-		$desktop_only = 'desk' === $plan; // same rule as fsa_v2_plan_info()
 		foreach ( (array) get_field( 'fonts-repeater', 'option' ) as $row ) {
 			if ( empty( $row['font-name'] ) ) continue;
 			$fonts[] = array(
@@ -1762,8 +1756,34 @@ add_shortcode( 'fs_account_v2', function () {
 	$js = fsa_v2_js();
 	// the purchase screens too, for the plan offers (their styles are already in the area's)
 	$buy = fsa_v2_buy_on() ? fsa_v2_buy_markup( array( 'ajax' => admin_url( 'admin-ajax.php' ), 'plans' => fsa_v2_buy_plans(), 'account' => function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ), 'pricing' => 'https://fontshok.co.il/מחירון-רישיונות-ומנויים/' ), false ) : '';
+	if ( 'file' === FSA_V2_ASSETS ) {
+		return '<link rel="stylesheet" id="fsa-v2-css" href="' . esc_url( fsa_v2_asset_url( 'css' ) ) . '">' . $html
+			. '<script id="fsa-v2-data">window.FS_DATA=' . $data . ';</script><script id="fsa-v2-js" src="' . esc_url( fsa_v2_asset_url( 'js' ) ) . '"></script>' . $buy;
+	}
 	return '<style id="fsa-v2-css">' . $css . '</style>' . $html . '<script id="fsa-v2-js">window.FS_DATA=' . $data . ";\n" . $js . '</script>' . $buy;
 } );
+// the two files: same code for everyone (no customer data in them), addressed by a hash of their content, so the browser keeps
+// each version for a year and a changed snippet is fetched once, on its own. Served from the start of the request, before the page is built
+function fsa_v2_asset_body( $kind ) { return 'css' === $kind ? fsa_v2_css() : fsa_v2_js(); }
+function fsa_v2_asset_ver( $kind ) {
+	static $v = array();
+	if ( ! isset( $v[ $kind ] ) ) $v[ $kind ] = substr( md5( FSA_V2_BUILD . fsa_v2_asset_body( $kind ) ), 0, 10 );
+	return $v[ $kind ];
+}
+function fsa_v2_asset_url( $kind ) { return add_query_arg( array( 'fsa_asset' => $kind, 'v' => fsa_v2_asset_ver( $kind ) ), home_url( '/' ) ); }
+add_action( 'init', 'fsa_v2_asset_serve', 0 );
+function fsa_v2_asset_serve() {
+	$kind = isset( $_GET['fsa_asset'] ) ? (string) $_GET['fsa_asset'] : '';
+	if ( 'css' !== $kind && 'js' !== $kind ) return;
+	$same = isset( $_GET['v'] ) && fsa_v2_asset_ver( $kind ) === (string) $_GET['v']; // an old address gets today's file, but is not kept
+	if ( ! headers_sent() ) {
+		header( 'Content-Type: ' . ( 'css' === $kind ? 'text/css' : 'application/javascript' ) . '; charset=UTF-8' );
+		header( 'Cache-Control: ' . ( $same ? 'public, max-age=31536000, immutable' : 'no-cache' ) );
+		header( 'X-Content-Type-Options: nosniff' );
+	}
+	echo fsa_v2_asset_body( $kind );
+	exit;
+}
 // the area's styles, markup and script (the purchase area reuses parts of them, see 2m)
 function fsa_v2_css() {
 	return <<<'FSACSS'

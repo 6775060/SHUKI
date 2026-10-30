@@ -92,4 +92,9 @@ $GLOBALS['user']->roles = array( 'customer', 'member-desktop' ); $d = fsa_v2_dat
 $GLOBALS['user']->roles = array( 'customer', 'member-desktop', 'member-barter' ); $d = fsa_v2_data(); $t( 'desk' === $d['plan'] && '' === $d['allDl']['web'] && ! array_filter( array_column( $d['fonts'], 'web' ) ) && ! array_filter( array_merge( ...array_map( function ( $f ) { return array_column( $f['weights'], 'web' ); }, $d['fonts'] ) ) ), 'Desktop shown with a leftover barter role: no web files at all' );
 $GLOBALS['died'] = null; try { fsa_v2_all_zip( 'web' ); } catch ( Exception $e ) {} $t( (bool) $GLOBALS['died'], 'Desktop + barter cannot get the sites bundle' );
 array_map( 'unlink', glob( "$u/*/*" ) + glob( "$u/*/*.*" ) ?: array() );
+// the area's style and script as files the browser keeps: the address carries a hash of the content, one per kind
+$cu = fsa_v2_asset_url( 'css' ); $ju = fsa_v2_asset_url( 'js' ); parse_str( (string) parse_url( $cu, PHP_URL_QUERY ), $cq ); parse_str( (string) parse_url( $ju, PHP_URL_QUERY ), $jq );
+$t( 'css' === ( $cq['fsa_asset'] ?? '' ) && 'js' === ( $jq['fsa_asset'] ?? '' ) && preg_match( '/^[0-9a-f]{10}$/', $cq['v'] ?? '' ) && ( $cq['v'] ?? '' ) !== ( $jq['v'] ?? '' ), 'assets: one address per file, with a content hash' );
+$t( $cu === fsa_v2_asset_url( 'css' ) && 'file' === FSA_V2_ASSETS, 'assets: the address is stable, and files are the default' );
+$t( false === strpos( fsa_v2_js(), '<?php' ) && false === strpos( fsa_v2_js(), 'FS_DATA=' ), 'assets: the script file holds no customer data (it comes inline, before it)' );
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n"; exit( $fail ? 1 : 0 );
