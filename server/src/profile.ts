@@ -71,10 +71,11 @@ export function incomeMix(db: DB, endMonth: string, count = 6): IncomeMix[] {
   });
 }
 
-// Runs once after the salary and clearing categories arrive: income that was
-// filed under the generic categories moves to the new ones where a rule fits.
+// Runs once per new set of income rules (salary and clearing, then SUMIT):
+// income filed under the generic categories moves where a rule now fits.
+const INCOME_RULES_VERSION = '2';
 export function applyNewIncomeRules(db: DB, categorizer: Categorizer): number {
-  if (getMeta(db, 'income_rules_applied') === '1') return 0;
+  if (getMeta(db, 'income_rules_applied') === INCOME_RULES_VERSION) return 0;
   const rows = db
     .prepare(
       `SELECT t.id, t.description, t.memo, t.amount, t.category_id, t.scope, a.kind, a.default_scope
@@ -93,7 +94,7 @@ export function applyNewIncomeRules(db: DB, categorizer: Categorizer): number {
         changed++;
       }
     }
-    setMeta(db, 'income_rules_applied', '1');
+    setMeta(db, 'income_rules_applied', INCOME_RULES_VERSION);
   });
   return changed;
 }

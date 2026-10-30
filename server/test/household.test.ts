@@ -36,6 +36,7 @@ function fill(h: ReturnType<typeof home>) {
     ingestTransactions(h.db, h.categorizer, h.biz, [
       { date: `${m}-05`, description: `ישראכרט זיכוי ${m}`, amount: low ? 6000 : 14000 },
       { date: `${m}-12`, description: `כאל זיכוי עסקאות ${m}`, amount: 4000 },
+      { date: `${m}-20`, description: `סאמיט זיכוי סליקה ${m}`, amount: 2500 },
     ], 'import');
     ingestTransactions(h.db, h.categorizer, h.priv, [
       { date: `${m}-10`, description: `משכורת ${m}`, amount: 9000 },
@@ -52,6 +53,7 @@ describe('household income', () => {
     fill(h);
     expect(slugOf(h.db, 'ישראכרט זיכוי 2026-05')).toBe('income_clearing');
     expect(slugOf(h.db, 'כאל זיכוי עסקאות 2026-05')).toBe('income_clearing');
+    expect(slugOf(h.db, 'סאמיט זיכוי סליקה 2026-05')).toBe('income_clearing');
     expect(slugOf(h.db, 'משכורת 2026-05')).toBe('income_salary');
     // A card bill paid from the bank is still a transfer, not income.
     ingestTransactions(h.db, h.categorizer, h.priv, [{ date: '2026-09-15', description: 'ישראכרט חיוב', amount: -3000 }], 'import');
@@ -60,7 +62,7 @@ describe('household income', () => {
     const p = incomeProfile(h.db, '2026-10-15');
     expect(p).toEqual({ business: 'clearing', salary: true, auto: true });
     const mix = incomeMix(h.db, '2026-09', 6);
-    expect(mix.at(-1)).toEqual({ month: '2026-09', salary: 9000, business: 18000, other: 0 });
+    expect(mix.at(-1)).toEqual({ month: '2026-09', salary: 9000, business: 20500, other: 0 });
   });
 
   it('moves older income into the new categories once', () => {

@@ -230,6 +230,12 @@ const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   `,
+  `
+  -- SUMIT (formerly OfficeGuy) card clearing payouts.
+  INSERT INTO rules (pattern, category_id, scope, priority, is_default) SELECT p.value, c.id, 'business', 0, 1
+    FROM categories c, json_each('["סאמיט","סמיט","SUMIT","SUMMIT","אופיס גיא","אופיסגיא","OFFICEGUY","OFFICE GUY"]') p
+    WHERE c.slug = 'income_clearing';
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
