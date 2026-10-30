@@ -44,6 +44,12 @@ Needs `fontshok.co.il` in the environment's allowed network domains and the owne
 - Open questions for the owner: full screen or window (`FSA_V2_BUY_LOOK`); the theme's price line says "המחירים לפני מע״מ" (300 / 2400) while the store shows 354 / 2549 incl. VAT. The new area always shows the store price incl. VAT.
 
 ## Open with the owner
+0. **State on 30.10.2026** (builds 103–111, gallery snippet 2):
+   - The gallery is its own snippet, "FS · גלריה" (`wp-snippet/fsa-gallery-snippet.php`). Page 22803 `/gallery/` is in both header menus. **On hold at the owner's request**; it is still empty.
+   - **Security:** the free MalCare scan reports 1 malicious file and does not name it. The owner should ask SiteGround support for a scan.
+   - MalCare's dashboard cannot connect to the site ("Could not verify plugin"), probably because SiteGround's bot check blocks it. MalCare also blocks this container's browser, and blocks curl right after a login.
+   - 2FA is off for both admins. The suggested route is SiteGround Security Optimizer → Login Security.
+   - `claude-test` (id 504) still has roles subscriber, customer, member-webstop **and administrator**. Its password was changed on 29.10 and sent in chat, so it should change again when testing ends. The connector has no tool to change roles; the owner does that in Users.
 1. After the paste of 102: send yourself the sample (`/?fsa_remind_test=1` as admin) and ask the owner how it looks in their inbox (Gmail and phone).
 2. A test purchase of the desktop subscription (payment → role member-desktop → the right area), and refund it afterwards if the owner wants.
 3. Site pictures (mshots 429): on hold at the owner's request.
