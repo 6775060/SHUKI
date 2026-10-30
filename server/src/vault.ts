@@ -82,7 +82,7 @@ export class Vault {
     this.lock();
     this.db.exec('BEGIN');
     try {
-      this.db.exec(`DELETE FROM meta WHERE key IN ('vault_salt', 'vault_verifier', 'sumit_creds', 'sumit_last_sync', 'sumit_error', 'anthropic_key', 'coach_focus', 'gmail_creds', 'gmail_last_sync', 'gmail_error')`);
+      this.db.exec(`DELETE FROM meta WHERE key IN ('vault_salt', 'vault_verifier', 'sumit_creds', 'sumit_last_sync', 'sumit_error', 'anthropic_key', 'coach_focus', 'coach_weekly', 'gmail_creds', 'gmail_last_sync', 'gmail_error', 'push_vapid', 'push_subs')`);
       // The coach's conversation and notes were sealed with the old password.
       this.db.exec('DELETE FROM coach_messages; DELETE FROM coach_memory');
       this.db.exec(`UPDATE connections SET credentials_enc = '', enabled = 0, last_status = 'error',

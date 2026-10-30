@@ -216,6 +216,8 @@ export interface InsightsData {
   incomeMix: IncomeMix[];
   check: DataCheck;
   savings: { opportunities: Opportunity[]; groups: ExpenseGroup[] };
+  maaser: MaaserView;
+  cushion: CushionView;
   reviews: { n: number; total: number; oldest: string | null };
   syncAlerts: SyncAlert[];
 }
@@ -579,4 +581,56 @@ export async function openReceiptFile(id: number): Promise<void> {
   const url = URL.createObjectURL(await res.blob());
   window.open(url, '_blank', 'noopener');
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+// ---- weekly review, maaser, cushion, notifications ----
+
+export interface WeekNumbers {
+  key: string;
+  from: string;
+  to: string;
+  income: number;
+  expenses: number;
+  salary: number;
+  business: number;
+  topCategories: { name: string; total: number }[];
+  biggest: { description: string; amount: number; date: string } | null;
+  vsUsual: number | null;
+}
+
+export interface WeeklyState {
+  numbers: WeekNumbers;
+  review: { key: string; title: string; cameIn: string; wins: string[]; nextStep: string } | null;
+  error?: string;
+}
+
+export interface MaaserView {
+  pct: number;
+  base: 'all' | 'net';
+  carry: number;
+  year: number;
+  baseAmount: number;
+  owed: number;
+  given: number;
+  balance: number;
+  thisMonth: { baseAmount: number; owed: number; given: number };
+}
+
+export interface CushionView {
+  monthlyExpenses: number;
+  steadyIncome: number;
+  weakBusiness: number;
+  weakGap: number;
+  months: number;
+  target: number;
+  saved: number;
+  savedSource: 'manual' | 'savings' | 'none';
+  pct: number;
+  monthlyStep: number;
+}
+
+export interface PushState {
+  devices: number;
+  prefs: { sync: boolean; unusual: boolean; weekly: boolean };
+  publicKey?: string;
 }

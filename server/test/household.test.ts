@@ -17,6 +17,8 @@ import { Coach } from '../src/coach.js';
 import { savingOpportunities } from '../src/opportunities.js';
 import { dataCheck } from '../src/datacheck.js';
 import { Receipts } from '../src/receipts.js';
+import { cushionView, lastShabbat, maaserView, saveMaaserSettings, weekNumbers } from '../src/household.js';
+import { Push, isShabbatQuiet } from '../src/push.js';
 import { createApi } from '../src/api.js';
 import type { SyncService } from '../src/sync.js';
 
@@ -236,6 +238,81 @@ describe('coach', () => {
     expect(seen).toHaveLength(1);
     expect(seen[0].output_config?.format?.type).toBe('json_schema');
     expect((await coach.focus('2026-10-16', false))?.title).toBe('אחר');
+  });
+});
+
+describe('steady habits', () => {
+  it('reviews the week that ended on Shabbat', () => {
+    expect(lastShabbat('2026-10-31')).toBe('2026-10-31'); // a Saturday
+    expect(lastShabbat('2026-11-03')).toBe('2026-10-31');
+    const h = home();
+    fill(h);
+    const w = weekNumbers(h.db, '2026-09-13');
+    expect([w.from, w.to]).toEqual(['2026-09-06', '2026-09-12']);
+    expect(w.salary).toBe(9000);
+    expect(w.business).toBe(4000);
+  });
+
+  it('keeps maaser in step with what came in', () => {
+    const h = home();
+    fill(h);
+    ingestTransactions(h.db, h.categorizer, h.priv, [{ date: '2026-09-15', description: 'קופת העיר', amount: -1500 }], 'import');
+    const all = maaserView(h.db, '2026-09-20');
+    expect(all.pct).toBe(10);
+    // net: salary 6×9000 + business (6 months of clearing, less VAT; no business costs)
+    const biz = (14000 * 5 + 6000 + 4000 * 6 + 2500 * 6) / 1.18;
+    expect(all.baseAmount).toBe(Math.round(9000 * 6 + biz));
+    expect(all.given).toBe(1500);
+    expect(all.balance).toBe(Math.round(all.owed - 1500));
+    saveMaaserSettings(h.db, { pct: 20, base: 'all', carry: 1000 });
+    const c = maaserView(h.db, '2026-09-20');
+    expect(c.baseAmount).toBe(9000 * 6 + 14000 * 5 + 6000 + 4000 * 6 + 2500 * 6);
+    expect(c.balance).toBe(Math.round(c.baseAmount * 0.2 + 1000 - 1500));
+  });
+
+  it('sizes a cushion by the weak month', () => {
+    const h = home();
+    fill(h);
+    const c = cushionView(h.db, '2026-10-15');
+    expect(c.monthlyExpenses).toBe(5770);
+    expect(c.steadyIncome).toBe(9000);
+    expect(c.weakBusiness).toBe(12500);
+    // The salary alone covers the house, so the cushion is one month of expenses.
+    expect(c.weakGap).toBe(0);
+    expect(c.target).toBe(5770);
+    expect(c.savedSource).toBe('none');
+  });
+
+  it('sends what matters to the phone, but not on Shabbat', async () => {
+    expect(isShabbatQuiet(new Date(2026, 9, 30, 16))).toBe(true); // Friday afternoon
+    expect(isShabbatQuiet(new Date(2026, 9, 31, 12))).toBe(true);
+    expect(isShabbatQuiet(new Date(2026, 9, 31, 21, 30))).toBe(false);
+    expect(isShabbatQuiet(new Date(2026, 10, 1, 9))).toBe(false);
+
+    const h = home();
+    fill(h);
+    const vault = new Vault(h.db);
+    vault.setup('master pass 1');
+    const sent: { title: string; body: string }[] = [];
+    const push = new Push(h.db, vault, (async (_s: unknown, payload: string) => {
+      sent.push(JSON.parse(payload));
+      return {} as never;
+    }) as never);
+    expect(push.publicKey()).toMatch(/^[A-Za-z0-9_-]{60,}$/);
+    push.subscribe({ endpoint: 'https://push.example/1', expirationTime: null, keys: { p256dh: 'p', auth: 'a' } });
+    const sunday = new Date(2026, 10, 1, 10);
+    await push.check(sunday); // first look sets the starting point
+    ingestTransactions(h.db, h.categorizer, h.priv, [
+      { date: '2026-10-31', description: 'חברת החשמל', amount: -1600 }, // usually 450
+      { date: '2026-10-31', description: 'בזק', amount: -120 }, // as always
+      { date: '2026-10-31', description: 'מוסך חדש', amount: -2200 }, // a new place
+    ], 'import');
+    expect(await push.check(new Date(2026, 9, 31, 12))).toEqual([]); // Shabbat: waits
+    const out = await push.check(sunday);
+    expect(out).toHaveLength(2);
+    expect(sent.map((s) => s.title)).toEqual(['💳 חיוב חריג: ₪1,600', '💳 חיוב חריג: ₪2,200']);
+    expect(sent[0].body).toContain('בדרך כלל כ-₪450');
+    expect(await push.check(sunday)).toEqual([]);
   });
 });
 

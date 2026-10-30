@@ -5,6 +5,7 @@ import { addMonths, bankBalance, categoryComparison, detectRecurring, forecast, 
 import { incomeMix, incomeProfile } from './profile.js';
 import { savingsView } from './savings.js';
 import { savingOpportunities } from './opportunities.js';
+import { cushionView, maaserView, weekNumbers, type WeekNumbers } from './household.js';
 
 // The money coach ("מאמן שפע"): a Claude-powered companion that knows the
 // household's real numbers, remembers what it learns about the user over time,
@@ -51,6 +52,30 @@ const DOC_FORMAT = {
       number: { type: ['string', 'null'], description: 'Document number if shown.' },
     },
     required: ['is_invoice', 'vendor', 'date', 'total', 'vat', 'number'],
+    additionalProperties: false,
+  },
+};
+
+export interface WeeklyReview {
+  key: string;
+  numbers: WeekNumbers;
+  title: string;
+  cameIn: string;
+  wins: string[];
+  nextStep: string;
+}
+
+const WEEKLY_FORMAT = {
+  type: 'json_schema' as const,
+  schema: {
+    type: 'object',
+    properties: {
+      title: { type: 'string', description: 'Up to 10 Hebrew words that sum up the week, in an abundance tone.' },
+      came_in: { type: 'string', description: 'One Hebrew sentence on what came in this week and from where.' },
+      wins: { type: 'array', items: { type: 'string' }, description: '1-3 short Hebrew lines: real things that went well, grounded in the numbers.' },
+      next_step: { type: 'string', description: 'One small concrete step for the coming week, in Hebrew.' },
+    },
+    required: ['title', 'came_in', 'wins', 'next_step'],
     additionalProperties: false,
   },
 };
@@ -168,7 +193,7 @@ export class Coach {
   }
 
   removeKey(): void {
-    this.db.prepare("DELETE FROM meta WHERE key IN ('anthropic_key', 'coach_focus')").run();
+    this.db.prepare("DELETE FROM meta WHERE key IN ('anthropic_key', 'coach_focus', 'coach_weekly')").run();
   }
 
   state() {
@@ -259,6 +284,10 @@ export class Coach {
       const worth = { high: 'שווה מאוד', medium: 'שווה', low: 'פחות שווה' };
       for (const o of opps) lines.push(`- ${o.title}: עד ${ils(o.saveYearly)} בשנה / ${o.effort} / ${worth[o.worth]}`);
     }
+    const maaser = maaserView(db, today);
+    lines.push(`מעשר לפי ההגדרה שלו (${maaser.pct}% ${maaser.base === 'net' ? 'מהרווח' : 'מכל ההכנסה'}): השנה ${ils(maaser.owed)}, ניתן ${ils(maaser.given)}, ${maaser.balance >= 0 ? `נשאר לתת ${ils(maaser.balance)}` : `ניתן מראש ${ils(-maaser.balance)}`}`);
+    const cushion = cushionView(db, today);
+    if (cushion.target > 0) lines.push(`כרית לחודש חלש: יעד ${ils(cushion.target)} (${cushion.months} חודשים חלשים), יש ${ils(cushion.saved)}`);
     const reviews = db.prepare("SELECT COUNT(*) AS n FROM transactions WHERE review_status = 'open'").get() as { n: number };
     if (reviews.n) lines.push(`חיובים שמחכים לבירור: ${reviews.n}`);
     return lines.join('\n');
@@ -383,6 +412,29 @@ export class Coach {
     const p = JSON.parse(text) as { is_invoice: boolean; vendor: string | null; date: string | null; total: number | null; vat: number | null; number: string | null };
     const date = p.date && /^\d{4}-\d{2}-\d{2}$/.test(p.date) ? p.date : null;
     return { isInvoice: !!p.is_invoice, vendor: p.vendor?.slice(0, 120) ?? null, date, total: p.total, vat: p.vat, number: p.number?.slice(0, 40) ?? null };
+  }
+
+  // Five minutes after Shabbat: what came in, what went well, one step for the week.
+  async weekly(today: string, refresh: boolean): Promise<WeeklyReview | null> {
+    if (!this.enabled()) return null;
+    const numbers = weekNumbers(this.db, today);
+    const raw = getMeta(this.db, 'coach_weekly');
+    const saved = raw ? this.vault.open<WeeklyReview>(raw) : null;
+    if (saved && saved.key === numbers.key && !refresh) return saved;
+    const ask = [
+      `הכן את הסקירה השבועית שלו לשבוע ${numbers.from} עד ${numbers.to} (נגמר בשבת). זה רגע של 5 דקות במוצאי שבת: להסתכל אחורה בהכרת הטוב ולבחור צעד אחד לשבוע הבא.`,
+      `מספרי השבוע: נכנס ${ils(numbers.income)} (משכורת ${ils(numbers.salary)}, עסק ${ils(numbers.business)}), יצא ${ils(numbers.expenses)}${numbers.vsUsual !== null ? `, ${Math.round(numbers.vsUsual * 100)}% לעומת שבוע רגיל` : ''}.`,
+      numbers.topCategories.length ? `הקטגוריות הגדולות: ${numbers.topCategories.map((c) => `${c.name} ${ils(c.total)}`).join(', ')}.` : '',
+      numbers.biggest ? `ההוצאה הגדולה: ${numbers.biggest.description} ${ils(numbers.biggest.amount)}.` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+    const res = await this.create({ system: this.system(today), messages: [{ role: 'user', content: ask }], output_config: { effort: 'low', format: WEEKLY_FORMAT } });
+    const text = res.content.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text').map((b) => b.text).join('');
+    const p = JSON.parse(text) as { title: string; came_in: string; wins: string[]; next_step: string };
+    const review: WeeklyReview = { key: numbers.key, numbers, title: p.title, cameIn: p.came_in, wins: (p.wins ?? []).slice(0, 3), nextStep: p.next_step };
+    setMeta(this.db, 'coach_weekly', this.vault.seal(review));
+    return review;
   }
 
   // What the home screen shows today: one thing worth noticing and one small step.

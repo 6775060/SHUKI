@@ -3212,3 +3212,69 @@ textarea {
 .pos {
   color: var(--pos);
 }
+
+/* ---------- weekly review & household habits ---------- */
+
+.weekly {
+  border-inline-start: 4px solid var(--pos);
+}
+
+.weekly h3 {
+  margin: 4px 0 8px;
+}
+
+.weekly-nums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-bottom: 8px;
+}
+
+.weekly-wins {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+  color: var(--pos);
+  line-height: 1.7;
+}
+
+.habits {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.habit p {
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.meter-line {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.meter-line > div {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 5px;
+}
+
+.habit-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.habit-edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

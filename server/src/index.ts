@@ -14,6 +14,8 @@ import { remoteHost } from './remote.js';
 import { applyNewIncomeRules } from './profile.js';
 import { Coach } from './coach.js';
 import { Receipts } from './receipts.js';
+import { Push, isShabbatQuiet } from './push.js';
+import { weekNumbers } from './household.js';
 
 const dataDir = ensureDataDir();
 const db = openDb(dataDir);
@@ -22,6 +24,7 @@ const categorizer = new Categorizer(db);
 const sync = new SyncService(db, vault, categorizer);
 const coach = new Coach(db, vault);
 const receipts = new Receipts(db, vault, coach, dataDir);
+const push = new Push(db, vault);
 applyNewIncomeRules(db, categorizer);
 
 // After a restart the vault is locked, so the daily sync waits for the first
@@ -35,7 +38,23 @@ function catchUp(): void {
 
 // A bank that failed for a passing reason is tried again later, without asking for anything.
 cron.schedule('17 * * * *', () => {
-  if (vault.isUnlocked()) sync.retryFailed();
+  if (!vault.isUnlocked()) return;
+  sync.retryFailed();
+  push.check().catch((e) => console.error('push check failed', e));
+});
+
+// Motzei Shabbat: the week in review, prepared and sent to the phone.
+cron.schedule('5 21 * * 6', async () => {
+  if (!vault.isUnlocked() || isShabbatQuiet(new Date())) return;
+  const today = new Date().toLocaleDateString('sv-SE');
+  try {
+    const review = await coach.weekly(today, false).catch(() => null);
+    if (!push.prefs().weekly) return;
+    const n = weekNumbers(db, today);
+    await push.notify('🌿 הסקירה השבועית מוכנה', review ? review.title : `השבוע נכנסו ₪${n.income.toLocaleString('he-IL')} ויצאו ₪${n.expenses.toLocaleString('he-IL')}.`, '/', 'weekly');
+  } catch (e) {
+    console.error('weekly review failed', e);
+  }
 });
 
 cron.schedule(config.syncCron, () => {
@@ -81,7 +100,7 @@ app.get('/fonts/:file', (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
   res.sendFile(full);
 });
-app.use('/api', createApi({ db, vault, categorizer, sync, onUnlock: catchUp, coach, receipts }));
+app.use('/api', createApi({ db, vault, categorizer, sync, onUnlock: catchUp, coach, receipts, push }));
 
 if (fs.existsSync(config.webDist)) {
   app.use(express.static(config.webDist));

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { DataCheck, InsightsData, Opportunity } from '../api';
 import { money, monthLabel } from '../format';
 import type { Nav, Page } from '../App';
+import { CushionCard, MaaserCard, WeeklyCard, weeklyTime } from './Habits';
 
 // The quiet home screen: can I trust the numbers, how is the month going,
 // the few things that matter now, and the expenses worth a conversation.
@@ -18,10 +19,13 @@ export function SimpleDashboard({ d, nav, onMore }: { d: InsightsData; nav: Nav;
   const scale = Math.max(cur.income, cur.expenses, avgIn ?? 0, avgOut ?? 0, 1);
   const top = d.insights.filter((i) => i.tone !== 'neutral' || d.insights.length <= 3).slice(0, 3);
   const opps = d.savings.opportunities.slice(0, 3);
+  const [maaser, setMaaser] = useState(d.maaser);
+  const [cushion, setCushion] = useState(d.cushion);
 
   return (
     <div className="stack simple">
       <TrustStrip check={d.check} nav={nav} />
+      {d.isCurrent && weeklyTime() && <WeeklyCard nav={nav} />}
 
       <section className="card simple-month">
         <div className="eyebrow">{d.isCurrent ? `${monthLabel(d.month)}, עד היום` : monthLabel(d.month)}</div>
@@ -88,6 +92,12 @@ export function SimpleDashboard({ d, nav, onMore }: { d: InsightsData; nav: Nav;
           </button>
         </section>
       )}
+
+      <section className="card habits">
+        <h3>הבסיס של הבית</h3>
+        <MaaserCard m={maaser} onChange={setMaaser} />
+        <CushionCard c={cushion} onChange={setCushion} />
+      </section>
 
       {opps.length > 0 && (
         <section className="card">

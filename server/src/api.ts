@@ -42,6 +42,8 @@ import { incomeMix, incomeProfile, saveIncomeProfile } from './profile.js';
 import { dataCheck } from './datacheck.js';
 import { savingOpportunities } from './opportunities.js';
 import { Receipts } from './receipts.js';
+import { Push } from './push.js';
+import { cushionView, maaserView, saveMaaserSettings, weekNumbers } from './household.js';
 import { remoteHost } from './remote.js';
 import { Coach, CoachError } from './coach.js';
 
@@ -53,11 +55,12 @@ interface Deps {
   onUnlock: () => void;
   coach?: Coach;
   receipts?: Receipts;
+  push?: Push;
 }
 
 const scope = z.enum(['private', 'business']);
 
-export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new Coach(db, vault), receipts = new Receipts(db, vault, coach, config.dataDir) }: Deps): express.Router {
+export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new Coach(db, vault), receipts = new Receipts(db, vault, coach, config.dataDir), push = new Push(db, vault) }: Deps): express.Router {
   const api = express.Router();
   api.use(express.json({ limit: '1mb' }));
 
@@ -821,6 +824,8 @@ export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new 
       insights: buildInsights({ month, isCurrent, trend, categories, recurring, pace, forecast: fc, business, merchants, uncategorized, completeEnd, funds, profile, incomeMix: mix }),
       profile,
       incomeMix: mix,
+      maaser: maaserView(db, today),
+      cushion: cushionView(db, today),
       check: dataCheck(db, today),
       savings: savingOpportunities(db, today),
       cycle: isCurrent ? cycleView(db, today, recurring, funds) : null,
@@ -1061,6 +1066,52 @@ export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new 
   api.delete('/coach/history', (_req, res) => {
     db.exec('DELETE FROM coach_messages');
     res.json(coach.state());
+  });
+
+  // ---- weekly review, maaser, cushion ----
+  api.get('/weekly', async (req, res) => {
+    const today = new Date().toLocaleDateString('sv-SE');
+    const numbers = weekNumbers(db, today);
+    try {
+      res.json({ numbers, review: await coach.weekly(today, req.query.refresh === '1') });
+    } catch (err) {
+      if (err instanceof CoachError) {
+        res.json({ numbers, review: null, error: err.code });
+        return;
+      }
+      throw err;
+    }
+  });
+  api.put('/maaser', (req, res) => {
+    const b = z.object({ pct: z.union([z.literal(10), z.literal(20)]), base: z.enum(['all', 'net']), carry: z.number().min(-10_000_000).max(10_000_000) }).parse(req.body);
+    saveMaaserSettings(db, b);
+    res.json(maaserView(db, new Date().toLocaleDateString('sv-SE')));
+  });
+  api.put('/cushion', (req, res) => {
+    const b = z.object({ months: z.number().int().min(1).max(12).optional(), saved: z.number().min(0).max(100_000_000).nullable().optional() }).parse(req.body);
+    if (b.months !== undefined) setMeta(db, 'cushion_months', String(b.months));
+    if (b.saved === null) db.prepare("DELETE FROM meta WHERE key = 'cushion_saved'").run();
+    else if (b.saved !== undefined) setMeta(db, 'cushion_saved', String(b.saved));
+    res.json(cushionView(db, new Date().toLocaleDateString('sv-SE')));
+  });
+
+  // ---- phone notifications ----
+  api.get('/push', (_req, res) => res.json({ ...push.state(), publicKey: push.publicKey() }));
+  api.post('/push/subscribe', (req, res) => {
+    const b = z.object({ endpoint: z.string().url().max(1000), expirationTime: z.number().nullable().optional(), keys: z.object({ p256dh: z.string().max(200), auth: z.string().max(100) }) }).parse(req.body);
+    push.subscribe({ endpoint: b.endpoint, expirationTime: b.expirationTime ?? null, keys: b.keys });
+    res.json(push.state());
+  });
+  api.post('/push/unsubscribe', (req, res) => {
+    push.unsubscribe(z.object({ endpoint: z.string() }).parse(req.body).endpoint);
+    res.json(push.state());
+  });
+  api.put('/push/prefs', (req, res) => {
+    push.setPrefs(z.object({ sync: z.boolean(), unusual: z.boolean(), weekly: z.boolean() }).parse(req.body));
+    res.json(push.state());
+  });
+  api.post('/push/test', async (_req, res) => {
+    res.json({ sent: await push.notify('🌱 שפע ובהירות', 'ההתראות פועלות. כך יגיעו התראות על סנכרון שנכשל, חיוב חריג והסקירה השבועית.', '/', 'test') });
   });
 
   // ---- invoices and receipts ----

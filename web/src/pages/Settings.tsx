@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, ApiError, downloadBackup, restoreBackup, restoreErrorText, setToken } from '../api';
 import { applyFont, type FontSetting } from '../font';
 import { IncomeProfileCard, SecurityCard } from './SettingsHousehold';
+import { NotificationsCard } from './Habits';
 
 export function Settings() {
   const [font, setFont] = useState<FontSetting | null>(null);
@@ -53,6 +54,8 @@ export function Settings() {
       <IncomeProfileCard />
 
       <SecurityCard />
+
+      <NotificationsCard />
 
       <PhoneAccess />
 
