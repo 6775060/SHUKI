@@ -2920,3 +2920,24 @@ textarea {
   padding: 8px 12px;
   margin-bottom: 10px;
 }
+
+.employer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.employer-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.employer-list li {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}

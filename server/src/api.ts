@@ -941,11 +941,35 @@ export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new 
   });
 
   // ---- household income profile ----
-  api.get('/profile', (_req, res) => res.json(incomeProfile(db)));
+  // The employer's name as the bank writes it, for a salary that doesn't say "משכורת".
+  const employers = () =>
+    db
+      .prepare("SELECT r.id, r.pattern AS name FROM rules r JOIN categories c ON c.id = r.category_id WHERE c.slug = 'income_salary' AND r.is_default = 0 AND r.match = 'contains' ORDER BY r.id")
+      .all() as { id: number; name: string }[];
+  const profileView = () => ({ ...incomeProfile(db), employers: employers() });
+  api.get('/profile', (_req, res) => res.json(profileView()));
+  api.post('/profile/employer', (req, res) => {
+    const b = z.object({ name: z.string().trim().min(2).max(60) }).parse(req.body);
+    if (!employers().some((e) => e.name === b.name)) {
+      db.prepare('INSERT INTO rules (pattern, category_id, scope) VALUES (?, ?, NULL)').run(b.name, categorizer.categoryIdBySlug('income_salary'));
+      categorizer.reload();
+    }
+    const changed = recategorize();
+    res.json({ ...profileView(), changed });
+  });
+  api.delete('/profile/employer/:id', (req, res) => {
+    const id = Number(req.params.id);
+    if (employers().some((e) => e.id === id)) {
+      db.prepare('DELETE FROM rules WHERE id = ?').run(id);
+      categorizer.reload();
+      recategorize();
+    }
+    res.json(profileView());
+  });
   api.put('/profile', (req, res) => {
     const b = z.object({ business: z.enum(['clearing', 'clients', 'none']), salary: z.boolean() }).nullable().parse(req.body?.profile ?? null);
     saveIncomeProfile(db, b);
-    res.json(incomeProfile(db));
+    res.json(profileView());
   });
 
   // ---- security ----

@@ -5,10 +5,18 @@ import { api, ApiError, coachErrorText, type IncomeProfile, type SecurityState }
 export function IncomeProfileCard() {
   const [p, setP] = useState<IncomeProfile | null>(null);
   const [saved, setSaved] = useState(false);
+  const [employer, setEmployer] = useState('');
+  const [moved, setMoved] = useState<number | null>(null);
   useEffect(() => {
     api<IncomeProfile>('/profile').then(setP);
   }, []);
   if (!p) return null;
+  const addEmployer = async () => {
+    const r = await api<IncomeProfile & { changed: number }>('/profile/employer', { method: 'POST', json: { name: employer.trim() } });
+    setP(r);
+    setMoved(r.changed);
+    setEmployer('');
+  };
   const save = async (next: IncomeProfile | null) => {
     setP(await api<IncomeProfile>('/profile', { method: 'PUT', json: { profile: next && { business: next.business, salary: next.salary } } }));
     setSaved(true);
@@ -42,6 +50,37 @@ export function IncomeProfileCard() {
           <span className="muted small"> · המערכת מזהה אותה בבנק (משכורת / שכר) ומציגה אותה כבסיס היציב של הבית.</span>
         </span>
       </label>
+      {p.salary && (
+        <div className="employer">
+          <b>המשכורת נכנסת בשם של המעסיק?</b>
+          <span className="muted small"> כתוב את השם כמו שהוא מופיע בדף הבנק, וכל זיכוי ממנו ייחשב משכורת.</span>
+          {p.employers.length > 0 && (
+            <ul className="employer-list">
+              {p.employers.map((e) => (
+                <li key={e.id}>
+                  {e.name}
+                  <button className="link small" onClick={async () => setP(await api<IncomeProfile>(`/profile/employer/${e.id}`, { method: 'DELETE' }))}>
+                    הסרה
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form
+            className="row wrap"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (employer.trim().length >= 2) addEmployer();
+            }}
+          >
+            <input value={employer} onChange={(e) => setEmployer(e.target.value)} placeholder="למשל: שם החברה" maxLength={60} aria-label="שם המעסיק" />
+            <button className="ghost small" disabled={employer.trim().length < 2}>
+              הוספה
+            </button>
+          </form>
+          {moved !== null && <span className="success small">{moved ? `${moved} תנועות עודכנו למשכורת.` : 'נשמר. תנועות חדשות ממנו ייחשבו משכורת.'}</span>}
+        </div>
+      )}
       <div className="row wrap">
         {!p.auto && (
           <button className="link small" onClick={() => save(null)}>

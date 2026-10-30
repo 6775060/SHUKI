@@ -436,6 +436,7 @@ export interface IncomeProfile {
   business: 'clearing' | 'clients' | 'none';
   salary: boolean;
   auto: boolean;
+  employers: { id: number; name: string }[];
 }
 
 export interface IncomeMix {

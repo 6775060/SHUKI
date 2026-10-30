@@ -258,6 +258,20 @@ describe('security', () => {
     expect((await s.call('GET', '/categories', { token: phone, host: 'my-pc.tail1234.ts.net' })).status).toBe(401);
   });
 
+  it('counts a salary by the employer name the bank writes', async () => {
+    const s = await start();
+    const token = (await s.call('POST', '/setup', { body: { password: 'master pass 1' } })).body.token as string;
+    ingestTransactions(s.db, s.categorizer, s.priv, [{ date: '2026-09-10', description: 'מפעלי הדוגמה בע"מ', amount: 8200 }], 'import');
+    expect(slugOf(s.db, 'מפעלי הדוגמה בע"מ')).toBe('income_other');
+    const r = await s.call('POST', '/profile/employer', { token, body: { name: 'מפעלי הדוגמה' } });
+    expect(r.body.changed).toBe(1);
+    expect(r.body.employers).toEqual([{ id: expect.any(Number), name: 'מפעלי הדוגמה' }]);
+    expect(slugOf(s.db, 'מפעלי הדוגמה בע"מ')).toBe('income_salary');
+    const id = (r.body.employers as { id: number }[])[0].id;
+    expect(((await s.call('DELETE', `/profile/employer/${id}`, { token })).body.employers as unknown[]).length).toBe(0);
+    expect(slugOf(s.db, 'מפעלי הדוגמה בע"מ')).toBe('income_other');
+  });
+
   it('locks a session left idle and pauses after many wrong passwords', async () => {
     const s = await start();
     const token = (await s.call('POST', '/setup', { body: { password: 'master pass 1' } })).body.token as string;
