@@ -236,6 +236,30 @@ const MIGRATIONS: string[] = [
     FROM categories c, json_each('["סאמיט","סמיט","SUMIT","SUMMIT","אופיס גיא","אופיסגיא","OFFICEGUY","OFFICE GUY"]') p
     WHERE c.slug = 'income_clearing';
   `,
+  `
+  -- Invoices and receipts from Gmail, a Drive folder or an upload, matched to transactions.
+  CREATE TABLE receipts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT NOT NULL CHECK (source IN ('gmail', 'drive', 'upload')),
+    external_id TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    file_hash TEXT NOT NULL,
+    mime TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'read', 'not_invoice', 'failed')),
+    attempts INTEGER NOT NULL DEFAULT 0,
+    error TEXT,
+    vendor TEXT,
+    doc_date TEXT,
+    amount REAL,
+    vat REAL,
+    doc_number TEXT,
+    txn_id INTEGER REFERENCES transactions(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (source, external_id)
+  );
+  CREATE INDEX receipts_txn ON receipts (txn_id);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

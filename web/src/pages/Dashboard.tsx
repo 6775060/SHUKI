@@ -7,14 +7,16 @@ import { CalmButton } from './Calm';
 import type { Nav } from '../App';
 import { VisualDashboard } from './DashboardVisual';
 import { CoachFocusCard } from './Coach';
+import { SimpleDashboard } from './DashboardSimple';
 
-type View = 'visual' | 'detail';
+type View = 'simple' | 'visual' | 'detail';
 
 function savedView(): View {
   try {
-    return localStorage.getItem('shefa-view') === 'detail' ? 'detail' : 'visual';
+    const v = localStorage.getItem('shefa-view2');
+    return v === 'detail' || v === 'visual' ? v : 'simple';
   } catch {
-    return 'visual';
+    return 'simple';
   }
 }
 
@@ -33,7 +35,7 @@ export function Dashboard({ nav }: { nav: Nav }) {
   const setView = (v: View) => {
     setViewState(v);
     try {
-      localStorage.setItem('shefa-view', v);
+      localStorage.setItem('shefa-view2', v);
     } catch {
       /* private mode */
     }
@@ -41,7 +43,7 @@ export function Dashboard({ nav }: { nav: Nav }) {
   };
 
   useEffect(() => {
-    if (nav.params.view === 'detail' || nav.params.view === 'visual') setViewState(nav.params.view);
+    if (nav.params.view === 'detail' || nav.params.view === 'visual' || nav.params.view === 'simple') setViewState(nav.params.view);
   }, [nav.params.view]);
 
   useEffect(() => {
@@ -93,6 +95,9 @@ export function Dashboard({ nav }: { nav: Nav }) {
         ))}
       </select>
       <div className="seg-toggle" role="group" aria-label="סוג תצוגה">
+        <button className={view === 'simple' ? 'on' : ''} aria-pressed={view === 'simple'} onClick={() => setView('simple')}>
+          ◎ פשוט
+        </button>
         <button className={view === 'visual' ? 'on' : ''} aria-pressed={view === 'visual'} onClick={() => setView('visual')}>
           ◔ ויזואלי
         </button>
@@ -114,6 +119,16 @@ export function Dashboard({ nav }: { nav: Nav }) {
       <CalmButton cycle={cy} />
     </div>
   );
+
+  if (view === 'simple') {
+    return (
+      <div className={`stack dash ${loading ? 'refetch' : ''}`}>
+        {filters}
+        <CoachFocusCard nav={nav} />
+        <SimpleDashboard d={data} nav={nav} onMore={setView} />
+      </div>
+    );
+  }
 
   if (view === 'visual') {
     return (

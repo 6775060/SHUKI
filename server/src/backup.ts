@@ -10,6 +10,7 @@ import { SCHEMA_VERSION, openDb, transaction, type DB } from './db.js';
 // the password the file is unreadable, so it is safe on a USB stick.
 
 const MAGIC = Buffer.from('SHEFA-BACKUP-1\n');
+const RECEIPT_FILE = /^[0-9a-f]{24}\.(pdf|jpg|jpeg|png|webp)$/;
 const SCRYPT = { N: 2 ** 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 
 export class BackupError extends Error {
@@ -51,6 +52,10 @@ export function createBackup(db: DB, dataDir: string, password: string): Buffer 
   const fontDir = path.join(dataDir, 'fonts');
   if (fs.existsSync(fontDir)) {
     for (const f of fs.readdirSync(fontDir)) files[`fonts/${f}`] = fs.readFileSync(path.join(fontDir, f)).toString('base64');
+  }
+  const receiptDir = path.join(dataDir, 'receipts');
+  if (fs.existsSync(receiptDir)) {
+    for (const f of fs.readdirSync(receiptDir)) if (RECEIPT_FILE.test(f)) files[`receipts/${f}`] = fs.readFileSync(path.join(receiptDir, f)).toString('base64');
   }
   const payload: Payload = { version: 1, createdAt: new Date().toISOString(), db: dbBytes.toString('base64'), files };
   const plain = zlib.gzipSync(JSON.stringify(payload));
@@ -149,6 +154,11 @@ export function restoreBackup(db: DB, dataDir: string, file: Buffer, password: s
     if (fs.existsSync(fontDir)) for (const f of fs.readdirSync(fontDir)) fs.rmSync(path.join(fontDir, f));
     for (const [rel, b64] of Object.entries(payload.files ?? {})) {
       const name = path.basename(rel);
+      if (rel === `receipts/${name}` && RECEIPT_FILE.test(name)) {
+        fs.mkdirSync(path.join(dataDir, 'receipts'), { recursive: true });
+        fs.writeFileSync(path.join(dataDir, 'receipts', name), Buffer.from(b64, 'base64'));
+        continue;
+      }
       if (!rel.startsWith('fonts/') || !/^custom-\d+\.(woff2|woff|ttf|otf)$/.test(name)) continue;
       fs.mkdirSync(fontDir, { recursive: true });
       fs.writeFileSync(path.join(fontDir, name), Buffer.from(b64, 'base64'));

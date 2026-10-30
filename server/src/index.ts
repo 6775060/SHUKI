@@ -12,12 +12,16 @@ import { getMeta } from './db.js';
 import { syncSumit } from './business.js';
 import { remoteHost } from './remote.js';
 import { applyNewIncomeRules } from './profile.js';
+import { Coach } from './coach.js';
+import { Receipts } from './receipts.js';
 
 const dataDir = ensureDataDir();
 const db = openDb(dataDir);
 const vault = new Vault(db);
 const categorizer = new Categorizer(db);
 const sync = new SyncService(db, vault, categorizer);
+const coach = new Coach(db, vault);
+const receipts = new Receipts(db, vault, coach, dataDir);
 applyNewIncomeRules(db, categorizer);
 
 // After a restart the vault is locked, so the daily sync waits for the first
@@ -37,6 +41,7 @@ cron.schedule('17 * * * *', () => {
 cron.schedule(config.syncCron, () => {
   if (!vault.isUnlocked()) return;
   sync.enqueueAll();
+  receipts.scanAll().catch((e) => console.error('receipts scan failed', e));
   if (getMeta(db, 'sumit_creds')) syncSumit(db, vault, new Date().toLocaleDateString('sv-SE')).catch((e) => console.error('SUMIT sync failed', e));
 });
 
@@ -76,7 +81,7 @@ app.get('/fonts/:file', (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
   res.sendFile(full);
 });
-app.use('/api', createApi({ db, vault, categorizer, sync, onUnlock: catchUp }));
+app.use('/api', createApi({ db, vault, categorizer, sync, onUnlock: catchUp, coach, receipts }));
 
 if (fs.existsSync(config.webDist)) {
   app.use(express.static(config.webDist));

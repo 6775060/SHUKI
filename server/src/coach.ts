@@ -4,6 +4,7 @@ import type { Vault } from './vault.js';
 import { addMonths, bankBalance, categoryComparison, detectRecurring, forecast, listFunds, monthlyTrend, spendingPace, topMerchants } from './insights.js';
 import { incomeMix, incomeProfile } from './profile.js';
 import { savingsView } from './savings.js';
+import { savingOpportunities } from './opportunities.js';
 
 // The money coach ("מאמן שפע"): a Claude-powered companion that knows the
 // household's real numbers, remembers what it learns about the user over time,
@@ -27,6 +28,32 @@ export class CoachError extends Error {
     super(code);
   }
 }
+
+export interface ReadDocument {
+  isInvoice: boolean;
+  vendor: string | null;
+  date: string | null;
+  total: number | null;
+  vat: number | null;
+  number: string | null;
+}
+
+const DOC_FORMAT = {
+  type: 'json_schema' as const,
+  schema: {
+    type: 'object',
+    properties: {
+      is_invoice: { type: 'boolean', description: 'True for an invoice, tax invoice, receipt or invoice-receipt for something paid. False for anything else (ads, statements, quotes, tickets with no amount).' },
+      vendor: { type: ['string', 'null'], description: 'The business that issued it, as written.' },
+      date: { type: ['string', 'null'], description: 'Document date, YYYY-MM-DD.' },
+      total: { type: ['number', 'null'], description: 'Total paid including VAT, in ILS.' },
+      vat: { type: ['number', 'null'], description: 'VAT amount (מע"מ) if shown.' },
+      number: { type: ['string', 'null'], description: 'Document number if shown.' },
+    },
+    required: ['is_invoice', 'vendor', 'date', 'total', 'vat', 'number'],
+    additionalProperties: false,
+  },
+};
 
 export interface Focus {
   date: string;
@@ -226,6 +253,12 @@ export class Coach {
     } catch {
       /* savings are optional */
     }
+    const opps = savingOpportunities(db, today).opportunities.slice(0, 6);
+    if (opps.length) {
+      lines.push('', 'הוצאות שאפשר לדון עליהן (הערכת חיסכון שנתי / מאמץ / האם שווה):');
+      const worth = { high: 'שווה מאוד', medium: 'שווה', low: 'פחות שווה' };
+      for (const o of opps) lines.push(`- ${o.title}: עד ${ils(o.saveYearly)} בשנה / ${o.effort} / ${worth[o.worth]}`);
+    }
     const reviews = db.prepare("SELECT COUNT(*) AS n FROM transactions WHERE review_status = 'open'").get() as { n: number };
     if (reviews.n) lines.push(`חיובים שמחכים לבירור: ${reviews.n}`);
     return lines.join('\n');
@@ -332,6 +365,24 @@ export class Coach {
       return { text: rows.map((r) => `${r.date} | ${r.description} | ${Math.round(r.amount)} | ${r.category}${r.scope === 'business' ? ' | עסק' : ''}`).join('\n') };
     }
     return { text: `Unknown tool ${name}`, error: true };
+  }
+
+  // Reads one invoice or receipt (PDF or photo) into a few fields.
+  async readDocument(data: Buffer, mime: string, fileName: string): Promise<ReadDocument> {
+    const b64 = data.toString('base64');
+    const file: Anthropic.Beta.BetaContentBlockParam =
+      mime === 'application/pdf'
+        ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
+        : { type: 'image', source: { type: 'base64', media_type: mime as 'image/jpeg' | 'image/png' | 'image/webp', data: b64 } };
+    const res = await this.create({
+      system: 'You read Israeli invoices and receipts and return their fields exactly as printed. Never guess a number that is not on the document; use null.',
+      messages: [{ role: 'user', content: [file, { type: 'text', text: `שם הקובץ: ${fileName}` }] }],
+      output_config: { effort: 'low', format: DOC_FORMAT },
+    });
+    const text = res.content.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text').map((b) => b.text).join('');
+    const p = JSON.parse(text) as { is_invoice: boolean; vendor: string | null; date: string | null; total: number | null; vat: number | null; number: string | null };
+    const date = p.date && /^\d{4}-\d{2}-\d{2}$/.test(p.date) ? p.date : null;
+    return { isInvoice: !!p.is_invoice, vendor: p.vendor?.slice(0, 120) ?? null, date, total: p.total, vat: p.vat, number: p.number?.slice(0, 40) ?? null };
   }
 
   // What the home screen shows today: one thing worth noticing and one small step.

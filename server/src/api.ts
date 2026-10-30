@@ -41,6 +41,7 @@ import { BackupError, createBackup, restoreBackup } from './backup.js';
 import { incomeMix, incomeProfile, saveIncomeProfile } from './profile.js';
 import { dataCheck } from './datacheck.js';
 import { savingOpportunities } from './opportunities.js';
+import { Receipts } from './receipts.js';
 import { remoteHost } from './remote.js';
 import { Coach, CoachError } from './coach.js';
 
@@ -51,11 +52,12 @@ interface Deps {
   sync: SyncService;
   onUnlock: () => void;
   coach?: Coach;
+  receipts?: Receipts;
 }
 
 const scope = z.enum(['private', 'business']);
 
-export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new Coach(db, vault) }: Deps): express.Router {
+export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new Coach(db, vault), receipts = new Receipts(db, vault, coach, config.dataDir) }: Deps): express.Router {
   const api = express.Router();
   api.use(express.json({ limit: '1mb' }));
 
@@ -1059,6 +1061,70 @@ export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new 
   api.delete('/coach/history', (_req, res) => {
     db.exec('DELETE FROM coach_messages');
     res.json(coach.state());
+  });
+
+  // ---- invoices and receipts ----
+  const receiptsView = () => {
+    const missing = (db.prepare(
+      `SELECT COUNT(*) AS n FROM transactions t JOIN categories c ON c.id = t.category_id
+       WHERE t.scope = 'business' AND t.amount < -50 AND c.kind = 'expense' AND t.date >= date('now', '-60 days')
+         AND c.slug NOT IN ('vat', 'income_tax', 'bituach_leumi', 'biz_fees', 'pension', 'loans', 'interest')
+         AND NOT EXISTS (SELECT 1 FROM receipts r WHERE r.txn_id = t.id)`,
+    ).get() as { n: number }).n;
+    return { ...receipts.settings(), items: receipts.list(), businessWithoutInvoice: missing };
+  };
+  api.get('/receipts', (_req, res) => res.json(receiptsView()));
+  api.put('/receipts/gmail', computerOnly, async (req, res) => {
+    const b = z.object({ email: z.string().email(), appPassword: z.string().min(12).max(40) }).parse(req.body);
+    try {
+      await receipts.setGmail(b.email, b.appPassword);
+      res.json(receiptsView());
+    } catch {
+      res.status(400).json({ error: 'GMAIL_LOGIN' });
+    }
+  });
+  api.delete('/receipts/gmail', computerOnly, (_req, res) => {
+    receipts.removeGmail();
+    res.json(receiptsView());
+  });
+  api.put('/receipts/folder', computerOnly, (req, res) => {
+    const b = z.object({ folder: z.string().trim().max(400).nullable() }).parse(req.body);
+    try {
+      receipts.setFolder(b.folder || null);
+      res.json(receiptsView());
+    } catch {
+      res.status(400).json({ error: 'FOLDER_NOT_FOUND' });
+    }
+  });
+  api.post('/receipts/scan', async (_req, res) => {
+    const r = await receipts.scanAll();
+    res.json({ ...receiptsView(), ...r });
+  });
+  // A photo or PDF straight from the phone or the computer.
+  api.post('/receipts/upload', express.raw({ type: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'], limit: '15mb' }), async (req, res) => {
+    const name = z.string().max(200).parse(req.query.filename ?? 'קבלה');
+    const mime = String(req.header('content-type')).split(';')[0];
+    const id = Buffer.isBuffer(req.body) ? receipts.add('upload', crypto.randomUUID(), name, req.body, mime) : null;
+    if (id) await receipts.readPending();
+    res.json({ ...receiptsView(), added: id ? 1 : 0 });
+  });
+  api.get('/receipts/:id/file', (req, res) => {
+    const f = receipts.file(Number(req.params.id));
+    if (!f) {
+      res.status(404).end();
+      return;
+    }
+    res.setHeader('Content-Type', f.mime);
+    res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(f.name)}`);
+    res.sendFile(f.path);
+  });
+  api.delete('/receipts/:id', (req, res) => {
+    db.prepare('DELETE FROM receipts WHERE id = ?').run(Number(req.params.id));
+    res.json(receiptsView());
+  });
+  api.post('/receipts/:id/unmatch', (req, res) => {
+    db.prepare('UPDATE receipts SET txn_id = NULL WHERE id = ?').run(Number(req.params.id));
+    res.json(receiptsView());
   });
 
   // ---- business ----

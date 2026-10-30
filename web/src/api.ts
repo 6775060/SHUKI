@@ -214,6 +214,8 @@ export interface InsightsData {
   businessTips: Tip[];
   profile: IncomeProfile;
   incomeMix: IncomeMix[];
+  check: DataCheck;
+  savings: { opportunities: Opportunity[]; groups: ExpenseGroup[] };
   reviews: { n: number; total: number; oldest: string | null };
   syncAlerts: SyncAlert[];
 }
@@ -506,4 +508,75 @@ export async function apiText(path: string): Promise<string> {
   if (res.status === 401) onLocked();
   if (!res.ok) throw new ApiError(res.status, 'ERROR');
   return res.text();
+}
+
+// ---- accuracy check & expenses worth discussing ----
+
+export interface DataCheck {
+  ok: boolean;
+  checked: string[];
+  items: { key: string; level: 'critical' | 'warning'; title: string; action: string; page: string; params?: Record<string, string> }[];
+}
+
+export interface Opportunity {
+  key: string;
+  icon: string;
+  title: string;
+  why: string;
+  action: string;
+  monthly: number;
+  saveYearly: number;
+  effort: string;
+  effortHours: number;
+  worth: 'high' | 'medium' | 'low';
+}
+
+export interface ExpenseGroup {
+  key: string;
+  icon: string;
+  name: string;
+  monthly: number;
+  items: { name: string; monthly: number }[];
+  note: string;
+}
+
+// ---- invoices and receipts ----
+
+export interface ReceiptItem {
+  id: number;
+  source: 'gmail' | 'drive' | 'upload';
+  fileName: string;
+  status: 'new' | 'read' | 'not_invoice' | 'failed';
+  vendor: string | null;
+  docDate: string | null;
+  amount: number | null;
+  vat: number | null;
+  number: string | null;
+  error: string | null;
+  txnId: number | null;
+  txn: { date: string; description: string; amount: number } | null;
+  createdAt: string;
+}
+
+export interface ReceiptsState {
+  gmail: { email: string } | null;
+  gmailLastSync: string | null;
+  gmailError: string | null;
+  folder: string | null;
+  folderLastScan: string | null;
+  folderError: string | null;
+  canRead: boolean;
+  running: boolean;
+  items: ReceiptItem[];
+  businessWithoutInvoice: number;
+}
+
+// Fetches a stored file with the session and opens it in a new tab.
+export async function openReceiptFile(id: number): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`/api/receipts/${id}/file`, { headers: token ? { 'x-session': token } : {} });
+  if (!res.ok) throw new ApiError(res.status, 'ERROR');
+  const url = URL.createObjectURL(await res.blob());
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

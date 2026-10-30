@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, type Insight, type InsightsData } from '../api';
 import { currentMonth, date, money, monthLabel } from '../format';
 import type { Nav, Page } from '../App';
+import { OpportunityRow } from './DashboardSimple';
 
 const TONE_LABEL: Record<Insight['tone'], string> = { good: 'חיובי', neutral: 'לידיעה', attention: 'לתשומת לב' };
 
@@ -36,6 +37,9 @@ export function Insights({ nav }: { nav: Nav }) {
   useEffect(() => {
     api<InsightsData>(`/insights?month=${month}`).then(setData);
   }, [month]);
+  useEffect(() => {
+    if (data && nav.params.section === 'savings') document.getElementById('savings')?.scrollIntoView({ block: 'start' });
+  }, [data, nav.params.section]);
 
   if (!data) return <div className="muted">טוען…</div>;
 
@@ -63,6 +67,54 @@ export function Insights({ nav }: { nav: Nav }) {
 
       <h2 className="title">תובנות</h2>
       {data.insights.length ? <InsightCards insights={data.insights} nav={nav} /> : <div className="muted">עוד אין מספיק נתונים לתובנות. אחרי חודש-חודשיים של סנכרון הן יופיעו כאן.</div>}
+
+      <section className="card" id="savings">
+        <h3>הוצאות שאפשר לדון עליהן</h3>
+        <p className="sub">
+          לכל אחת: כמה בערך אפשר לחסוך בשנה, כמה מאמץ זה דורש, והאם זה שווה את האנרגיה (לפי החיסכון לכל שעת עבודה). לחיצה פותחת מה עושים.
+        </p>
+        {data.savings.opportunities.length === 0 ? (
+          <div className="muted">לא נמצאו כרגע הוצאות שבולט שכדאי להתמקח עליהן. 🌿</div>
+        ) : (
+          <>
+            <div className="opp-total">
+              ביחד, עד כ-<b>{money(data.savings.opportunities.filter((o) => o.worth !== 'low').reduce((s, o) => s + o.saveYearly, 0))} בשנה</b> רק מהפריטים ששווים את המאמץ.
+            </div>
+            <ul className="simple-list">
+              {data.savings.opportunities.map((o) => (
+                <OpportunityRow key={o.key} o={o} />
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+
+      {data.savings.groups.length > 0 && (
+        <section className="card">
+          <h3>הוצאות דומות, אחת ליד השנייה</h3>
+          <div className="groups">
+            {data.savings.groups.map((g) => (
+              <div key={g.key} className="group">
+                <div className="row between">
+                  <b>
+                    {g.icon} {g.name}
+                  </b>
+                  <b>{money(g.monthly)} בחודש</b>
+                </div>
+                <ul>
+                  {g.items.map((i) => (
+                    <li key={i.name} className="row between">
+                      <span>{i.name}</span>
+                      <span className="muted">{money(i.monthly)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="muted small">{g.note}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="card">
         <div className="row between">

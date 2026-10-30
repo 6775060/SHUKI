@@ -398,12 +398,13 @@ function findOpenInvoices(db: DB, today: string): BusinessData['docs']['openInvo
 // Business card/bank expenses with no expense invoice of the same amount
 // within a week (from Paperless). Only shown once expense documents exist.
 function findUninvoicedExpenses(db: DB, month: string): BusinessData['docs']['expensesWithoutInvoice'] {
-  const has = db.prepare("SELECT 1 FROM business_docs WHERE kind = 'expense' LIMIT 1").get();
+  const has = db.prepare("SELECT 1 FROM business_docs WHERE kind = 'expense' UNION ALL SELECT 1 FROM receipts WHERE status = 'read' LIMIT 1").get();
   if (!has) return [];
   const rows = db
     .prepare(
       `SELECT t.date, t.description, -t.amount AS amount FROM transactions t JOIN categories c ON c.id = t.category_id
        WHERE t.scope = 'business' AND t.amount < -50 AND c.kind = 'expense'
+         AND NOT EXISTS (SELECT 1 FROM receipts r WHERE r.txn_id = t.id)
          AND c.slug NOT IN ('vat', 'income_tax', 'bituach_leumi', 'biz_fees', 'pension', 'loans', 'interest')
          AND t.date >= ? AND t.date < ?`,
     )
@@ -555,7 +556,7 @@ function profitTips(d: BusinessData, last6: MonthPoint[]): Tip[] {
       key: 'invoices',
       icon: '🧾',
       title: 'לאסוף חשבוניות להוצאות העסקיות',
-      why: `${d.docs.expensesWithoutInvoice.length} הוצאות עסקיות (${ils(total)}) בלי חשבונית ב-Paperless. בלי חשבונית אין קיזוז מע"מ – כ-${ils((total * VAT) / (1 + VAT))}.`,
+      why: `${d.docs.expensesWithoutInvoice.length} הוצאות עסקיות (${ils(total)}) בלי חשבונית (מ-Paperless, מהמייל או מתיקיית ה-Drive). בלי חשבונית אין קיזוז מע"מ – כ-${ils((total * VAT) / (1 + VAT))}.`,
       action: 'לבקש מהספקים חשבונית ולהעלות ל-Paperless.',
       impact: round(((total * VAT) / (1 + VAT)) / 2),
       relevance: 'high',

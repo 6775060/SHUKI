@@ -13,9 +13,10 @@ import { Settings } from './pages/Settings';
 import { Reviews } from './pages/Reviews';
 import { Savings } from './pages/Savings';
 import { Coach } from './pages/Coach';
+import { Receipts } from './pages/Receipts';
 import { applyFont, type FontSetting } from './font';
 
-export type Page = 'dashboard' | 'coach' | 'insights' | 'funds' | 'savings' | 'business' | 'transactions' | 'reviews' | 'connections' | 'import' | 'rules' | 'settings';
+export type Page = 'dashboard' | 'coach' | 'insights' | 'funds' | 'savings' | 'business' | 'receipts' | 'transactions' | 'reviews' | 'connections' | 'import' | 'rules' | 'settings';
 
 const NAV: { id: Page; label: string }[] = [
   { id: 'dashboard', label: 'בהירות' },
@@ -24,6 +25,7 @@ const NAV: { id: Page; label: string }[] = [
   { id: 'funds', label: 'קופות' },
   { id: 'savings', label: 'חסכונות' },
   { id: 'business', label: 'עסק' },
+  { id: 'receipts', label: 'חשבוניות' },
   { id: 'transactions', label: 'תנועות' },
   { id: 'reviews', label: 'לבירור' },
   { id: 'connections', label: 'חיבורים' },
@@ -31,6 +33,9 @@ const NAV: { id: Page; label: string }[] = [
   { id: 'rules', label: 'קטגוריות' },
   { id: 'settings', label: 'הגדרות' },
 ];
+
+// The screens used every week; the rest wait under "עוד", so the bar stays calm.
+const MAIN_TABS: Page[] = ['dashboard', 'coach', 'insights', 'transactions', 'business', 'receipts', 'reviews'];
 
 // On a phone: the four screens used most, at the thumb; the rest under "עוד".
 const MOBILE_NAV: { id: Page; label: string; icon: string }[] = [
@@ -51,6 +56,7 @@ export function App() {
   const [params, setParams] = useState<Record<string, string>>({});
   const [syncAlerts, setSyncAlerts] = useState<SyncAlert[]>([]);
   const [more, setMore] = useState(false);
+  const [deskMore, setDeskMore] = useState(false);
 
   useEffect(() => {
     setOnLocked(() => setState('locked'));
@@ -79,6 +85,7 @@ export function App() {
     setPage(p);
     setParams(prm);
     setMore(false);
+    setDeskMore(false);
     window.scrollTo(0, 0);
   };
 
@@ -114,24 +121,39 @@ export function App() {
           שפע ובהירות
         </div>
         <nav className="tabs">
-          {NAV.map((n) => (
+          {NAV.filter((n) => MAIN_TABS.includes(n.id)).map((n) => (
             <button key={n.id} className={page === n.id ? 'tab active' : 'tab'} onClick={() => go(n.id)}>
               {n.label}
             </button>
           ))}
+          <div className="tab-more">
+            <button className={!MAIN_TABS.includes(page) ? 'tab active' : 'tab'} aria-expanded={deskMore} onClick={() => setDeskMore(!deskMore)}>
+              {MAIN_TABS.includes(page) ? 'עוד' : NAV.find((n) => n.id === page)?.label} ▾
+            </button>
+            {deskMore && (
+              <div className="tab-menu" role="menu" onMouseLeave={() => setDeskMore(false)}>
+                {NAV.filter((n) => !MAIN_TABS.includes(n.id)).map((n) => (
+                  <button key={n.id} role="menuitem" className={page === n.id ? 'on' : ''} onClick={() => go(n.id)}>
+                    {n.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </nav>
         <button className="ghost small lock-btn" onClick={lock} title="נעילה">
           🔒 נעילה
         </button>
       </header>
       <main className="content">
-        {alerts.length > 0 && page !== 'connections' && <SyncBanner alerts={alerts} go={go} />}
+        {alerts.length > 0 && page !== 'connections' && page !== 'dashboard' && <SyncBanner alerts={alerts} go={go} />}
         {page === 'dashboard' && <Dashboard nav={nav} />}
         {page === 'coach' && <Coach />}
         {page === 'insights' && <Insights nav={nav} />}
         {page === 'funds' && <Funds />}
         {page === 'savings' && <Savings />}
         {page === 'business' && <Business nav={nav} />}
+        {page === 'receipts' && <Receipts nav={nav} />}
         {page === 'transactions' && <Transactions nav={nav} />}
         {page === 'reviews' && <Reviews />}
         {page === 'connections' && <Connections />}

@@ -16,6 +16,7 @@ import { businessData } from '../src/business.js';
 import { Coach } from '../src/coach.js';
 import { savingOpportunities } from '../src/opportunities.js';
 import { dataCheck } from '../src/datacheck.js';
+import { Receipts } from '../src/receipts.js';
 import { createApi } from '../src/api.js';
 import type { SyncService } from '../src/sync.js';
 
@@ -235,6 +236,59 @@ describe('coach', () => {
     expect(seen).toHaveLength(1);
     expect(seen[0].output_config?.format?.type).toBe('json_schema');
     expect((await coach.focus('2026-10-16', false))?.title).toBe('אחר');
+  });
+});
+
+describe('invoices', () => {
+  it('collects them from a folder, reads them and finds their transaction', async () => {
+    const h = home();
+    const vault = new Vault(h.db);
+    vault.setup('master pass 1');
+    ingestTransactions(h.db, h.categorizer, h.biz, [
+      { date: '2026-10-06', description: 'אופיס דיפו', amount: -472 },
+      { date: '2026-10-07', description: 'אחר', amount: -472 },
+      { date: '2026-10-09', description: 'פרסום גוגל', amount: -300 },
+    ], 'import');
+    const folder = path.join(h.dir, 'drive', 'חשבוניות');
+    fs.mkdirSync(path.join(folder, '2026'), { recursive: true });
+    fs.writeFileSync(path.join(folder, '2026', 'office.pdf'), '%PDF-1.4 office depot');
+    fs.writeFileSync(path.join(folder, 'flyer.jpg'), 'not an invoice');
+    fs.writeFileSync(path.join(folder, 'notes.txt'), 'ignored');
+
+    const answers: Record<string, unknown> = {
+      'office.pdf': { is_invoice: true, vendor: 'אופיס דיפו בע"מ', date: '2026-10-05', total: 472, vat: 72, number: '1001' },
+      'flyer.jpg': { is_invoice: false, vendor: null, date: null, total: null, vat: null, number: null },
+    };
+    const client = {
+      models: { retrieve: async () => ({}) },
+      beta: {
+        messages: {
+          create: async (p: Anthropic.Beta.MessageCreateParamsNonStreaming) => {
+            const name = JSON.stringify(p.messages[0].content).match(/שם הקובץ: ([^"]+)/)![1];
+            return { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(answers[name]) }] };
+          },
+        },
+      },
+    } as unknown as Anthropic;
+    const coach = new Coach(h.db, vault, () => client);
+    const receipts = new Receipts(h.db, vault, coach, h.dir);
+    receipts.setFolder(folder);
+    expect(receipts.scanFolder()).toBe(2);
+    expect(receipts.scanFolder()).toBe(0); // seen already
+    expect(await receipts.readPending()).toBe(0); // no key yet: nothing is read
+    await coach.setKey('sk-ant-test-key-1234567890');
+    expect(await receipts.readPending()).toBe(1);
+
+    const list = receipts.list();
+    const office = list.find((r) => r.fileName === 'office.pdf')!;
+    expect(office).toMatchObject({ status: 'read', vendor: 'אופיס דיפו בע"מ', amount: 472 });
+    // Two charges of ₪472; the vendor's name decides.
+    expect(office.txn?.description).toBe('אופיס דיפו');
+    expect(list.find((r) => r.fileName === 'flyer.jpg')!.status).toBe('not_invoice');
+    // The same file uploaded again is not stored twice.
+    expect(receipts.add('upload', 'x', 'office.pdf', fs.readFileSync(path.join(folder, '2026', 'office.pdf')), 'application/pdf')).toBeNull();
+    // Matched expenses no longer count as missing an invoice.
+    expect(businessData(h.db, '2026-10', '2026-10-20').docs.expensesWithoutInvoice.map((e) => e.description)).toEqual(['אחר', 'פרסום גוגל']);
   });
 });
 
