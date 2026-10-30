@@ -11,12 +11,14 @@ import { createApi } from './api.js';
 import { getMeta } from './db.js';
 import { syncSumit } from './business.js';
 import { remoteHost } from './remote.js';
+import { applyNewIncomeRules } from './profile.js';
 
 const dataDir = ensureDataDir();
 const db = openDb(dataDir);
 const vault = new Vault(db);
 const categorizer = new Categorizer(db);
 const sync = new SyncService(db, vault, categorizer);
+applyNewIncomeRules(db, categorizer);
 
 // After a restart the vault is locked, so the daily sync waits for the first
 // unlock and then catches up on anything older than 20 hours.
@@ -45,6 +47,13 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+  );
+  // Financial data stays out of the browser's disk cache.
+  if (req.path.startsWith('/api/')) res.setHeader('Cache-Control', 'no-store');
   next();
 });
 // The user's uploaded font. Served without a session so CSS @font-face can load it.

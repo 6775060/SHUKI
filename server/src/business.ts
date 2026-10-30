@@ -5,6 +5,7 @@ import type { Vault } from './vault.js';
 import { addMonths, categoryComparison, merchantKey, monthlyTrend, type CategoryCompare, type MonthPoint } from './insights.js';
 import { ownerPay, type OwnerPay } from './cycle.js';
 import { clean, parseAmount, parseDate, readRows, type Cell } from './importer.js';
+import { incomeProfile, type BusinessModel } from './profile.js';
 
 // Everything about running the business, kept off the home dashboard:
 // profitability, VAT, owner pay, clients, clearing fees, documents, and
@@ -237,6 +238,7 @@ export interface BusinessData {
   categories: CategoryCompare[];
   clients: { name: string; total: number; share: number; count: number }[];
   clientSource: 'documents' | 'bank';
+  incomeModel: BusinessModel;
   activeClients: number[];
   fees: { total: number; pctOfTurnover: number | null; bySource: { name: string; total: number }[] };
   docs: {
@@ -361,6 +363,7 @@ export function businessData(db: DB, month: string, today: string): BusinessData
     categories,
     clients,
     clientSource,
+    incomeModel: incomeProfile(db, today).business,
     activeClients,
     fees: { total: round(feeTotal), pctOfTurnover: turnover3 > 0 ? feeTotal / turnover3 : null, bySource: feesBy.map((r) => ({ ...r, total: round(r.total) })) },
     docs: { count: docCount.n, lastDate: docCount.d, openInvoices, expensesWithoutInvoice },
@@ -413,6 +416,9 @@ function findUninvoicedExpenses(db: DB, month: string): BusinessData['docs']['ex
 
 function profitTips(d: BusinessData, last6: MonthPoint[]): Tip[] {
   const tips: Tip[] = [];
+  // Income through card clearing has no invoices or named clients to chase,
+  // and the "sources" are the clearing companies, not customers.
+  const clearing = d.incomeModel === 'clearing';
   const avgIncome = d.avgIncome ?? 0;
   if (avgIncome <= 0) return tips;
 
@@ -423,18 +429,20 @@ function profitTips(d: BusinessData, last6: MonthPoint[]): Tip[] {
   tips.push({
     key: 'pricing',
     icon: '🏷️',
-    title: 'העלאת מחיר של 7% ללקוחות ותיקים',
+    title: clearing ? 'העלאת מחיר של 7%' : 'העלאת מחיר של 7% ללקוחות ותיקים',
     why:
       growth !== null && growth < 0.05
         ? `ההכנסה העסקית כמעט לא גדלה בחצי השנה האחרונה (${growth >= 0 ? '+' : ''}${pct(growth)}%). העלאת מחיר היא הדרך המהירה ביותר להגדיל רווח – בלי עוד שעות עבודה.`
         : 'העלאת מחיר היא הדרך המהירה ביותר להגדיל רווח – בלי עוד שעות עבודה. רוב העצמאים מתמחרים נמוך מדי.',
-    action: 'לבחור לקוח ותיק אחד או שניים, ולהודיע מראש על עדכון מחיר מהחודש הבא. רוב הלקוחות נשארים.',
+    action: clearing
+      ? 'לבחור שניים-שלושה מוצרים או שירותים מבוקשים ולעדכן את המחיר שלהם מהחודש הבא. רוב הקונים לא עוזבים בגלל שינוי קטן.'
+      : 'לבחור לקוח ותיק אחד או שניים, ולהודיע מראש על עדכון מחיר מהחודש הבא. רוב הלקוחות נשארים.',
     impact: round(avgIncome * 0.07),
     relevance: growth !== null && growth < 0.05 ? 'high' : 'medium',
   });
 
   const top2 = d.clients.slice(0, 2).reduce((s, c) => s + c.share, 0);
-  if (d.clients.length >= 2 && top2 >= 0.55) {
+  if (!clearing && d.clients.length >= 2 && top2 >= 0.55) {
     tips.push({
       key: 'concentration',
       icon: '🧱',
@@ -451,9 +459,11 @@ function profitTips(d: BusinessData, last6: MonthPoint[]): Tip[] {
     tips.push({
       key: 'retainer',
       icon: '🔁',
-      title: 'חבילה חודשית קבועה במקום עבודות בודדות',
+      title: clearing ? 'להוסיף הכנסה שחוזרת כל חודש' : 'חבילה חודשית קבועה במקום עבודות בודדות',
       why: `ההכנסה משתנה בכ-${pct(volatility)}% מחודש לחודש. הכנסה חוזרת מייצבת את התזרים ואת השקט.`,
-      action: 'להציע ללקוח קבוע חבילת שירות חודשית (ריטיינר) במחיר מעט נמוך יותר תמורת התחייבות.',
+      action: clearing
+        ? 'להציע לקונים קבועים מנוי, כרטיסייה או חבילה בתשלום קבוע בכרטיס. גם חלק קטן מההכנסה שמגיע בקביעות מרגיע את החודש.'
+        : 'להציע ללקוח קבוע חבילת שירות חודשית (ריטיינר) במחיר מעט נמוך יותר תמורת התחייבות.',
       impact: null,
       relevance: volatility > 0.4 ? 'high' : 'medium',
     });
@@ -465,7 +475,9 @@ function profitTips(d: BusinessData, last6: MonthPoint[]): Tip[] {
       icon: '💳',
       title: 'להוזיל עמלות סליקה ובנק',
       why: `עמלות ב-3 החודשים האחרונים: ${ils(d.fees.total)} – ${(d.fees.pctOfTurnover * 100).toFixed(1)}% מהמחזור.`,
-      action: 'לבקש מחברת הסליקה ומהבנק הצעה מחודשת (אפשר להשוות ל-Grow, SUMIT וחברות אחרות), ולהציע ללקוחות גדולים העברה בנקאית.',
+      action: clearing
+        ? 'הסליקה היא כל ההכנסה שלך, אז לכל עשירית אחוז יש משקל. לבקש מחברת הסליקה הצעה מחודשת (אפשר להשוות ל-Grow, SUMIT וחברות אחרות) ולבדוק גם את עמלות הבנק על הזיכויים.'
+        : 'לבקש מחברת הסליקה ומהבנק הצעה מחודשת (אפשר להשוות ל-Grow, SUMIT וחברות אחרות), ולהציע ללקוחות גדולים העברה בנקאית.',
       impact: round((d.fees.total / 3) * 0.3),
       relevance: d.fees.pctOfTurnover > 0.025 ? 'high' : 'medium',
     });
@@ -491,13 +503,15 @@ function profitTips(d: BusinessData, last6: MonthPoint[]): Tip[] {
       icon: '📣',
       title: 'למדוד מה השיווק מחזיר',
       why: `השיווק עולה כ-${ils(marketing.avg)} בחודש (${pct(marketing.avg / avgIncome)}% מההכנסה).`,
-      action: 'לשאול כל לקוח חדש "איך הגעת אליי?" ולרשום. אחרי חודשיים יהיה ברור מה עובד – ומה אפשר לעצור.',
+      action: clearing
+        ? 'להשוות את ימי ההכנסה הגבוהים בסליקה לימים שבהם רץ פרסום. אחרי חודשיים יהיה ברור מה עובד – ומה אפשר לעצור.'
+        : 'לשאול כל לקוח חדש "איך הגעת אליי?" ולרשום. אחרי חודשיים יהיה ברור מה עובד – ומה אפשר לעצור.',
       impact: null,
       relevance: marketing.avg / avgIncome > 0.08 ? 'high' : 'medium',
     });
   }
 
-  if (d.docs.openInvoices.length) {
+  if (!clearing && d.docs.openInvoices.length) {
     const total = d.docs.openInvoices.reduce((s, i) => s + i.amount, 0);
     tips.push({
       key: 'collect',
@@ -517,7 +531,7 @@ function profitTips(d: BusinessData, last6: MonthPoint[]): Tip[] {
       icon: '⚖️',
       title: 'המשכורת לבית גבוהה ממה שהעסק מייצר',
       why: `בממוצע עובר הביתה ${ils(op.actualAvg)}, והעסק מייצר כ-${ils(op.sustainable)} בחודש אחרי הוצאות ומסים.`,
-      action: 'או להגדיל הכנסה (תמחור, לקוחות), או להתאים זמנית את המשכורת – כדי שהעסק לא יישחק.',
+      action: clearing ? 'או להגדיל הכנסה (תמחור, מכירות), או להתאים זמנית את המשכורת – כדי שהעסק לא יישחק.' : 'או להגדיל הכנסה (תמחור, לקוחות), או להתאים זמנית את המשכורת – כדי שהעסק לא יישחק.',
       impact: null,
       relevance: 'high',
     });

@@ -207,6 +207,29 @@ const MIGRATIONS: string[] = [
     UNIQUE (provider, product, account_number)
   );
   `,
+  `
+  -- Household income: a steady salary next to business income that arrives through card clearing.
+  INSERT OR IGNORE INTO categories (slug, name, grp, kind, sort) VALUES ('income_salary', 'משכורת קבועה', 'הכנסות', 'income', 1);
+  INSERT OR IGNORE INTO categories (slug, name, grp, kind, sort) VALUES ('income_clearing', 'הכנסה מסליקה', 'הכנסות', 'income', 1);
+  INSERT INTO rules (pattern, category_id, priority, is_default) SELECT p.value, c.id, 0, 1
+    FROM categories c, json_each('["משכורת","מש\\"כ","שכר עבודה"," שכר ","SALARY"]') p WHERE c.slug = 'income_salary';
+  INSERT INTO rules (pattern, category_id, scope, priority, is_default) SELECT p.value, c.id, 'business', 0, 1
+    FROM categories c, json_each('["ישראכרט","מקס איט","MAX IT","כאל ","כ.א.ל","לאומי קארד","שב\\"א","אשראית","זיכוי כרטיסי","זיכוי מכרטיס","GROW","גרואו","משולם","MESHULAM","קארדקום","CARDCOM","טרנזילה","TRANZILA","פלאקארד","PELECARD","PAYPLUS","פייפלוס","ICREDIT","אייקרדיט"]') p
+    WHERE c.slug = 'income_clearing';
+
+  -- The money coach: conversation and what it learned, both sealed with the master password.
+  CREATE TABLE coach_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+    content_enc TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE coach_memory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    note_enc TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

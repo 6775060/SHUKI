@@ -43,7 +43,12 @@ export function buildFocus(d: InsightsData, s: Summary, nav: Nav): Focus[] {
       level: 'critical',
       icon: '🧭',
       title: `היתרה עלולה לרדת למינוס בסביבות ${date(d.forecast.firstNegative).slice(0, 5)}`,
-      action: 'עכשיו, כשרואים מראש: להקדים גבייה מלקוח, או לדחות הוצאה גדולה לחודש הבא.',
+      action:
+        d.profile?.business === 'clearing'
+          ? 'עכשיו, כשרואים מראש: לבקש מחברת הסליקה זיכוי מוקדם, או לדחות הוצאה גדולה לחודש הבא.'
+          : d.profile?.business === 'none'
+            ? 'עכשיו, כשרואים מראש: לדחות הוצאה גדולה לחודש הבא, או לפרוס תשלום.'
+            : 'עכשיו, כשרואים מראש: להקדים גבייה מלקוח, או לדחות הוצאה גדולה לחודש הבא.',
       go: () => nav.go('dashboard', { view: 'detail' }),
       goLabel: 'לתחזית',
     });

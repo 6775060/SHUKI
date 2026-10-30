@@ -6,6 +6,7 @@ import { InsightCards } from './Insights';
 import { CalmButton } from './Calm';
 import type { Nav } from '../App';
 import { VisualDashboard } from './DashboardVisual';
+import { CoachFocusCard } from './Coach';
 
 type View = 'visual' | 'detail';
 
@@ -118,6 +119,7 @@ export function Dashboard({ nav }: { nav: Nav }) {
     return (
       <div className={`stack dash ${loading ? 'refetch' : ''}`}>
         {filters}
+        <CoachFocusCard nav={nav} />
         <VisualDashboard d={data} s={summary} nav={nav} onDetail={() => setView('detail')} />
       </div>
     );
@@ -126,6 +128,7 @@ export function Dashboard({ nav }: { nav: Nav }) {
   return (
     <div className={`stack dash ${loading ? 'refetch' : ''}`}>
       {filters}
+      <CoachFocusCard nav={nav} />
 
       {/* hero: this week */}
       <div className="hero-row">

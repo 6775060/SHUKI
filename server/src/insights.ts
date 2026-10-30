@@ -1,5 +1,6 @@
 import type { DB } from './db.js';
 import { merchantKey } from './categorize.js';
+import type { IncomeMix, IncomeProfile } from './profile.js';
 
 export { merchantKey };
 
@@ -680,6 +681,8 @@ export function buildInsights(args: {
   uncategorized: number;
   completeEnd: string;
   funds: FundView[];
+  profile?: IncomeProfile;
+  incomeMix?: IncomeMix[];
 }): Insight[] {
   const out: Insight[] = [];
   const { month, trend, categories, recurring, pace, forecast: fc, business, merchants } = args;
@@ -690,7 +693,13 @@ export function buildInsights(args: {
       tone: 'attention',
       icon: '🧭',
       title: `לפי התחזית, היתרה עלולה לרדת מתחת לאפס בסביבות ${d[2]}/${d[1]}`,
-      body: 'זו הערכה לפי הקצב הרגיל שלך. עכשיו, כשרואים את זה מראש, יש זמן לפעול: להקדים גבייה מלקוח, לדחות הוצאה גדולה או לפרוס תשלום.',
+      body: `זו הערכה לפי הקצב הרגיל שלך. עכשיו, כשרואים את זה מראש, יש זמן לפעול: ${
+        args.profile?.business === 'clearing'
+          ? 'לבקש מחברת הסליקה זיכוי מוקדם, לדחות הוצאה גדולה או לפרוס תשלום.'
+          : args.profile?.business === 'none'
+            ? 'לדחות הוצאה גדולה או לפרוס תשלום.'
+            : 'להקדים גבייה מלקוח, לדחות הוצאה גדולה או לפרוס תשלום.'
+      }`,
       link: { page: 'dashboard' },
     });
   } else if (fc && fc.points.length > 1) {
@@ -767,6 +776,40 @@ export function buildInsights(args: {
       title: `${r.name} התייקר ב-${pct(r.priceChangePct!)}%`,
       body: `החיוב האחרון היה ${ils(r.amount * (1 + r.priceChangePct!))} במקום כ-${ils(r.amount)}. אפשר לבדוק אם זה מוצדק.`,
     });
+  }
+
+  // Two incomes: a steady salary under the house, and business income above it.
+  const mixDone = (args.incomeMix ?? []).filter((m) => m.month < args.completeEnd);
+  const salaryMonths = mixDone.filter((m) => m.salary > 0).slice(-3);
+  if (args.profile?.salary && salaryMonths.length >= 2) {
+    const salary = salaryMonths.reduce((s, m) => s + m.salary, 0) / salaryMonths.length;
+    const fixed = recurring.filter((r) => r.amount < 0 && r.scope !== 'business').reduce((s, r) => s - r.amount / r.periodMonths, 0);
+    if (fixed > 0) {
+      const cover = salary / fixed;
+      out.push({
+        tone: cover >= 1 ? 'good' : 'neutral',
+        icon: '🏠',
+        title: cover >= 1 ? `המשכורת הקבועה מכסה את כל החיובים הקבועים, ועוד ${ils(salary - fixed)}` : `המשכורת הקבועה מכסה ${pct(cover)}% מהחיובים הקבועים`,
+        body:
+          cover >= 1
+            ? `בממוצע נכנסים ${ils(salary)} משכורת, והחיובים הקבועים כ-${ils(fixed)} בחודש. יש לבית רצפה יציבה, וההכנסה מהעסק בונה מעליה: קופות, חיסכון ונתינה.`
+            : `בממוצע נכנסים ${ils(salary)} משכורת, והחיובים הקבועים כ-${ils(fixed)} בחודש. את ${ils(fixed - salary)} הנותרים מכסה העסק, וזה המספר שכדאי שהעסק יעביר לבית קודם כול.`,
+      });
+    }
+  }
+  const bizMonths = mixDone.filter((m) => m.business > 0).slice(-6);
+  if (args.profile?.business === 'clearing' && bizMonths.length >= 3) {
+    const vals = bizMonths.map((m) => m.business);
+    const lowest = Math.min(...vals);
+    const avg = vals.reduce((s, v) => s + v, 0) / vals.length;
+    if (lowest < avg * 0.8) {
+      out.push({
+        tone: 'neutral',
+        icon: '🌊',
+        title: `ההכנסה מהסליקה נעה בין ${ils(lowest)} ל-${ils(Math.max(...vals))} בחודש`,
+        body: `ממוצע של ${ils(avg)}. כשמתכננים את הבית לפי החודש החלש (${ils(lowest)}), כל חודש טוב הופך לעודף שאפשר להפנות לכרית ולחיסכון, במקום לתחושה של "פעם יש ופעם אין".`,
+      });
+    }
   }
 
   const recent = previousMonthsWithData(trend, args.completeEnd, 3);

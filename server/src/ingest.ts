@@ -181,7 +181,7 @@ export function linkInternalTransfers(db: DB, categorizer: Categorizer): number 
        WHERE o.amount < 0 AND o.category_locked = 0 AND i.category_locked = 0
          AND oc.kind <> 'transfer' AND ic.kind <> 'transfer'
          AND oc.slug IN ('uncategorized', 'income_other', 'income_business')
-         AND ic.slug IN ('uncategorized', 'income_other', 'income_business')
+         AND ic.slug IN ('uncategorized', 'income_other', 'income_business', 'income_salary')
        ORDER BY o.date, o.id, abs(julianday(i.date) - julianday(o.date))`,
     )
     .all() as { outId: number; inId: number }[];

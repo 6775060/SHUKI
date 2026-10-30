@@ -185,8 +185,14 @@ export function Business({ nav }: { nav: Nav }) {
         </section>
 
         <section className="card">
-          <h3>לקוחות (3 חודשים)</h3>
-          <p className="sub">{d.clientSource === 'documents' ? 'לפי החשבוניות שהוצאו' : 'לפי ההעברות לחשבון העסק. חיבור SUMIT ייתן תמונה מדויקת יותר.'}</p>
+          <h3>{d.incomeModel === 'clearing' ? 'מקורות התקבולים (3 חודשים)' : 'לקוחות (3 חודשים)'}</h3>
+          <p className="sub">
+            {d.incomeModel === 'clearing'
+              ? 'הזיכויים מחברות הסליקה ושאר הכניסות לחשבון העסק.'
+              : d.clientSource === 'documents'
+                ? 'לפי החשבוניות שהוצאו'
+                : 'לפי ההעברות לחשבון העסק. חיבור SUMIT ייתן תמונה מדויקת יותר.'}
+          </p>
           {d.clients.slice(0, 8).map((c) => (
             <div key={c.name} className="source-row">
               <span className="source-name">{c.name}</span>

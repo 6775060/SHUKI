@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, ApiError, downloadBackup, restoreBackup, restoreErrorText, setToken } from '../api';
 import { applyFont, type FontSetting } from '../font';
+import { IncomeProfileCard, SecurityCard } from './SettingsHousehold';
 
 export function Settings() {
   const [font, setFont] = useState<FontSetting | null>(null);
@@ -48,6 +49,10 @@ export function Settings() {
   return (
     <div className="stack">
       <h2 className="title">הגדרות</h2>
+
+      <IncomeProfileCard />
+
+      <SecurityCard />
 
       <PhoneAccess />
 

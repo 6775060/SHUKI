@@ -212,6 +212,8 @@ export interface InsightsData {
   cycle: CycleView | null;
   cards: CardBill[];
   businessTips: Tip[];
+  profile: IncomeProfile;
+  incomeMix: IncomeMix[];
   reviews: { n: number; total: number; oldest: string | null };
   syncAlerts: SyncAlert[];
 }
@@ -357,6 +359,7 @@ export interface BusinessData {
   categories: InsightsData['categories'];
   clients: { name: string; total: number; share: number; count: number }[];
   clientSource: 'documents' | 'bank';
+  incomeModel: 'clearing' | 'clients' | 'none';
   activeClients: number[];
   fees: { total: number; pctOfTurnover: number | null; bySource: { name: string; total: number }[] };
   docs: {
@@ -425,4 +428,81 @@ export function restoreErrorText(code: string): string {
     default:
       return 'השחזור לא הצליח. נסו שוב.';
   }
+}
+
+// ---- household income profile ----
+
+export interface IncomeProfile {
+  business: 'clearing' | 'clients' | 'none';
+  salary: boolean;
+  auto: boolean;
+}
+
+export interface IncomeMix {
+  month: string;
+  salary: number;
+  business: number;
+  other: number;
+}
+
+// ---- security ----
+
+export interface SecurityState {
+  autoLockMinutes: number;
+  phoneLockMinutes: number;
+  onPhone: boolean;
+  phoneAccess: boolean;
+  lastBackupAt: string | null;
+  coachEnabled: boolean;
+  logins: { at: string; ok: boolean; phone: boolean }[];
+}
+
+// ---- the money coach ----
+
+export interface CoachMessage {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+}
+
+export interface CoachFocus {
+  date: string;
+  title: string;
+  body: string;
+  action: string;
+}
+
+export interface CoachState {
+  enabled: boolean;
+  model: string;
+  history: CoachMessage[];
+  memory: { id: number; note: string; createdAt: string }[];
+  focus: CoachFocus | null;
+}
+
+export function coachErrorText(code: string): string {
+  switch (code) {
+    case 'NO_KEY':
+      return 'המאמן עוד לא מחובר. צריך להוסיף מפתח API בעמוד המאמן.';
+    case 'BAD_KEY':
+      return 'המפתח לא התקבל. כדאי לבדוק שהעתקת אותו במלואו, ושיש בחשבון יתרה.';
+    case 'RATE_LIMIT':
+      return 'יותר מדי בקשות ברגע אחד. אפשר לנסות שוב בעוד דקה.';
+    case 'REFUSED':
+      return 'המאמן לא יכול לענות על זה. אפשר לנסח אחרת.';
+    case 'COMPUTER_ONLY':
+      return 'את זה אפשר לעשות רק מהמחשב עצמו, לא מהטלפון.';
+    default:
+      return 'לא הצלחתי להגיע למאמן. כדאי לבדוק את החיבור לאינטרנט ולנסות שוב.';
+  }
+}
+
+// A plain-text answer, such as what the coach is sent.
+export async function apiText(path: string): Promise<string> {
+  const token = getToken();
+  const res = await fetch(`/api${path}`, { headers: token ? { 'x-session': token } : {} });
+  if (res.status === 401) onLocked();
+  if (!res.ok) throw new ApiError(res.status, 'ERROR');
+  return res.text();
 }

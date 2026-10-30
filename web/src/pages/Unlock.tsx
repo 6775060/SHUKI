@@ -117,7 +117,13 @@ export function Unlock({ mode, onDone, onReset }: { mode: 'setup' | 'locked'; on
       const r = await api<{ token: string }>(mode === 'setup' ? '/setup' : '/unlock', { method: 'POST', json: { password } });
       onDone(r.token);
     } catch (err) {
-      setError(err instanceof ApiError && err.code === 'WRONG_PASSWORD' ? 'הסיסמה לא נכונה.' : 'משהו השתבש. נסו שוב.');
+      setError(
+        err instanceof ApiError && err.code === 'WRONG_PASSWORD'
+          ? 'הסיסמה לא נכונה.'
+          : err instanceof ApiError && err.code === 'TOO_MANY_ATTEMPTS'
+            ? 'היו יותר מדי ניסיונות שגויים. לשם הגנה, הכניסה נעולה ל-15 דקות.'
+            : 'משהו השתבש. נסו שוב.',
+      );
     } finally {
       setBusy(false);
     }

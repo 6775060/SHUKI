@@ -2726,3 +2726,197 @@ textarea {
 .restore-box .warn {
   color: var(--muted);
 }
+
+/* ---------- household profile & security ---------- */
+
+.income-choice {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.income-choice legend {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.radio {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.radio input {
+  margin-top: 4px;
+  width: auto;
+}
+
+.sec-checks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sec-checks li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  line-height: 1.5;
+}
+
+.sec-checks li > span {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--good-soft);
+  color: var(--pos);
+}
+
+.sec-checks li.todo > span {
+  background: var(--warm-soft);
+  color: var(--warm);
+}
+
+.login-log {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.login-log li.bad {
+  color: var(--danger);
+}
+
+/* ---------- the money coach ---------- */
+
+.coach-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.coach-empty p {
+  margin-top: 0;
+  color: var(--text-2);
+}
+
+.coach-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.bubble {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.bubble.user {
+  align-self: flex-start;
+  background: var(--accent-soft);
+  border-end-start-radius: 4px;
+}
+
+.bubble.assistant {
+  align-self: flex-end;
+  background: var(--surface-2);
+  border-end-end-radius: 4px;
+}
+
+.coach-input {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.coach-input textarea {
+  flex: 1;
+  min-width: 0;
+  resize: vertical;
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.coach-memory {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.coach-memory li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.coach-context {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 12px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.privacy-note {
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 12px;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.coach-focus {
+  border-inline-start: 4px solid var(--accent);
+}
+
+.coach-focus h3 {
+  margin: 4px 0 6px;
+}
+
+.coach-focus p {
+  margin: 0 0 10px;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+
+.coach-step {
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}

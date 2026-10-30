@@ -12,12 +12,14 @@ import { Business } from './pages/Business';
 import { Settings } from './pages/Settings';
 import { Reviews } from './pages/Reviews';
 import { Savings } from './pages/Savings';
+import { Coach } from './pages/Coach';
 import { applyFont, type FontSetting } from './font';
 
-export type Page = 'dashboard' | 'insights' | 'funds' | 'savings' | 'business' | 'transactions' | 'reviews' | 'connections' | 'import' | 'rules' | 'settings';
+export type Page = 'dashboard' | 'coach' | 'insights' | 'funds' | 'savings' | 'business' | 'transactions' | 'reviews' | 'connections' | 'import' | 'rules' | 'settings';
 
 const NAV: { id: Page; label: string }[] = [
   { id: 'dashboard', label: 'בהירות' },
+  { id: 'coach', label: 'מאמן' },
   { id: 'insights', label: 'תובנות' },
   { id: 'funds', label: 'קופות' },
   { id: 'savings', label: 'חסכונות' },
@@ -34,8 +36,8 @@ const NAV: { id: Page; label: string }[] = [
 const MOBILE_NAV: { id: Page; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'בהירות', icon: '◐' },
   { id: 'transactions', label: 'תנועות', icon: '☰' },
+  { id: 'coach', label: 'מאמן', icon: '🌱' },
   { id: 'reviews', label: 'לבירור', icon: '?' },
-  { id: 'savings', label: 'חסכונות', icon: '₪' },
 ];
 
 export interface Nav {
@@ -125,6 +127,7 @@ export function App() {
       <main className="content">
         {alerts.length > 0 && page !== 'connections' && <SyncBanner alerts={alerts} go={go} />}
         {page === 'dashboard' && <Dashboard nav={nav} />}
+        {page === 'coach' && <Coach />}
         {page === 'insights' && <Insights nav={nav} />}
         {page === 'funds' && <Funds />}
         {page === 'savings' && <Savings />}

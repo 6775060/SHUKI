@@ -38,6 +38,9 @@ import { parseSavingsFile, saveSavings, savingsView } from './savings.js';
 import { syncAlerts } from './sync-health.js';
 import { disableRemote, enableRemote, remoteStatus } from './remote.js';
 import { BackupError, createBackup, restoreBackup } from './backup.js';
+import { incomeMix, incomeProfile, saveIncomeProfile } from './profile.js';
+import { remoteHost } from './remote.js';
+import { Coach, CoachError } from './coach.js';
 
 interface Deps {
   db: DB;
@@ -45,25 +48,58 @@ interface Deps {
   categorizer: Categorizer;
   sync: SyncService;
   onUnlock: () => void;
+  coach?: Coach;
 }
 
 const scope = z.enum(['private', 'business']);
 
-export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): express.Router {
+export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new Coach(db, vault) }: Deps): express.Router {
   const api = express.Router();
   api.use(express.json({ limit: '1mb' }));
 
-  const sessions = new Set<string>();
-  const newSession = () => {
+  // Sessions end after a stretch of no use: sooner on the phone, where a device
+  // can be lost or left open. The vault itself stays open so the nightly sync
+  // keeps working; coming back only needs the password again.
+  const sessions = new Map<string, { lastSeen: number; remote: boolean }>();
+  const isRemote = (req: Request) => {
+    const host = remoteHost(db);
+    return !!host && (req.hostname ?? '').toLowerCase() === host;
+  };
+  const idleLimit = (remote: boolean) => {
+    const local = Number(getMeta(db, 'auto_lock_minutes') ?? 30);
+    const minutes = remote ? Math.min(local || 10, 10) : local;
+    return minutes > 0 ? minutes * 60_000 : Infinity;
+  };
+  const newSession = (req: Request) => {
     const token = crypto.randomBytes(32).toString('hex');
-    sessions.add(token);
+    sessions.set(token, { lastSeen: Date.now(), remote: isRemote(req) });
     return token;
+  };
+
+  // The last logins, so a strange one stands out.
+  const logLogin = (req: Request, ok: boolean) => {
+    const log = JSON.parse(getMeta(db, 'login_log') ?? '[]') as { at: string; ok: boolean; phone: boolean }[];
+    log.unshift({ at: new Date().toISOString(), ok, phone: isRemote(req) });
+    setMeta(db, 'login_log', JSON.stringify(log.slice(0, 30)));
   };
 
   const requireSession = (req: Request, res: Response, next: NextFunction) => {
     const token = req.header('x-session');
-    if (!vault.isUnlocked() || !token || !sessions.has(token)) {
+    const s = token ? sessions.get(token) : undefined;
+    if (!vault.isUnlocked() || !token || !s || Date.now() - s.lastSeen > idleLimit(s.remote)) {
+      if (token) sessions.delete(token);
       res.status(401).json({ error: 'LOCKED' });
+      return;
+    }
+    s.lastSeen = Date.now();
+    next();
+  };
+
+  // Things that only make sense at the computer itself: from the phone they
+  // would let a lost, unlocked phone take everything with it.
+  const computerOnly = (req: Request, res: Response, next: NextFunction) => {
+    if (isRemote(req)) {
+      res.status(403).json({ error: 'COMPUTER_ONLY' });
       return;
     }
     next();
@@ -82,24 +118,37 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     }
     vault.setup(password);
     onUnlock();
-    res.json({ token: newSession() });
+    logLogin(req, true);
+    res.json({ token: newSession(req) });
   });
 
+  // After 10 wrong passwords in a row, a 15 minute pause before trying again.
   let failedAttempts = 0;
+  let blockedUntil = 0;
   api.post('/unlock', async (req, res) => {
     const { password } = z.object({ password: z.string() }).parse(req.body);
+    if (Date.now() < blockedUntil) {
+      res.status(429).json({ error: 'TOO_MANY_ATTEMPTS', retryAt: new Date(blockedUntil).toISOString() });
+      return;
+    }
     if (failedAttempts >= 5) await new Promise((r) => setTimeout(r, 2000 * (failedAttempts - 4)));
-    if (!vault.unlock(password)) {
+    const ok = vault.isUnlocked() ? vault.verify(password) : vault.unlock(password);
+    logLogin(req, ok);
+    if (!ok) {
       failedAttempts++;
+      if (failedAttempts >= 10) {
+        blockedUntil = Date.now() + 15 * 60_000;
+        failedAttempts = 0;
+      }
       res.status(401).json({ error: 'WRONG_PASSWORD' });
       return;
     }
     failedAttempts = 0;
     onUnlock();
-    res.json({ token: newSession() });
+    res.json({ token: newSession(req) });
   });
 
-  api.post('/reset', (req, res) => {
+  api.post('/reset', computerOnly, (req, res) => {
     z.object({ confirm: z.literal('איפוס') }).parse(req.body);
     sessions.clear();
     vault.reset();
@@ -116,7 +165,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
   // Restoring a backup: allowed on a fresh install (nothing here to protect yet)
   // or from inside an open session. The password travels URI-encoded in a header
   // because the body is the file itself.
-  api.post('/restore', express.raw({ type: 'application/octet-stream', limit: '300mb' }), (req, res) => {
+  api.post('/restore', computerOnly, express.raw({ type: 'application/octet-stream', limit: '300mb' }), (req, res) => {
     const token = req.header('x-session');
     if (vault.isInitialized() && !(vault.isUnlocked() && token && sessions.has(token))) {
       res.status(401).json({ error: 'LOCKED' });
@@ -143,7 +192,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
       failedAttempts = 0;
       const unlocked = vault.unlock(password);
       if (unlocked) onUnlock();
-      res.json({ ...result, token: unlocked ? newSession() : null });
+      res.json({ ...result, token: unlocked ? newSession(req) : null });
     } catch (err) {
       if (err instanceof BackupError) {
         res.status(400).json({ error: err.code });
@@ -155,13 +204,14 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
 
   api.use(requireSession);
 
-  api.post('/backup', (req, res) => {
+  api.post('/backup', computerOnly, (req, res) => {
     const { password } = z.object({ password: z.string() }).parse(req.body);
     if (!vault.verify(password)) {
       res.status(401).json({ error: 'WRONG_PASSWORD' });
       return;
     }
     const file = createBackup(db, config.dataDir, password);
+    setMeta(db, 'last_backup_at', new Date().toISOString());
     const name = `shefa-backup-${new Date().toLocaleDateString('sv-SE')}.shefa`;
     res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
@@ -183,7 +233,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     res.json({ connections: rows, sync: sync.status() });
   });
 
-  api.post('/connections', (req, res) => {
+  api.post('/connections', computerOnly, (req, res) => {
     const body = z
       .object({ companyId: z.string(), label: z.string().min(1), defaultScope: scope, credentials: z.record(z.string(), z.string()) })
       .parse(req.body);
@@ -205,7 +255,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     res.json({ id });
   });
 
-  api.patch('/connections/:id', (req, res) => {
+  api.patch('/connections/:id', computerOnly, (req, res) => {
     const id = Number(req.params.id);
     const body = z
       .object({
@@ -239,7 +289,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     res.json({ ok: true });
   });
 
-  api.delete('/connections/:id', (req, res) => {
+  api.delete('/connections/:id', computerOnly, (req, res) => {
     // Transactions stay; only the stored login is removed.
     db.prepare('DELETE FROM connections WHERE id = ?').run(Number(req.params.id));
     res.json({ ok: true });
@@ -733,6 +783,8 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     const merchants = topMerchants(db, month);
     const installments = futureInstallments(db);
     const funds = listFunds(db, today);
+    const profile = incomeProfile(db, today);
+    const mix = incomeMix(db, month, 6);
     const uncategorized = (
       db
         .prepare(
@@ -758,7 +810,9 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
       health: healthScore(db, month, trend, balance, installments.total, completeEnd),
       safeToSpend: isCurrent ? safeToSpend(db, today, recurring, funds) : null,
       funds,
-      insights: buildInsights({ month, isCurrent, trend, categories, recurring, pace, forecast: fc, business, merchants, uncategorized, completeEnd, funds }),
+      insights: buildInsights({ month, isCurrent, trend, categories, recurring, pace, forecast: fc, business, merchants, uncategorized, completeEnd, funds, profile, incomeMix: mix }),
+      profile,
+      incomeMix: mix,
       cycle: isCurrent ? cycleView(db, today, recurring, funds) : null,
       cards: cardBills(db, today),
       businessTips: business.hasBusiness ? businessData(db, month, today).tips : [],
@@ -869,7 +923,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
 
   // ---- phone access (Tailscale) ----
   api.get('/remote', async (_req, res) => res.json(await remoteStatus(db)));
-  api.post('/remote/enable', async (_req, res) => res.json(await enableRemote(db, config.port)));
+  api.post('/remote/enable', computerOnly, async (_req, res) => res.json(await enableRemote(db, config.port)));
   api.post('/remote/disable', async (_req, res) => res.json(await disableRemote(db)));
 
   api.put('/settings', (req, res) => {
@@ -884,6 +938,89 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     if (b.weeklyJoy !== undefined) setMeta(db, 'weekly_joy', String(b.weeklyJoy));
     if (b.taxReservePct !== undefined) setMeta(db, 'tax_reserve_pct', String(b.taxReservePct));
     res.json({ ok: true });
+  });
+
+  // ---- household income profile ----
+  api.get('/profile', (_req, res) => res.json(incomeProfile(db)));
+  api.put('/profile', (req, res) => {
+    const b = z.object({ business: z.enum(['clearing', 'clients', 'none']), salary: z.boolean() }).nullable().parse(req.body?.profile ?? null);
+    saveIncomeProfile(db, b);
+    res.json(incomeProfile(db));
+  });
+
+  // ---- security ----
+  api.get('/security', (req, res) => {
+    res.json({
+      autoLockMinutes: Number(getMeta(db, 'auto_lock_minutes') ?? 30),
+      phoneLockMinutes: Math.min(Number(getMeta(db, 'auto_lock_minutes') ?? 30) || 10, 10),
+      onPhone: isRemote(req),
+      phoneAccess: !!remoteHost(db),
+      lastBackupAt: getMeta(db, 'last_backup_at') ?? null,
+      coachEnabled: coach.enabled(),
+      logins: JSON.parse(getMeta(db, 'login_log') ?? '[]'),
+    });
+  });
+  api.put('/security', computerOnly, (req, res) => {
+    const b = z.object({ autoLockMinutes: z.union([z.literal(0), z.literal(5), z.literal(15), z.literal(30), z.literal(60)]) }).parse(req.body);
+    setMeta(db, 'auto_lock_minutes', String(b.autoLockMinutes));
+    res.json({ ok: true });
+  });
+  // Ends every open session, on this computer and on the phone.
+  api.post('/security/sign-out-all', (_req, res) => {
+    sessions.clear();
+    res.json({ ok: true });
+  });
+
+  // ---- the money coach ----
+  const coachFail = (res: Response, err: unknown) => {
+    if (err instanceof CoachError) {
+      res.status(err.code === 'NO_KEY' ? 409 : 502).json({ error: err.code, detail: err.detail });
+      return;
+    }
+    throw err;
+  };
+  api.get('/coach', (_req, res) => res.json(coach.state()));
+  api.put('/coach/key', computerOnly, async (req, res) => {
+    const b = z.object({ apiKey: z.string().trim().min(20).max(300) }).parse(req.body);
+    try {
+      await coach.setKey(b.apiKey);
+      res.json(coach.state());
+    } catch (err) {
+      coachFail(res, err);
+    }
+  });
+  api.delete('/coach/key', computerOnly, (_req, res) => {
+    coach.removeKey();
+    res.json(coach.state());
+  });
+  api.get('/coach/context', (_req, res) => res.type('text/plain; charset=utf-8').send(coach.contextText(new Date().toLocaleDateString('sv-SE'))));
+  api.post('/coach/chat', async (req, res) => {
+    const b = z.object({ message: z.string().trim().min(1).max(4000) }).parse(req.body);
+    try {
+      res.json(await coach.chat(b.message, new Date().toLocaleDateString('sv-SE')));
+    } catch (err) {
+      coachFail(res, err);
+    }
+  });
+  api.get('/coach/focus', async (req, res) => {
+    const today = new Date().toLocaleDateString('sv-SE');
+    try {
+      res.json({ focus: await coach.focus(today, req.query.refresh === '1') });
+    } catch (err) {
+      if (err instanceof CoachError) {
+        res.json({ focus: null, error: err.code });
+        return;
+      }
+      throw err;
+    }
+  });
+  api.delete('/coach/memory/:id', (req, res) => {
+    db.prepare('DELETE FROM coach_memory WHERE id = ?').run(Number(req.params.id));
+    res.json(coach.state());
+  });
+  api.delete('/coach/history', (_req, res) => {
+    db.exec('DELETE FROM coach_messages');
+    res.json(coach.state());
   });
 
   // ---- business ----
@@ -914,13 +1051,13 @@ export function createApi({ db, vault, categorizer, sync, onUnlock }: Deps): exp
     }
   });
 
-  api.put('/business/sumit', (req, res) => {
+  api.put('/business/sumit', computerOnly, (req, res) => {
     const b = z.object({ companyId: z.string().regex(/^\d+$/), apiKey: z.string().min(8) }).parse(req.body);
     setMeta(db, 'sumit_creds', vault.seal(b));
     res.json({ ok: true });
   });
 
-  api.delete('/business/sumit', (_req, res) => {
+  api.delete('/business/sumit', computerOnly, (_req, res) => {
     db.prepare("DELETE FROM meta WHERE key IN ('sumit_creds', 'sumit_last_sync', 'sumit_error')").run();
     res.json({ ok: true });
   });
