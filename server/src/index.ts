@@ -29,6 +29,11 @@ function catchUp(): void {
   stale.forEach((r) => sync.enqueue(r.id));
 }
 
+// A bank that failed for a passing reason is tried again later, without asking for anything.
+cron.schedule('17 * * * *', () => {
+  if (vault.isUnlocked()) sync.retryFailed();
+});
+
 cron.schedule(config.syncCron, () => {
   if (!vault.isUnlocked()) return;
   sync.enqueueAll();

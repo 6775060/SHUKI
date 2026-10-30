@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { createScraper, type CompanyTypes, type ScraperCredentials } from 'israeli-bank-scrapers';
 import type { DB } from './db.js';
@@ -21,11 +22,21 @@ const ERROR_MESSAGES: Record<string, string> = {
   INVALID_PASSWORD: 'פרטי הכניסה שגויים. כדאי לבדוק שם משתמש וסיסמה.',
   CHANGE_PASSWORD: 'הבנק מבקש להחליף סיסמה. יש להיכנס לאתר הבנק, להחליף, ולעדכן כאן.',
   ACCOUNT_BLOCKED: 'החשבון נחסם באתר. יש לפנות לבנק או לחברת האשראי.',
-  TIMEOUT: 'האתר לא הגיב בזמן. ננסה שוב בסנכרון הבא.',
+  TIMEOUT: 'האתר לא הגיב בזמן. פרטי הכניסה שמורים: המערכת תנסה שוב לבד בעוד כשעתיים.',
   TWO_FACTOR_RETRIEVER_MISSING: 'נדרש קוד אימות (SMS). עדיין לא נתמך עבור גוף זה.',
-  GENERIC: 'שגיאה בחיבור לאתר. ייתכן שהאתר השתנה. ננסה שוב, ואם זה חוזר – ייבוא קובץ כגיבוי.',
-  GENERAL_ERROR: 'שגיאה בחיבור לאתר. ייתכן שהאתר השתנה. ננסה שוב, ואם זה חוזר – ייבוא קובץ כגיבוי.',
+  GENERIC: 'האתר לא ענה כרגיל. פרטי הכניסה שמורים, ואין צורך להזין אותם שוב: המערכת תנסה שוב לבד בעוד כשעתיים.',
+  GENERAL_ERROR: 'האתר לא ענה כרגיל. פרטי הכניסה שמורים, ואין צורך להזין אותם שוב: המערכת תנסה שוב לבד בעוד כשעתיים.',
 };
+
+// Failures that say nothing about the login itself: worth trying again. A wrong
+// password is never retried, since banks block an account after a few tries.
+export const TRANSIENT_ERRORS = new Set(['TIMEOUT', 'GENERIC', 'GENERAL_ERROR']);
+
+// Each connection keeps its own browser profile, so the bank's site sees a
+// familiar device from one sync to the next and asks for SMS codes less often.
+export function browserProfileDir(connectionId: number): string {
+  return path.join(config.dataDir, 'browser-profiles', `conn-${connectionId}`);
+}
 
 export function errorMessageHe(errorType?: string): string {
   return (errorType && ERROR_MESSAGES[errorType]) || ERROR_MESSAGES.GENERIC;
@@ -52,7 +63,25 @@ export class SyncService {
     private db: DB,
     private vault: Vault,
     private categorizer: Categorizer,
+    private retryWaits: number[] = [20_000, 60_000],
   ) {}
+
+  // Connections whose last run failed for a passing reason, tried again later
+  // in the day (at most three failed runs a day, two hours apart).
+  retryFailed(): number[] {
+    const rows = this.db
+      .prepare(
+        `SELECT c.id FROM connections c
+         JOIN sync_runs r ON r.id = (SELECT MAX(id) FROM sync_runs WHERE connection_id = c.id)
+         WHERE c.enabled = 1 AND c.credentials_enc <> '' AND r.status = 'error'
+           AND r.error_type IN (${[...TRANSIENT_ERRORS].map(() => '?').join(', ')})
+           AND julianday(r.finished_at) < julianday('now', '-2 hours')
+           AND (SELECT COUNT(*) FROM sync_runs WHERE connection_id = c.id AND status = 'error' AND julianday(started_at) >= julianday('now', '-1 day')) < 3`,
+      )
+      .all(...TRANSIENT_ERRORS) as { id: number }[];
+    rows.forEach((r) => this.enqueue(r.id));
+    return rows.map((r) => r.id);
+  }
 
   status() {
     return { running: this.running, queued: [...this.queue], progress: Object.fromEntries(this.progress) };
@@ -107,27 +136,38 @@ export class SyncService {
 
     const since = startDateFor(conn);
     const credentials = this.vault.open<ScraperCredentials>(conn.credentials_enc);
-    const scraper = createScraper({
-      companyId: conn.company_id as CompanyTypes,
-      startDate: since,
-      combineInstallments: false,
-      futureMonthsToScrape: institution.kind === 'card' ? 1 : undefined,
-      showBrowser: config.showBrowser,
-      executablePath: config.chromePath,
-      storeFailureScreenShotPath: path.join(config.dataDir, 'screenshots', `${conn.company_id}-${Date.now()}.png`),
-      timeout: 120_000,
-    });
-    scraper.onProgress((_company, payload) => this.progress.set(connectionId, payload.type));
+    const profile = browserProfileDir(connectionId);
+    fs.mkdirSync(profile, { recursive: true });
+    const attempt = async () => {
+      const scraper = createScraper({
+        companyId: conn.company_id as CompanyTypes,
+        startDate: since,
+        combineInstallments: false,
+        futureMonthsToScrape: institution.kind === 'card' ? 1 : undefined,
+        showBrowser: config.showBrowser,
+        executablePath: config.chromePath,
+        args: [`--user-data-dir=${profile}`],
+        storeFailureScreenShotPath: path.join(config.dataDir, 'screenshots', `${conn.company_id}-${Date.now()}.png`),
+        timeout: 120_000,
+      });
+      scraper.onProgress((_company, payload) => this.progress.set(connectionId, payload.type));
+      try {
+        return await scraper.scrape(credentials);
+      } catch (err) {
+        return { success: false as const, errorType: 'GENERIC', errorMessage: String(err) };
+      }
+    };
 
-    let result;
-    try {
-      result = await scraper.scrape(credentials);
-    } catch (err) {
-      finish('error', 0, 0, 'GENERIC', String(err));
-      return;
+    // A slow or flaky site gets two more tries in the same run.
+    let result = await attempt();
+    for (const wait of this.retryWaits) {
+      if (result.success || !TRANSIENT_ERRORS.has(String(result.errorType ?? 'GENERIC'))) break;
+      this.progress.set(connectionId, 'RETRYING');
+      await new Promise((r) => setTimeout(r, wait));
+      result = await attempt();
     }
     if (!result.success) {
-      finish('error', 0, 0, result.errorType, result.errorMessage);
+      finish('error', 0, 0, String(result.errorType ?? 'GENERIC'), result.errorMessage);
       return;
     }
 

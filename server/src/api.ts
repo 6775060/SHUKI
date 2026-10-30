@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { getMeta, setMeta, transaction, type DB } from './db.js';
 import type { Vault } from './vault.js';
 import { merchantKey, type Categorizer } from './categorize.js';
-import type { SyncService } from './sync.js';
+import { browserProfileDir, type SyncService } from './sync.js';
 import { getInstitution, listInstitutions } from './institutions.js';
 import { ingestTransactions, linkInternalTransfers, upsertAccount } from './ingest.js';
 import { parseStatement } from './importer.js';
@@ -39,6 +39,8 @@ import { syncAlerts } from './sync-health.js';
 import { disableRemote, enableRemote, remoteStatus } from './remote.js';
 import { BackupError, createBackup, restoreBackup } from './backup.js';
 import { incomeMix, incomeProfile, saveIncomeProfile } from './profile.js';
+import { dataCheck } from './datacheck.js';
+import { savingOpportunities } from './opportunities.js';
 import { remoteHost } from './remote.js';
 import { Coach, CoachError } from './coach.js';
 
@@ -65,9 +67,12 @@ export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new 
     const host = remoteHost(db);
     return !!host && (req.hostname ?? '').toLowerCase() === host;
   };
+  // At the computer, Windows' own lock screen guards an open session, so by
+  // default it stays open; a phone is easier to lose and closes on its own.
+  const lockMinutes = () => ({ computer: Number(getMeta(db, 'auto_lock_minutes') ?? 0), phone: Number(getMeta(db, 'phone_lock_minutes') ?? 30) });
   const idleLimit = (remote: boolean) => {
-    const local = Number(getMeta(db, 'auto_lock_minutes') ?? 30);
-    const minutes = remote ? Math.min(local || 10, 10) : local;
+    const m = lockMinutes();
+    const minutes = remote ? m.phone || 30 : m.computer;
     return minutes > 0 ? minutes * 60_000 : Infinity;
   };
   const newSession = (req: Request) => {
@@ -292,6 +297,7 @@ export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new 
   api.delete('/connections/:id', computerOnly, (req, res) => {
     // Transactions stay; only the stored login is removed.
     db.prepare('DELETE FROM connections WHERE id = ?').run(Number(req.params.id));
+    fs.rmSync(browserProfileDir(Number(req.params.id)), { recursive: true, force: true });
     res.json({ ok: true });
   });
 
@@ -813,6 +819,8 @@ export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new 
       insights: buildInsights({ month, isCurrent, trend, categories, recurring, pace, forecast: fc, business, merchants, uncategorized, completeEnd, funds, profile, incomeMix: mix }),
       profile,
       incomeMix: mix,
+      check: dataCheck(db, today),
+      savings: savingOpportunities(db, today),
       cycle: isCurrent ? cycleView(db, today, recurring, funds) : null,
       cards: cardBills(db, today),
       businessTips: business.hasBusiness ? businessData(db, month, today).tips : [],
@@ -975,8 +983,8 @@ export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new 
   // ---- security ----
   api.get('/security', (req, res) => {
     res.json({
-      autoLockMinutes: Number(getMeta(db, 'auto_lock_minutes') ?? 30),
-      phoneLockMinutes: Math.min(Number(getMeta(db, 'auto_lock_minutes') ?? 30) || 10, 10),
+      autoLockMinutes: lockMinutes().computer,
+      phoneLockMinutes: lockMinutes().phone || 30,
       onPhone: isRemote(req),
       phoneAccess: !!remoteHost(db),
       lastBackupAt: getMeta(db, 'last_backup_at') ?? null,
@@ -985,8 +993,14 @@ export function createApi({ db, vault, categorizer, sync, onUnlock, coach = new 
     });
   });
   api.put('/security', computerOnly, (req, res) => {
-    const b = z.object({ autoLockMinutes: z.union([z.literal(0), z.literal(5), z.literal(15), z.literal(30), z.literal(60)]) }).parse(req.body);
-    setMeta(db, 'auto_lock_minutes', String(b.autoLockMinutes));
+    const b = z
+      .object({
+        autoLockMinutes: z.union([z.literal(0), z.literal(15), z.literal(30), z.literal(60), z.literal(240)]).optional(),
+        phoneLockMinutes: z.union([z.literal(10), z.literal(30), z.literal(60), z.literal(240)]).optional(),
+      })
+      .parse(req.body);
+    if (b.autoLockMinutes !== undefined) setMeta(db, 'auto_lock_minutes', String(b.autoLockMinutes));
+    if (b.phoneLockMinutes !== undefined) setMeta(db, 'phone_lock_minutes', String(b.phoneLockMinutes));
     res.json({ ok: true });
   });
   // Ends every open session, on this computer and on the phone.

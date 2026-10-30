@@ -14,6 +14,8 @@ import { applyNewIncomeRules, incomeMix, incomeProfile } from '../src/profile.js
 import { buildInsights, detectRecurring, monthlyTrend } from '../src/insights.js';
 import { businessData } from '../src/business.js';
 import { Coach } from '../src/coach.js';
+import { savingOpportunities } from '../src/opportunities.js';
+import { dataCheck } from '../src/datacheck.js';
 import { createApi } from '../src/api.js';
 import type { SyncService } from '../src/sync.js';
 
@@ -106,6 +108,46 @@ describe('household income', () => {
     const tips = businessData(h.db, '2026-10', today).tips;
     expect(tips.map((t) => t.key)).not.toContain('concentration');
     expect(tips.map((t) => `${t.title} ${t.action}`).join('\n')).not.toContain('לקוח');
+  });
+});
+
+describe('what to look at', () => {
+  it('finds expenses worth a conversation and says if they are worth the effort', () => {
+    const h = home();
+    fill(h);
+    for (const m of ['2026-06', '2026-07', '2026-08', '2026-09']) {
+      ingestTransactions(h.db, h.categorizer, h.priv, [
+        { date: `${m}-08`, description: 'NETFLIX.COM', amount: -55 },
+        { date: `${m}-09`, description: 'SPOTIFY', amount: -25 },
+        { date: `${m}-11`, description: 'הראל ביטוח רכב', amount: -380 },
+        { date: `${m}-12`, description: 'מגדל ביטוח בריאות', amount: -210 },
+      ], 'import');
+    }
+    const { opportunities, groups } = savingOpportunities(h.db, '2026-10-15');
+    const keys = opportunities.map((o) => o.key);
+    expect(keys).toContain('lever-telecom');
+    expect(keys).toContain('lever-insurance');
+    expect(keys.some((k) => k.startsWith('sub-'))).toBe(true);
+    const ins = opportunities.find((o) => o.key === 'lever-insurance')!;
+    expect(ins.monthly).toBe(590);
+    expect(ins.saveYearly).toBe(Math.round(590 * 12 * 0.2));
+    expect(ins.worth).toBe('high');
+    // Most worth it first.
+    expect(opportunities[0].worth).toBe('high');
+    expect(groups.map((g) => g.key).sort()).toEqual(['insurance', 'subscriptions']);
+    expect(groups.find((g) => g.key === 'insurance')!.items.map((i) => i.monthly)).toEqual([380, 210]);
+  });
+
+  it('says when the numbers cannot be trusted, and why', () => {
+    const h = home();
+    fill(h);
+    ingestTransactions(h.db, h.categorizer, h.priv, [{ date: '2026-10-02', description: 'ישראכרט חיוב חודשי', amount: -3100 }], 'import');
+    ingestTransactions(h.db, h.categorizer, h.priv, [{ date: '2026-10-03', description: 'שופרסל', amount: -412 }], 'import');
+    h.db.prepare("INSERT INTO transactions (account_id, date, amount, description, category_id, scope, status, source, hash) SELECT account_id, date, amount, description, category_id, scope, status, 'scraper', hash || 'x' FROM transactions WHERE description = 'שופרסל'").run();
+    const c = dataCheck(h.db, '2026-10-15');
+    expect(c.ok).toBe(false);
+    expect(c.items.map((i) => i.key)).toEqual(expect.arrayContaining(['card-ישראכרט', 'dups']));
+    expect(c.items[0].level).toBe('critical');
   });
 });
 
@@ -275,10 +317,10 @@ describe('security', () => {
   it('locks a session left idle and pauses after many wrong passwords', async () => {
     const s = await start();
     const token = (await s.call('POST', '/setup', { body: { password: 'master pass 1' } })).body.token as string;
-    expect((await s.call('PUT', '/security', { token, body: { autoLockMinutes: 5 } })).status).toBe(200);
+    expect((await s.call('PUT', '/security', { token, body: { autoLockMinutes: 15 } })).status).toBe(200);
     const realNow = Date.now;
     try {
-      Date.now = () => realNow() + 6 * 60_000;
+      Date.now = () => realNow() + 16 * 60_000;
       expect((await s.call('GET', '/categories', { token })).status).toBe(401);
     } finally {
       Date.now = realNow;

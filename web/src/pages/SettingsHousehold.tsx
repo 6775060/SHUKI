@@ -94,11 +94,18 @@ export function IncomeProfileCard() {
 }
 
 const LOCK_OPTIONS = [
-  [5, '5 דקות'],
+  [0, 'לא לנעול (מסך הנעילה של Windows שומר)'],
   [15, '15 דקות'],
   [30, '30 דקות'],
   [60, 'שעה'],
-  [0, 'לא לנעול במחשב'],
+  [240, '4 שעות'],
+] as const;
+
+const PHONE_LOCK_OPTIONS = [
+  [10, '10 דקות'],
+  [30, '30 דקות'],
+  [60, 'שעה'],
+  [240, '4 שעות'],
 ] as const;
 
 export function SecurityCard() {
@@ -111,9 +118,9 @@ export function SecurityCard() {
   }, []);
   if (!st) return null;
 
-  const setLock = async (minutes: number) => {
+  const setLock = async (change: { autoLockMinutes?: number; phoneLockMinutes?: number }) => {
     try {
-      await api('/security', { method: 'PUT', json: { autoLockMinutes: minutes } });
+      await api('/security', { method: 'PUT', json: change });
       setMsg('נשמר.');
       setError('');
       load();
@@ -133,7 +140,8 @@ export function SecurityCard() {
     { ok: true, text: 'פרטי הכניסה לבנקים, מפתחות ה-API, השיחות עם המאמן ומה שהוא למד מוצפנים בסיסמת-העל (AES-256).' },
     { ok: true, text: 'המערכת לא פתוחה לרשת הביתית. רק המחשב עצמו, ומהטלפון רק דרך Tailscale.' },
     { ok: true, text: 'מהטלפון אי אפשר ליצור גיבוי, לשחזר, לאפס, לשנות חיבורי בנקים או מפתחות. זה אפשרי רק מהמחשב.' },
-    { ok: st.autoLockMinutes > 0, text: st.autoLockMinutes > 0 ? `נעילה אוטומטית אחרי ${st.autoLockMinutes} דקות בלי שימוש (בטלפון: ${st.phoneLockMinutes}).` : `במחשב אין נעילה אוטומטית. בטלפון: אחרי ${st.phoneLockMinutes} דקות.` },
+    { ok: true, text: `בטלפון המערכת ננעלת אחרי ${st.phoneLockMinutes} דקות בלי שימוש${st.autoLockMinutes > 0 ? `, ובמחשב אחרי ${st.autoLockMinutes}` : '. במחשב היא נשארת פתוחה, ומסך הנעילה של Windows (Win+L) שומר עליה'}.` },
+    { ok: true, text: 'פרטי הכניסה לבנקים נשמרים. כשאתר לא עונה, המערכת מנסה שוב לבד, בלי לבקש אותם מחדש.' },
     { ok: backupAge !== null && backupAge <= 45, text: backupAge === null ? 'עוד לא נוצר קובץ גיבוי. כדאי ליצור ולשמור על דיסק-און-קי, מחוץ למחשב.' : `הגיבוי האחרון לפני ${backupAge} ימים${backupAge > 45 ? '. כדאי ליצור חדש.' : '.'}` },
     { ok: failed === 0, text: failed ? `${failed} ניסיונות כניסה עם סיסמה שגויה בשבוע האחרון. אם זה לא אתה, כדאי לנתק את כל המכשירים ולהחליף סיסמה ב-Windows.` : 'אין ניסיונות כניסה שגויים בשבוע האחרון.' },
   ];
@@ -149,16 +157,28 @@ export function SecurityCard() {
         ))}
       </ul>
 
-      <label>
-        נעילה אוטומטית אחרי חוסר שימוש
-        <select value={st.autoLockMinutes} onChange={(e) => setLock(Number(e.target.value))} disabled={st.onPhone}>
-          {LOCK_OPTIONS.map(([v, l]) => (
-            <option key={v} value={v}>
-              {l}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="row wrap">
+        <label>
+          נעילה במחשב אחרי חוסר שימוש
+          <select value={st.autoLockMinutes} onChange={(e) => setLock({ autoLockMinutes: Number(e.target.value) })} disabled={st.onPhone}>
+            {LOCK_OPTIONS.map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          נעילה בטלפון אחרי חוסר שימוש
+          <select value={st.phoneLockMinutes} onChange={(e) => setLock({ phoneLockMinutes: Number(e.target.value) })} disabled={st.onPhone}>
+            {PHONE_LOCK_OPTIONS.map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       {msg && <span className="success small">{msg}</span>}
       {error && <div className="error small">{error}</div>}
 

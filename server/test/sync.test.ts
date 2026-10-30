@@ -16,7 +16,7 @@ function setup() {
   const vault = new Vault(db);
   vault.setup('master-password');
   const cat = new Categorizer(db);
-  const sync = new SyncService(db, vault, cat);
+  const sync = new SyncService(db, vault, cat, [0, 0]);
   const id = db
     .prepare("INSERT INTO connections (company_id, label, default_scope, credentials_enc) VALUES ('pagi', 'פאגי – העסק', 'business', ?)")
     .run(vault.seal({ username: 'u', password: 'p' })).lastInsertRowid as number;
@@ -78,5 +78,33 @@ describe('sync alerts', () => {
       ['דיסקונט', 'warning'],
     ]);
     expect(a[0].action).toBe('סיסמה שגויה');
+  });
+
+  it('tries a flaky site again, but never a wrong password', async () => {
+    const { db, sync, id } = setup();
+    scrape.mockReset();
+    scrape
+      .mockResolvedValueOnce({ success: false, errorType: 'TIMEOUT' })
+      .mockRejectedValueOnce(new Error('net::ERR_CONNECTION_RESET'))
+      .mockResolvedValueOnce({ success: true, accounts: [] });
+    sync.enqueue(id);
+    await waitIdle(sync);
+    expect(scrape).toHaveBeenCalledTimes(3);
+    expect((db.prepare('SELECT last_status FROM connections WHERE id = ?').get(id) as { last_status: string }).last_status).toBe('ok');
+
+    scrape.mockReset();
+    scrape.mockResolvedValue({ success: false, errorType: 'INVALID_PASSWORD' });
+    sync.enqueue(id);
+    await waitIdle(sync);
+    expect(scrape).toHaveBeenCalledTimes(1);
+
+    // A later round only picks up passing failures, a few times a day.
+    db.prepare("UPDATE sync_runs SET finished_at = datetime('now', '-3 hours')").run();
+    expect(sync.retryFailed()).toEqual([]);
+    db.prepare("UPDATE sync_runs SET error_type = 'TIMEOUT' WHERE id = (SELECT MAX(id) FROM sync_runs)").run();
+    scrape.mockReset();
+    scrape.mockResolvedValue({ success: true, accounts: [] });
+    expect(sync.retryFailed()).toEqual([id]);
+    await waitIdle(sync);
   });
 });
