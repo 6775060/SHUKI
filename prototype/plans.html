@@ -1,0 +1,185 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>תוכניות מינוי פונטשוק</title>
+<style>
+@font-face{font-family:"Discovery_Fs";font-weight:100 900;font-style:normal;font-display:swap;src:url("fonts/Discovery_Fs-VF.woff2") format("woff2-variations"),url("fonts/Discovery_Fs-VF.woff2") format("woff2")}
+/* Layout: Raizy Silver's personal area (white header, grey ground, one white card = right sidebar + content). Light-only, as in the Figma. Font: Discovery_Fs from fontshok.co.il */
+:root{
+  color-scheme: light;
+  --bg:#F4F4F4; --card:#FFFFFF; --ink:#151515; --muted:#6E6E6E; --faint:#A8A8A8; --line:#E8E8E8; --soft:#F2F2F2; --softer:#F8F7FB;
+  --violet:#5B3FFF; --violet-text:#9B4DFF;
+  --grad:linear-gradient(90deg,#A29BFE 0%,#E1B6FF 100%);
+  --ok:#43D61B; --ok-track:#E2FBD6; --warn:#FFC700; --warn-track:#FFF3C4; --bad:#FF1E1E; --bad-track:#FFD6D6;
+  --new:#FF6A3D;
+  /* subscription colours (from the logo files) */
+  --c-desk:linear-gradient(135deg,#FF9A8B,#E3166F);
+  --c-web:linear-gradient(158deg,#6FCFA1,#2C67FF);
+  --c-extra:linear-gradient(108deg,#BE68FF 12%,#382CFF 94%);
+  --c-barter:linear-gradient(135deg,#C3CAD6,#20232B);
+  --font:"Discovery_Fs","Heebo",Arial,sans-serif;
+  --r-card:24px; --r-ctl:6px;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{font-family:var(--font);color:var(--ink);font-size:16px;line-height:1.5;direction:rtl;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+/* digits stay as tight as the text around them (Discovery's tabular figures run wide) */
+.num{font-variant-numeric:proportional-nums;letter-spacing:-.01em}
+.icon{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+/* standalone plans section for the site's "תוכניות מינוי" page (moved out of the personal area).
+   Width/spacing are variables so they can be matched to the live page: --plans-max = the page's content width. */
+:root{--plans-max:1140px;--plans-pad:16px;--plans-top:56px;--plans-bottom:96px;--ease:cubic-bezier(.22,.61,.36,1)}
+*{box-sizing:border-box}
+html,body{background:#F4F4F4;margin:0}
+.fs-plans{max-width:var(--plans-max);margin:0 auto;padding:var(--plans-top) var(--plans-pad) var(--plans-bottom)}
+.head-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--ink);padding-bottom:18px}
+.h1{font-size:33px;font-weight:800;margin:0;line-height:1.2;letter-spacing:-.2px}
+.sub{font-size:15px;margin:4px 0 0;color:var(--muted)}
+.hint{font-size:13px;color:var(--muted)}
+.tbl-wrap{overflow-x:auto}
+.btn{border:0;border-radius:var(--r-ctl);height:38px;padding:0 20px;font-weight:600;font-size:16px;display:inline-flex;align-items:center;justify-content:center;gap:10px;white-space:nowrap;text-decoration:none;color:inherit;transition:filter .15s,transform .1s}
+.btn:active{transform:scale(.98)}
+.pk{transition:transform .35s var(--ease),box-shadow .35s var(--ease)}
+.pk:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(60,40,120,.10)}
+.price .cur{font-weight:200;margin-inline-end:2px}
+.now .cur{font-size:.82em}
+/* plans page — mirrors fontshok.co.il/מחירון-רישיונות-ומנויים */
+.pk-tabs{display:flex;gap:0;border-bottom:1px solid #BDBDBD;margin-bottom:34px;overflow-x:auto}
+.pk-tabs span{padding:14px 28px;font-weight:700;font-size:21px;display:flex;gap:10px;align-items:center;white-space:nowrap}
+.pk-tabs span.on{background:var(--soft)}
+.pk-tabs img{width:26px;height:26px}
+.pkgs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:start;margin-top:46px}
+.pk{background:var(--card);border-radius:26px;padding:8px;position:relative}
+.pk.rec{background:var(--c-web);padding:38px 8px 8px;margin-top:-30px}
+.pk.rec .flag{position:absolute;top:8px;inset-inline:0;text-align:center;color:#fff;font-weight:700;font-size:15px}
+.pk-in{background:var(--card);border-radius:20px;padding:22px 16px 18px}
+.pk-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px;min-height:56px}
+.pk-top>div{min-width:0}
+.pk h3{margin:0;font-size:25px;font-weight:800;line-height:1.1}
+.pk .tag{font-size:13.5px;color:var(--ink);margin-top:4px;white-space:nowrap}
+.pk-top img{width:58px;height:58px;flex:none}
+.price{background:var(--soft);border-radius:22px;padding:20px 18px 18px}
+.was{font-size:16px;color:var(--muted);text-decoration:line-through;text-decoration-thickness:1.5px}
+.now{display:flex;flex-wrap:nowrap;align-items:baseline;gap:10px;margin:6px 0 18px}
+.now small{white-space:nowrap}
+.now b{font-size:35px;font-weight:800;line-height:1}
+.now small{font-size:13px;color:var(--muted)}
+/* savings: quiet text on the price's baseline, like "לא כולל מע״מ" on the live site */
+.save{font-size:14px;font-weight:400;color:var(--muted);white-space:nowrap;line-height:1}
+.price .was{line-height:1}
+/* black symbols without a circle, as on the live pricing page */
+.pk-top img.pk-sym{width:auto;height:32px;max-width:46px;object-fit:contain;flex:none}
+.price .what{font-size:15px;font-weight:700}
+.price .what span{display:block;font-weight:400;color:var(--ink)}
+/* buttons + link sit inside the grey box, like the live site: thin outline, regular weight */
+.pk .cta{display:flex;align-items:center;width:100%;height:46px;margin-top:26px;border-radius:99px;border:1px solid var(--ink);background:transparent;font-size:18px;font-weight:400;justify-content:center}
+.pk .cta:hover{background:var(--card)}
+.pk.rec .cta{border:0;background:linear-gradient(90deg,#2C67FF,#6FCFA1);color:#fff}
+.pk.rec .cta:hover{filter:brightness(1.05)}
+.pk .more{display:flex;justify-content:center;align-items:center;gap:6px;font-size:14px;color:var(--ink);margin-top:14px;text-decoration:none}
+.pk .more:hover{color:var(--violet-text)}
+/* the live site's long thin arrow (Discovery ">++" ligature, missing from our variable font) */
+.fs-arrow{width:24px;height:10px;fill:none;stroke:currentColor;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.price .btn.cta{width:100%}
+.cmp{margin-top:72px}
+.cmp h2{font-size:27px;font-weight:800;margin:0;padding-bottom:18px;border-bottom:1px solid var(--ink)}
+.cmp table{width:100%;border-collapse:collapse;font-size:15px}
+/* comparison table — 1:1 with the live site: light webstop column with a rounded foot, full-width rules between groups only */
+.cmp th{font-size:21px;font-weight:700;padding:34px 10px 26px;text-align:center;white-space:nowrap;width:20%}
+.cmp th:first-child{width:auto}
+.cmp th img{width:auto;height:20px;vertical-align:-4px;margin-inline-start:6px}
+.cmp th:first-child,.cmp td:first-child{text-align:start}
+.cmp td{padding:16px 10px;text-align:center;font-size:15px;color:var(--ink)}
+.cmp td:first-child b{font-weight:700}
+.cmp tr.grp td{font-weight:700;font-size:17px;padding:40px 10px 14px}
+.cmp tr.grp td:first-child{padding-inline-start:0}
+.cmp tbody tr.grp:not(:first-child) td{border-top:1px solid #555}
+.cmp tbody tr:not(.grp) td:first-child{padding-inline-start:0}
+.cmp tr.grp + tr td{padding-top:20px}
+.cmp tr:has(+ tr.grp) td{padding-bottom:30px}
+/* webstop column = one light pill behind the table; its half-circle foot hugs the last row (like the live site) */
+.cmp-in{position:relative;overflow:visible}
+.cmp table{position:relative;z-index:1;table-layout:fixed}
+.web-col{position:absolute;top:0;bottom:0;left:20%;width:20%;background:#FAFAFA;border-radius:0 0 999px 999px;z-index:0}
+/* full half-circle foot: radius = half the column width (999px is clamped), so the cell must be at least that tall */
+.cmp tr.cmp-end td{height:34px;padding:0}
+.yes,.no{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:50%;vertical-align:middle}
+.yes{background:#EBDDF9;color:var(--ink)}
+.no{background:#D9D1D1;color:#fff}
+.yes svg,.no svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.cpill{display:inline-block;background:#F3E3F8;border-radius:99px;padding:4px 11px;font-size:14px;font-weight:500;white-space:nowrap}
+@media (max-width:1000px){.pkgs{grid-template-columns:1fr;max-width:440px;margin-inline:auto}.pk.rec{margin-top:0}}
+@media (max-width:760px){
+  .h1{font-size:25px}
+  :root{--plans-top:28px}
+  /* comparison on phones: feature name full width, the three marks in a row under it */
+  .cmp table,.cmp thead,.cmp tbody{display:block}
+  .cmp tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .cmp th:first-child{display:none}
+  .cmp th{width:auto;font-size:16px;padding:18px 4px 12px;white-space:normal}
+  .cmp th img{height:15px}
+  .cmp td{padding:8px 4px}
+  .cmp td:first-child{grid-column:1/-1;padding:16px 0 6px!important;font-size:15px}
+  .cmp tr.grp td:not(:first-child){display:none}
+  .cmp tr.grp td:first-child{padding-top:26px!important}
+  .cmp tr:has(+ tr.grp) td:not(:first-child){padding-bottom:22px}
+  .cmp .cpill{font-size:13px;padding:3px 8px;white-space:normal;line-height:1.3}
+  .cmp tr.cmp-end td:not(:first-child){display:none}
+  .cmp tr.cmp-end td{height:30px}
+  .cmp table{table-layout:auto}
+  .web-col{left:33.333%;width:33.334%}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<main class="fs-plans" id="plans"></main>
+<script>
+/* price with a thin ₪ sign (plans cards) */
+const ilsT=n=>`<span class="cur">₪</span>${n.toLocaleString('he-IL',{maximumFractionDigits:2})}`;
+/* plans — based on the live pricing page; desktop replaces academic */
+/* prices = WooCommerce store on fontshok.co.il (incl. VAT). Desktop has no subscription product: per-font desktop license from ₪354 */
+const PK=[
+ {k:'desk',name:'דסקטופ',tag:'כלים לעבודה מקצועית',was:249,now:179,unit:'לפונט',what:'רישיון דסקטופ לפונט נבחר',det:'אדובי, אופיס, פיגמה / תשלום חד־פעמי',cta:'בחירת פונט לדסקטופ ←',url:'#'},
+ {k:'web',name:'וובסטופ',tag:'להיות מקצוענים גם בדיגיטל',was:378,now:319,unit:'לחודש',what:'תכנית מורחבת לאתרים ולדסקטופ',det:'כל הפונטים והפורמטים, 3 דומיינים בחודש / תשלום חודשי',cta:'אני רוצה להצטרף ←',url:'#',rec:1},
+ {k:'extra',name:'אקסטרה',tag:'פתרון מלא לעבודה מקצועית',was:802,now:700,unit:'לחודש',what:'תכנית חופשית ללא הגבלה',det:'אתרים, אפליקציות ודסקטופ / תשלום חודשי',cta:'גישה בלתי מוגבלת ←',url:'#',cur:1}
+];
+const CMP=[
+ ['grp','עיצוב גרפי, סושיאל ווידאו'],
+ ['עיצוב תוצרי דסקטופ','אדובי, אופיס, פיגמה',1,1,1],
+ ['עיצוב תוצרי פלט','מצגות, פוסטים, עיצובים לדיגיטל',1,1,1],
+ ['עיצוב תוצרי תשדיר','וידאו, כתוביות, שידור טלוויזיוני',0,1,1],
+ ['grp','תנועה וחוויית משתמש'],
+ ['עיצוב תוצרי תנועה','סרטונים, אנימציות, לוגו חי',0,1,1],
+ ['עיצוב תוצרי UI/UX','פיגמה (Figma), אקס־די (Xd) לתכנון ממשק',1,1,1],
+ ['grp','מערכות ומוצרים דיגיטליים'],
+ ['עיצוב תוצרי אינטרנט','הגבלת דומיינים וכניסות חודשיות',0,'שלושה דומיינים בחודש','דומיינים ללא הגבלה'],
+ ['עיצוב תוצרי אפליקציה','הגבלת אפליקציות, הורדות, משתמשים',0,0,'אפליקציות ללא הגבלה']
+];
+const SYM={extra:'logos/extra-black.svg',web:'logos/webtop-black.svg',desk:'logos/desktop-black.svg',acad:'logos/academic-black.svg'};
+/* comparison marks, as on the live site: lilac tick, grey cross, lilac text pill */
+const cell=v=>v===1?`<span class="yes" aria-label="כלול"><svg viewBox="0 0 24 24"><path d="M7.5 12.5l3 3 6-6.5"/></svg></span>`:v===0?`<span class="no" aria-label="לא כלול"><svg viewBox="0 0 24 24"><path d="M8.5 8.5l7 7m0-7l-7 7"/></svg></span>`:`<span class="cpill">${v}</span>`;
+const plansHTML=()=>`
+ <div class="head-row"><div><h1 class="h1">תוכניות המינוי שלנו</h1><p class="sub">כל המחירים כוללים מע״מ. אפשר לעבור בין מסלולים בכל עת, ומה ששילמת מקוזז.</p></div></div>
+ <div class="pkgs">
+ ${PK.map(p=>`<article class="pk pk-${p.k} ${p.rec?'rec':''} ${p.cur?'cur':''}">
+  ${p.rec?'<div class="flag">תוכנית מומלצת</div>':''}
+  <div class="pk-in">
+   <div class="pk-top"><div><h3>${p.name}</h3><div class="tag">${p.tag}</div></div><img class="pk-sym" src="${SYM[p.k]}" alt="${p.name}"></div>
+   <div class="price">
+     <div style="display:flex;align-items:center;gap:8px;min-height:22px">${p.was?`<span class="was num">${ilsT(p.was)}</span><span class="save">חיסכון ${Math.round((1-p.now/p.was)*100)}%</span>`:p.from?'<span style="font-size:14px;color:var(--muted)">החל מ־</span>':''}</div>
+     <div class="now"><b class="num">${ilsT(p.now)}</b><small style="white-space:nowrap">${p.unit} · כולל מע״מ</small></div>
+     <div class="what">${p.what}<span>${p.det}</span></div>
+     <a class="btn cta" href="${p.url}">${p.cta}</a>
+     <a class="more" href="#cmp">פרטים אודות המנוי <svg class="fs-arrow" viewBox="0 0 26 10" aria-hidden="true"><path d="M25 5H1.5M5.5 1L1.5 5l4 4"/></svg></a>
+   </div>
+  </div></article>`).join('')}
+ </div>
+ <p class="hint" style="text-align:center;margin-top:14px">המחירים כוללים מע״מ, כפי שהם מופיעים בחנות באתר.</p>
+ <section class="cmp" id="cmp"><h2>השוואת המינויים שלנו</h2><div class="tbl-wrap cmp-in"><i class="web-col" aria-hidden="true"></i><table>
+  <thead><tr><th></th>${PK.map(p=>`<th class="${p.rec?'col-web':''}">${p.name} <img class="cmp-sym" src="${SYM[p.k]}" alt=""></th>`).join('')}</tr></thead>
+  <tbody>${CMP.map(r=>r[0]==='grp'?`<tr class="grp"><td>${r[1]}</td><td></td><td class="col-web"></td><td></td></tr>`:`<tr><td><b>${r[0]}</b> - ${r[1]}</td>${[2,3,4].map(i=>`<td class="${i===3?'col-web':''}">${cell(r[i])}</td>`).join('')}</tr>`).join('')}<tr class="cmp-end"><td></td><td></td><td class="col-web"></td><td></td></tr></tbody>
+ </table></div></section>`;
+document.getElementById('plans').innerHTML=plansHTML();
+</script>
