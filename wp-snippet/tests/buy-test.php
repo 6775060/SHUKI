@@ -7,6 +7,12 @@ eval( fsa_stub_snippet( 'all' === $mode ? 'all' : 'admins' ) );
 
 $fail = 0; $t = function ( $ok, $m ) use ( &$fail ) { echo ( $ok ? 'ok   ' : 'FAIL ' ) . $m . "\n"; if ( ! $ok ) $fail++; };
 $call = function ( $post ) { $_POST = $post; try { fsa_v2_buy_ajax(); } catch ( Done $d ) { return $d; } return null; };
+if ( 'public' === $mode ) { // "FS · אזור רכישה v2" is installed (FSA_BUY_PUBLIC): the built-in chooser stays off, even for admins and the test account
+	define( 'FSA_BUY_PUBLIC', true );
+	$GLOBALS['user'] = (object) array( 'ID' => 8, 'user_login' => 'claude-test', 'roles' => array( 'customer' ) );
+	$t( ! fsa_v2_buy_on(), 'the built-in chooser is off when the separate purchase snippet is installed' );
+	echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n"; exit( $fail ? 1 : 0 );
+}
 if ( 'all' === $mode ) { // FSA_V2_BUY_FOR = 'all': a guest can buy, and gets a store session
 	$r = $call( array( 'op' => 'plan', 'k' => 'web' ) );
 	$t( $r->ok && 1 === count( $r->data['lines'] ) && $GLOBALS['cookie_set'] === 1, 'open to all: a guest can add a plan, with a store session' );
@@ -32,6 +38,17 @@ $t( 8 === count( $desk['items'] ) && ! $desk['items'][0]['fam'], 'a variation th
 $t( abs( $web['items'][0]['vat'] - ( 2400 - 2400 / 1.18 ) ) < 0.01, 'VAT is the part inside the price (prices include VAT)' );
 $GLOBALS['prods'][602]->price = '310'; $t( 300.0 === fsa_v2_buy_font( wc_get_product( 500 ) )['lics'][0]['items'][1]['price'], 'the font is cached per product version' );
 $GLOBALS['prods'][602]->price = '300';
+
+// font pages: the hand-written "before VAT" price line shows the store's prices, VAT included (build 114)
+$line = '<span class="r-desktop-price" style="font-size:16px"><span style="font-weight:800;">מחירון דסקטופ: </span>משקל בודד 300, משפחה מלאה 2400 (המחירים לפני מע"מ)</span>' . "\n\n" . '<span class="r-webstop-price" style="font-size:16px"><span style="font-weight:800;">מחירון וובפונט: </span>משקל בודד 300, משפחה מלאה 2400 (מחירים לפני מע"מ)</span>';
+$t( $line === fsa_v2_price_line( $line ), 'price line: untouched outside a product page' );
+$GLOBALS['page']['product'] = 500;
+$o = fsa_v2_price_line( $line );
+$t( false !== strpos( $o, 'מחירון וובפונט: </span>משקל בודד ₪300, משפחה מלאה <del style="opacity:.55">₪2,832</del> ₪2,400 (כולל מע"מ)</span>' ), 'price line: webfont from the store, family with its pre-sale price struck, VAT included' );
+$t( false !== strpos( $o, 'מחירון דסקטופ: </span>משקל בודד ₪250 (כולל מע"מ)</span>' ) && false === strpos( $o, 'לפני מע' ), 'price line: desktop shows only what is for sale; no "before VAT" left' );
+$t( 'x' === fsa_v2_price_line( 'x' ), 'price line: other widgets untouched' );
+unset( $GLOBALS['page']['product'] );
+exec( 'php ' . escapeshellarg( __FILE__ ) . ' public', $o2, $rc2 ); $t( 0 === $rc2, 'separate purchase snippet installed: ' . trim( (string) end( $o2 ) ) );
 
 // choose weights: the cart holds exactly the chosen ones; choosing again replaces, never doubles
 $r = $call( array( 'op' => 'set', 'product' => 500, 'vids' => '602,603,612' ) );

@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '113' );
+define( 'FSA_V2_BUILD', '114' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -671,13 +671,15 @@ function fsa_v2_quota_full_alert( $uid, $plan, $used, $cycle ) {
 		. fsa_v2_mail_button( admin_url( 'user-edit.php?user_id=' . $uid ), 'לכרטיס הלקוח' );
 	fsa_v2_send_mail( get_option( 'admin_email' ), 'מילא את המכסה: ' . ( $n ? $n : '#' . $uid ), fsa_v2_mail_frame( 'לקוח רשם את כל האתרים שכלולים במינוי.', $in ) );
 }
-// an admin can see the email: /?fsa_remind_test=1 sends the nudge to their own address
+// an admin can see the email: /?fsa_remind_test=1 sends the nudge to their own address; &to=name@example.com sends it to another inbox
 add_action( 'template_redirect', function () {
 	if ( empty( $_GET['fsa_remind_test'] ) || ! current_user_can( 'manage_options' ) ) return;
-	$u = wp_get_current_user();
+	$u  = wp_get_current_user();
+	$to = isset( $_GET['to'] ) ? sanitize_email( wp_unslash( $_GET['to'] ) ) : '';
+	if ( ! $to || ! is_email( $to ) ) $to = $u->user_email;
 	list( $subj, $body ) = fsa_v2_nudge_mail( $u, 'דיסקברי', 'וובסטופ' );
-	$ok = fsa_v2_send_mail( $u->user_email, '[בדיקה] ' . $subj, $body );
-	wp_die( $ok ? 'נשלח מייל בדיקה אל ' . esc_html( $u->user_email ) : 'השליחה נכשלה.', '', array( 'response' => 200 ) );
+	$ok = fsa_v2_send_mail( $to, '[בדיקה] ' . $subj, $body );
+	wp_die( $ok ? 'נשלח מייל בדיקה אל ' . esc_html( $to ) : 'השליחה נכשלה.', '', array( 'response' => 200 ) );
 } );
 function fsa_v2_addon_grant( $order_id ) {
 	$order = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
@@ -731,6 +733,8 @@ add_filter( 'woocommerce_get_return_url', function ( $url, $order ) {
 // the checkout creates it, and WooCommerce resumes the same unpaid order when the customer comes back (one unpaid order per need).
 // Prices come only from WooCommerce, VAT included. Switch: FSA_V2_BUY_FOR.
 function fsa_v2_buy_on() {
+	// the separate snippet "FS · אזור רכישה v2" (FSA_BUY_PUBLIC) runs the purchase window now; this built-in chooser steps aside so nobody gets two
+	if ( defined( 'FSA_BUY_PUBLIC' ) ) return false;
 	return 'all' === FSA_V2_BUY_FOR || current_user_can( 'manage_options' ) || fsa_v2_is_tester();
 }
 // price of one unit as the customer pays it, and the VAT inside it (the store's prices include VAT; with taxes off in WooCommerce, 18% of the price)
@@ -783,6 +787,32 @@ function fsa_v2_buy_font( $p ) {
 	set_transient( $key, $out, 12 * HOUR_IN_SECONDS );
 	return $out ?: null;
 }
+// font pages: the hand-written price line ("משקל בודד 300, משפחה מלאה 2400 (המחירים לפני מע"מ)" in an Elementor HTML widget,
+// spans .r-desktop-price / .r-webstop-price) is filled from the store's own prices, VAT included, so it always matches the cart and checkout
+function fsa_v2_price_line( $html ) {
+	if ( false === strpos( $html, '-price' ) || ! function_exists( 'is_product' ) || ! is_product() ) return $html;
+	$f = fsa_v2_buy_font( wc_get_product( get_queried_object_id() ) );
+	if ( ! $f ) return $html;
+	$by = array();
+	foreach ( $f['lics'] as $l ) $by[ $l['k'] ] = $l['items'];
+	$n = function ( $v ) { return '₪' . number_format( (float) $v, (float) $v === floor( (float) $v ) ? 0 : 2 ); };
+	return preg_replace_callback( '~(<span class="r-(desktop|webstop)-price"[^>]*>\s*<span[^>]*>[^<]*</span>)[^<]*(</span>)~u', function ( $m ) use ( $by, $n ) {
+		$items = $by[ 'desktop' === $m[2] ? 'desk' : 'web' ] ?? null;
+		if ( ! $items ) return $m[0];
+		$one = null; $fam = null;
+		foreach ( $items as $i ) {
+			if ( $i['fam'] ) $fam = $fam ?: $i;
+			elseif ( null === $one || $i['price'] < $one['price'] ) $one = $i;
+		}
+		$t = array();
+		if ( $one ) $t[] = 'משקל בודד ' . $n( $one['price'] );
+		if ( $fam ) $t[] = 'משפחה מלאה ' . ( $fam['was'] ? '<del style="opacity:.55">' . $n( $fam['was'] ) . '</del> ' : '' ) . $n( $fam['price'] );
+		return $t ? $m[1] . implode( ', ', $t ) . ' (כולל מע"מ)' . $m[3] : $m[0];
+	}, $html );
+}
+add_filter( 'elementor/widget/render_content', function ( $content, $widget ) {
+	return is_object( $widget ) && method_exists( $widget, 'get_name' ) && 'html' === $widget->get_name() ? fsa_v2_price_line( $content ) : $content;
+}, 10, 2 );
 // the plans for sale (price, renewal), from the plan products
 function fsa_v2_buy_plans() {
 	$out = array();
