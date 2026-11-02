@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '114' );
+define( 'FSA_V2_BUILD', '115' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -624,7 +624,7 @@ function fsa_v2_nudge_mail( $u, $font, $plan_label ) {
 		. '<p style="margin:0 0 18px">לפני כשבועיים הורדת את ' . $what . ' לאתרים. אם האתר כבר באוויר, או קרוב לשם, זה רגע טוב לרשום אותו במינוי:</p>'
 		. '<table role="presentation" cellpadding="0" cellspacing="0">'
 		. $row( 'רישיון מסודר', 'האתר מקבל תעודה משלו, עם הכתובת שלו. נוח כשלקוח שואל "יש לזה רישיון?"' )
-		. $row( 'במה לעבודה שלך', 'אם תרצה, נציג את האתר בגלריית האתרים של פונטשוק, עם קרדיט וקישור אליך.' )
+		. $row( 'במה לעבודה שלך', 'נציג את האתר בגלריית האתרים של פונטשוק, עם קרדיט וקישור אליך.' )
 		. $row( '20 שניות', 'כתובת, פונט, סיימת. בלי טפסים ארוכים.' )
 		. '</table>'
 		. fsa_v2_mail_button( $url, 'לרישום האתר' )
@@ -791,7 +791,9 @@ function fsa_v2_buy_font( $p ) {
 // spans .r-desktop-price / .r-webstop-price) is filled from the store's own prices, VAT included, so it always matches the cart and checkout
 function fsa_v2_price_line( $html ) {
 	if ( false === strpos( $html, '-price' ) || ! function_exists( 'is_product' ) || ! is_product() ) return $html;
-	$f = fsa_v2_buy_font( wc_get_product( get_queried_object_id() ) );
+	// the page's own product from the main query: widgets with their own loops (related fonts) swap $wp_query while they render
+	$pid = isset( $GLOBALS['wp_the_query'] ) && is_object( $GLOBALS['wp_the_query'] ) ? (int) $GLOBALS['wp_the_query']->get_queried_object_id() : (int) get_queried_object_id();
+	$f = $pid ? fsa_v2_buy_font( wc_get_product( $pid ) ) : null;
 	if ( ! $f ) return $html;
 	$by = array();
 	foreach ( $f['lics'] as $l ) $by[ $l['k'] ] = $l['items'];

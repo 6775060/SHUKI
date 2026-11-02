@@ -47,6 +47,9 @@ $o = fsa_v2_price_line( $line );
 $t( false !== strpos( $o, 'מחירון וובפונט: </span>משקל בודד ₪300, משפחה מלאה <del style="opacity:.55">₪2,832</del> ₪2,400 (כולל מע"מ)</span>' ), 'price line: webfont from the store, family with its pre-sale price struck, VAT included' );
 $t( false !== strpos( $o, 'מחירון דסקטופ: </span>משקל בודד ₪250 (כולל מע"מ)</span>' ) && false === strpos( $o, 'לפני מע' ), 'price line: desktop shows only what is for sale; no "before VAT" left' );
 $t( 'x' === fsa_v2_price_line( 'x' ), 'price line: other widgets untouched' );
+$GLOBALS['wp_the_query'] = new class { function get_queried_object_id() { return 500; } }; $GLOBALS['page']['product'] = 317; // a related-fonts loop swapped the query
+$t( fsa_v2_price_line( $line ) === $o, 'price line: the page\'s own product (main query), even while another loop has swapped the current one' );
+unset( $GLOBALS['wp_the_query'] ); $GLOBALS['page']['product'] = 500;
 unset( $GLOBALS['page']['product'] );
 exec( 'php ' . escapeshellarg( __FILE__ ) . ' public', $o2, $rc2 ); $t( 0 === $rc2, 'separate purchase snippet installed: ' . trim( (string) end( $o2 ) ) );
 
