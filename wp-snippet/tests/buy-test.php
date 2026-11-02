@@ -41,15 +41,12 @@ $GLOBALS['prods'][602]->price = '300';
 
 // font pages: the hand-written "before VAT" price line shows the store's prices, VAT included (build 114)
 $line = '<span class="r-desktop-price" style="font-size:16px"><span style="font-weight:800;">מחירון דסקטופ: </span>משקל בודד 300, משפחה מלאה 2400 (המחירים לפני מע"מ)</span>' . "\n\n" . '<span class="r-webstop-price" style="font-size:16px"><span style="font-weight:800;">מחירון וובפונט: </span>משקל בודד 300, משפחה מלאה 2400 (מחירים לפני מע"מ)</span>';
-$t( $line === fsa_v2_price_line( $line ), 'price line: untouched outside a product page' );
-$GLOBALS['page']['product'] = 500;
-$o = fsa_v2_price_line( $line );
+$t( $line === fsa_v2_price_line( $line, 0 ), 'price line: untouched without a product' );
+$o = fsa_v2_price_line( $line, 500 );
 $t( false !== strpos( $o, 'מחירון וובפונט: </span>משקל בודד ₪300, משפחה מלאה <del style="opacity:.55">₪2,832</del> ₪2,400 (כולל מע"מ)</span>' ), 'price line: webfont from the store, family with its pre-sale price struck, VAT included' );
 $t( false !== strpos( $o, 'מחירון דסקטופ: </span>משקל בודד ₪250 (כולל מע"מ)</span>' ) && false === strpos( $o, 'לפני מע' ), 'price line: desktop shows only what is for sale; no "before VAT" left' );
-$t( 'x' === fsa_v2_price_line( 'x' ), 'price line: other widgets untouched' );
-$GLOBALS['wp_the_query'] = new class { function get_queried_object_id() { return 500; } }; $GLOBALS['page']['product'] = 317; // a related-fonts loop swapped the query
-$t( fsa_v2_price_line( $line ) === $o, 'price line: the page\'s own product (main query), even while another loop has swapped the current one' );
-unset( $GLOBALS['wp_the_query'] ); $GLOBALS['page']['product'] = 500;
+$t( 'x' === fsa_v2_price_line( 'x', 500 ), 'price line: the rest of the page untouched' );
+$t( false === strpos( file_get_contents( __DIR__ . '/../fsa-v2-snippet.php' ), "'elementor/widget/render_content'" ), 'price line: no per-widget filter (Elementor caches widget output across pages)' );
 unset( $GLOBALS['page']['product'] );
 exec( 'php ' . escapeshellarg( __FILE__ ) . ' public', $o2, $rc2 ); $t( 0 === $rc2, 'separate purchase snippet installed: ' . trim( (string) end( $o2 ) ) );
 

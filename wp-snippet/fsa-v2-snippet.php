@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '115' );
+define( 'FSA_V2_BUILD', '116' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -789,11 +789,10 @@ function fsa_v2_buy_font( $p ) {
 }
 // font pages: the hand-written price line ("משקל בודד 300, משפחה מלאה 2400 (המחירים לפני מע"מ)" in an Elementor HTML widget,
 // spans .r-desktop-price / .r-webstop-price) is filled from the store's own prices, VAT included, so it always matches the cart and checkout
-function fsa_v2_price_line( $html ) {
-	if ( false === strpos( $html, '-price' ) || ! function_exists( 'is_product' ) || ! is_product() ) return $html;
-	// the page's own product from the main query: widgets with their own loops (related fonts) swap $wp_query while they render
-	$pid = isset( $GLOBALS['wp_the_query'] ) && is_object( $GLOBALS['wp_the_query'] ) ? (int) $GLOBALS['wp_the_query']->get_queried_object_id() : (int) get_queried_object_id();
-	$f = $pid ? fsa_v2_buy_font( wc_get_product( $pid ) ) : null;
+// Done on the finished page (not per widget): Elementor caches widget output across pages, so a widget filter showed one font's prices on all.
+function fsa_v2_price_line( $html, $pid ) {
+	if ( ! $pid || false === strpos( $html, '-price"' ) ) return $html;
+	$f = fsa_v2_buy_font( wc_get_product( $pid ) );
 	if ( ! $f ) return $html;
 	$by = array();
 	foreach ( $f['lics'] as $l ) $by[ $l['k'] ] = $l['items'];
@@ -812,9 +811,11 @@ function fsa_v2_price_line( $html ) {
 		return $t ? $m[1] . implode( ', ', $t ) . ' (כולל מע"מ)' . $m[3] : $m[0];
 	}, $html );
 }
-add_filter( 'elementor/widget/render_content', function ( $content, $widget ) {
-	return is_object( $widget ) && method_exists( $widget, 'get_name' ) && 'html' === $widget->get_name() ? fsa_v2_price_line( $content ) : $content;
-}, 10, 2 );
+add_action( 'template_redirect', function () {
+	if ( is_admin() || ! function_exists( 'is_product' ) || ! is_product() ) return;
+	$pid = (int) get_queried_object_id(); // the page's own product, read before any loop on the page runs
+	if ( $pid ) ob_start( function ( $html ) use ( $pid ) { return fsa_v2_price_line( (string) $html, $pid ); } );
+}, 1 );
 // the plans for sale (price, renewal), from the plan products
 function fsa_v2_buy_plans() {
 	$out = array();
