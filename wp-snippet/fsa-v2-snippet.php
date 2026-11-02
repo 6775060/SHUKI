@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '112' );
+define( 'FSA_V2_BUILD', '113' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -1896,7 +1896,7 @@ function fsa_v2_css() {
   :is(#fsa,#fsa-layer) .orow>td.odet span:first-child{max-width:none;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   :is(#fsa,#fsa-layer) .orow>td.odet .more{flex:none}
   :is(#fsa,#fsa-layer) .orow>td:nth-child(4){flex:none}
-  :is(#fsa,#fsa-layer) .tabs[role=tablist] button{flex:1 1 0;min-width:0;padding:10px 4px 12px;text-align:center;white-space:normal;line-height:1.25;font-size:15px}
+  :is(#fsa,#fsa-layer) .tabs[role=tablist] button{flex:1 1 0;min-width:0;padding:10px 4px 12px;text-align:center;white-space:nowrap;line-height:1.25;font-size:15px}
   :is(#fsa,#fsa-layer) .dl-tbl tbody tr:not(.zip-row)>td:nth-child(n+3){flex:1 1 0;min-width:0;margin:0!important}
   :is(#fsa,#fsa-layer) .dl-tbl tbody tr:not(.zip-row) .dl,:is(#fsa,#fsa-layer) .dl-tbl .wsel-pop{width:100%;justify-content:center}
   :is(#fsa,#fsa-layer) .dl-tbl .wsel-pop .wsel{width:100%;justify-content:center;gap:8px}
@@ -2209,6 +2209,8 @@ function fsa_v2_css() {
 :is(#fsa,#fsa-layer) .sites{display:flex;flex-direction:column;gap:4px}
 :is(#fsa,#fsa-layer) .sites-lbl{font-size:12px;color:var(--muted)}
 @media (max-width:760px){:is(#fsa,#fsa-layer) .fname{margin:0}}
+/* phones: tab labels in one line, the short word only (פרטים · חשבונית · סיסמה) */
+@media (max-width:480px){:is(#fsa,#fsa-layer) .tabs .tx{display:none}}
 :is(#fsa,#fsa-layer) .dl-tbl .wcount{color:var(--muted);font-weight:300}
 :is(#fsa,#fsa-layer) .ver{display:block;font-size:12px;font-weight:400;color:var(--violet);margin-top:2px;line-height:1.2}
 :is(#fsa,#fsa-layer) .wsel{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;justify-content:space-between;gap:8px;width:150px;height:32px;padding:0 12px;border:1px solid #D6D6D6;border-radius:8px;font-size:14px;transition:background-color .25s var(--ease),border-color .25s var(--ease)}
@@ -3163,9 +3165,9 @@ V.orders=(open)=>`
 V.profile=(tab)=>`
  <div class="head-row"><div><h1 class="h1">פרופיל</h1><p class="sub">כאן ניתן לעדכן את הפרטים האישיים שלך</p></div></div>
  <div class="tabs" role="tablist">
-  <button role="tab" aria-selected="${tab==='me'}" data-subtab="me">פרטים אישיים</button>
-  <button role="tab" aria-selected="${tab==='biz'}" data-subtab="biz">פרטי חשבונית</button>
-  <button role="tab" aria-selected="${tab==='pwd'}" data-subtab="pwd">עדכון סיסמה</button>
+  <button role="tab" aria-selected="${tab==='me'}" data-subtab="me">פרטים<span class="tx"> אישיים</span></button>
+  <button role="tab" aria-selected="${tab==='biz'}" data-subtab="biz"><span class="tx">פרטי </span>חשבונית</button>
+  <button role="tab" aria-selected="${tab==='pwd'}" data-subtab="pwd"><span class="tx">עדכון </span>סיסמה</button>
   ${FS.mode==='live'?'':`<button role="tab" aria-selected="${tab==='prefs'}" data-subtab="prefs" class="x-new" data-new="ממתין לנתונים מהאתר">העדפות</button>`}
  </div>
  <form class="pf" id="pform">
