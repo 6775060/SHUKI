@@ -14,7 +14,7 @@
     "build:desktop": "npm run build -w @fontshok/desktop",
     "build": "npm run build:plugin && npm run build:desktop",
     "dev": "npm run rebuild:electron && npm run dev -w @fontshok/desktop",
-    "dist:win": "npm run build && npm run rebuild:electron && npm run dist:win -w @fontshok/desktop",
+    "dist:win": "npm run build && node scripts/package-win.mjs",
     "rebuild:electron": "node scripts/native.mjs electron",
     "rebuild:node": "node scripts/native.mjs node"
   },

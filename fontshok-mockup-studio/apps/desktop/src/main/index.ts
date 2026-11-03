@@ -72,6 +72,15 @@ async function main() {
     return r.canceled ? null : (r.filePaths[0] ?? null);
   });
 
+  // The Figma plugin ships next to the app (installer) or lives in apps/figma-plugin (development).
+  const pluginManifest = app.isPackaged ? join(process.resourcesPath, 'figma-plugin', 'manifest.json') : join(app.getAppPath(), '..', 'figma-plugin', 'manifest.json');
+  ipcMain.handle('studio:pluginManifest', (e) => (trusted(e) ? pluginManifest : null));
+  ipcMain.handle('studio:revealPlugin', (e) => {
+    if (!trusted(e)) return false;
+    shell.showItemInFolder(pluginManifest);
+    return true;
+  });
+
   ipcMain.handle('studio:reveal', async (e, path: string) => {
     if (!trusted(e) || !studio) return false;
     const s = studio.getSettings();

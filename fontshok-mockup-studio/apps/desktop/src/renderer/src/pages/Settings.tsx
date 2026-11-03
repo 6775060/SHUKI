@@ -6,9 +6,11 @@ import { useAction, type Toast } from '../ui';
 
 export function SettingsPage({ figma, toast }: { figma: BridgeStatus | null; toast: Toast }) {
   const [s, setS] = useState<StudioSettings | null>(null);
+  const [manifest, setManifest] = useState<string | null>(null);
   const { run } = useAction(toast);
   useEffect(() => {
     void api.getSettings().then(setS);
+    void window.studio.pluginManifest().then(setManifest);
   }, []);
   if (!s) return null;
   const save = (patch: Partial<StudioSettings>) => run('save', async () => setS(await api.updateSettings(patch)), 'נשמר');
@@ -24,9 +26,14 @@ export function SettingsPage({ figma, toast }: { figma: BridgeStatus | null; toa
       <section className="panel">
         <h2>חיבור ל־Figma</h2>
         <p>
-          1. פתחו ב־Figma Desktop את הקובץ עם עמוד <b>Templates</b>.<br />
-          2. Plugins → Development → FontShok Mockup Studio Bridge.<br />
-          3. הזינו בפלאגין את קוד החיבור:
+          <b>פעם ראשונה בלבד:</b> ב־Figma Desktop, קליק ימני על משטח העבודה ← Plugins ← Development ← Import plugin from manifest…, ובוחרים את הקובץ:
+        </p>
+        <div className="row">
+          <input dir="ltr" value={manifest ?? ''} readOnly onFocus={(e) => e.target.select()} />
+          <button onClick={() => void window.studio.revealPlugin()}>פתח את התיקייה</button>
+        </div>
+        <p>
+          <b>בכל פעם:</b> פותחים ב־Figma Desktop את הקובץ עם עמוד <b>Templates</b>, קליק ימני ← Plugins ← Development ← FontShok Mockup Studio Bridge, ומזינים בפלאגין את קוד החיבור:
         </p>
         <div className="pairing">{s.pairingToken}</div>
         <div className="row">

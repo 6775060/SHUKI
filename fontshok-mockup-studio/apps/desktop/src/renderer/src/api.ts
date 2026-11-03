@@ -8,6 +8,8 @@ declare global {
       call(method: string, ...args: unknown[]): Promise<CallResult>;
       pickFolder(): Promise<string | null>;
       reveal(path: string): Promise<boolean>;
+      pluginManifest(): Promise<string | null>;
+      revealPlugin(): Promise<boolean>;
       onEvent(cb: (e: StudioEvent) => void): () => void;
     };
   }
