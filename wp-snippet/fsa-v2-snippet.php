@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '117' );
+define( 'FSA_V2_BUILD', '118' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -812,10 +812,11 @@ function fsa_v2_price_texts( $pid ) {
 	return $out;
 }
 // put the texts in place of the hand-written prices; the span may carry more classes or attributes.
+// The old text may already hold a struck price (<del>) from an earlier build, kept in Elementor's widget cache: it is replaced too.
 // Byte-wise (no /u): text in another encoding elsewhere on the page cannot make it fail; if it fails anyway, the page is left as it is.
 function fsa_v2_price_line( $html, $texts ) {
 	if ( ! $texts || ! is_string( $html ) || ( false === strpos( $html, 'r-desktop-price' ) && false === strpos( $html, 'r-webstop-price' ) ) ) return $html;
-	$out = preg_replace_callback( '~(<span\b[^>]*\bclass=(["\'])(?:[^"\'>]*\s)?r-(desktop|webstop)-price(?:\s[^"\'>]*)?\2[^>]*>\s*<span\b[^>]*>[^<]*</span>)[^<]*(</span>)~', function ( $m ) use ( $texts ) {
+	$out = preg_replace_callback( '~(<span\b[^>]*\bclass=(["\'])(?:[^"\'>]*\s)?r-(desktop|webstop)-price(?:\s[^"\'>]*)?\2[^>]*>\s*<span\b[^>]*>[^<]*</span>)(?:[^<]|<del\b[^>]*>[^<]*</del>)*(</span>)~', function ( $m ) use ( $texts ) {
 		return isset( $texts[ $m[3] ] ) ? $m[1] . $texts[ $m[3] ] . $m[4] : $m[0];
 	}, $html );
 	return is_string( $out ) ? $out : $html;

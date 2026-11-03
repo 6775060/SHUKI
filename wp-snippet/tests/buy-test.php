@@ -52,6 +52,10 @@ $t( false !== strpos( $o, 'מחירון דסקטופ: </span>משקל בודד �
 $t( 'x' === fsa_v2_price_line( 'x', $tx ), 'price line: the rest of the page untouched' );
 $x = str_replace( 'class="r-webstop-price"', "data-id=\"9\" class='big r-webstop-price elementor-x'", $line );
 $t( false !== strpos( fsa_v2_price_line( $x, $tx ), 'משקל בודד ₪300' ), 'price line: found also with more classes, other quotes or attributes' );
+$stale = '<span class="r-webstop-price" style="font-size:16px"><span style="font-weight:800;">מחירון וובפונט: </span>משקל בודד ₪354, משפחה מלאה <del style="opacity:.55">₪2,832</del> ₪2,265 (כולל מע"מ)</span>';
+$so = fsa_v2_price_line( $stale, $tx );
+$t( false !== strpos( $so, '₪2,400' ) && false === strpos( $so, '₪2,265' ) && 1 === substr_count( $so, '<del' ), 'price line: another font\'s line left in Elementor\'s cache by an earlier build is replaced' );
+$t( fsa_v2_price_line( $o, $tx ) === $o, 'price line: running twice changes nothing more' );
 // the finished page, through the one page buffer
 $pg = "<html><body>\xC3( broken text\n" . $line . '<script>var a=1;</script></body></html>';
 $r = fsa_v2_page_out( $pg, PHP_OUTPUT_HANDLER_START | PHP_OUTPUT_HANDLER_FINAL );
