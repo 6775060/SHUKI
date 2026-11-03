@@ -15,6 +15,8 @@ import type {
   TemplateRecord,
 } from '@fontshok/shared';
 import type { BridgeStatus } from '@fontshok/figma-bridge';
+import type { BookmarkFolder } from './core/bookmarks.js';
+export type { BookmarkFolder };
 import type { StudioSettings } from './core/settings.js';
 
 export interface SiteSummary {
@@ -82,6 +84,8 @@ export interface StudioApi {
   importFontsFromSite(): Promise<SiteImportReport>;
 
   addSites(urls: string[]): { added: Site[]; duplicates: string[]; invalid: string[] };
+  listBookmarkFolders(): BookmarkFolder[];
+  importBookmarkFolder(folderId: string, includeSubfolders: boolean): { found: number; added: Site[]; duplicates: string[]; invalid: string[] };
   listSites(): SiteSummary[];
   scanSites(siteIds: number[]): void;
   getSiteDetail(siteId: number): Promise<SiteDetail>;
@@ -110,7 +114,7 @@ export interface StudioApi {
 export const STUDIO_METHODS = [
   'getSettings', 'updateSettings', 'regeneratePairingToken', 'figmaStatus',
   'listFonts', 'addFont', 'addAlias', 'removeAlias', 'setFontActive', 'importCatalogCsv', 'importFontsFromSite',
-  'addSites', 'listSites', 'scanSites', 'getSiteDetail', 'setFindingStatus', 'addManualFinding', 'updateSiteMeta',
+  'addSites', 'listBookmarkFolders', 'importBookmarkFolder', 'listSites', 'scanSites', 'getSiteDetail', 'setFindingStatus', 'addManualFinding', 'updateSiteMeta',
   'syncTemplates', 'listTemplates',
   'proposeGroups', 'listGroups', 'buildGroup', 'rebuildMockup', 'updateMockupContent', 'setMockupTemplate',
   'approveMockup', 'rejectMockup', 'exportGroup', 'deleteGroup',

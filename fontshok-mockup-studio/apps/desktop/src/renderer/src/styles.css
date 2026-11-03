@@ -131,3 +131,7 @@ main { flex: 1; overflow: auto; padding: 18px; }
 .toast.error { border-color: var(--bad); color: var(--bad); }
 p.warn { color: var(--warn); }
 p.error { color: var(--bad); }
+.bookmarks { border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin: 8px 0; }
+.bm-list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 320px; overflow: auto; }
+.bm-list li { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.bm-path { font-weight: 600; }

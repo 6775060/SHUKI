@@ -43,6 +43,7 @@ import { FsGuard, dedupeKey, groupFolderName, mockupFileName, validateMockup, wr
 import type { BridgeStatus } from '@fontshok/figma-bridge';
 import type { GroupView, MockupView, SiteDetail, SiteImportReport, SiteSummary, StudioApi, StudioEvent } from '../api.js';
 import { loadSettings, saveSettings, type StudioSettings } from './settings.js';
+import { bookmarkFolderUrls, defaultBrowserRoots, listBookmarkFolders, type BookmarkFolder, type BrowserRoot } from './bookmarks.js';
 
 export interface BridgeLike {
   status(): BridgeStatus;
@@ -66,6 +67,8 @@ export interface StudioDeps {
   fetchText?: (url: string) => Promise<string>;
   /** Base URL of the FontShok site (tests point it at a local server). */
   fontshokSiteUrl?: string;
+  /** Browser "User Data" directories to read bookmarks from (tests point them at fixtures). */
+  browserRoots?: BrowserRoot[];
 }
 
 async function defaultFetchText(url: string): Promise<string> {
@@ -227,6 +230,17 @@ export class Studio extends EventEmitter implements StudioApi {
   }
 
   // ================================================================ sites
+  /** Bookmark folders of Chrome / Edge on this computer (read-only). */
+  listBookmarkFolders(): BookmarkFolder[] {
+    return listBookmarkFolders(this.deps.browserRoots ?? defaultBrowserRoots());
+  }
+  /** Adds every site of a bookmark folder (same rules as addSites: duplicates and invalid URLs are skipped). */
+  importBookmarkFolder(folderId: string, includeSubfolders: boolean) {
+    const urls = bookmarkFolderUrls(this.deps.browserRoots ?? defaultBrowserRoots(), folderId, includeSubfolders);
+    const r = this.addSites(urls);
+    this.db.audit('user', 'sites.importBookmarks', { folderId, includeSubfolders, found: urls.length, added: r.added.length });
+    return { found: urls.length, ...r };
+  }
   addSites(urls: string[]) {
     const added: Site[] = [];
     const duplicates: string[] = [];

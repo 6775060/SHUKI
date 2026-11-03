@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Finding, FindingField, FontFamily } from '@fontshok/shared';
-import type { SiteDetail, SiteSummary } from '../../../main/api';
+import type { BookmarkFolder, SiteDetail, SiteSummary } from '../../../main/api';
 import { api } from '../api';
 import { Badge, Confidence, Empty, FIELD_HE, STATUS_HE, useAction, type Toast } from '../ui';
 
@@ -9,6 +9,27 @@ export function SitesPage({ tick, toast }: { tick: number; toast: Toast }) {
   const [urls, setUrls] = useState('');
   const [selected, setSelected] = useState<number | null>(null);
   const { busy, run } = useAction(toast);
+  const [folders, setFolders] = useState<BookmarkFolder[] | null>(null);
+  const [folderFilter, setFolderFilter] = useState('');
+  const [withSub, setWithSub] = useState(true);
+
+  const openBookmarks = () =>
+    run('bm', async () => {
+      const f = await api.listBookmarkFolders();
+      setFolders(f);
+      if (f.length === 0) toast('error', 'לא נמצאו סימניות של Chrome או Edge במחשב');
+    });
+
+  const importFolder = (f: BookmarkFolder) =>
+    run('bm-import', async () => {
+      const r = await api.importBookmarkFolder(f.id, withSub);
+      const parts = [`נמצאו ${r.found} · נוספו ${r.added.length}`];
+      if (r.duplicates.length) parts.push(`כבר קיימים: ${r.duplicates.length}`);
+      if (r.invalid.length) parts.push(`לא תקינים: ${r.invalid.length}`);
+      toast('ok', parts.join(' · '), 8000);
+      setFolders(null);
+      if (r.added.length) await api.scanSites(r.added.map((s) => s.id));
+    });
 
   useEffect(() => {
     void api.listSites().then(setSites).catch((e) => toast('error', String(e)));
@@ -36,10 +57,38 @@ export function SitesPage({ tick, toast }: { tick: number; toast: Toast }) {
           <button className="primary" disabled={!urls.trim() || busy === 'add'} onClick={add}>
             הוסף וסרוק
           </button>
+          <button disabled={busy === 'bm'} onClick={() => void openBookmarks()}>
+            ייבוא מכרום
+          </button>
           <button disabled={notScanned.length === 0} onClick={() => run('scan', () => api.scanSites(notScanned), 'הסריקה התחילה')}>
             סרוק את כל מה שלא נסרק ({notScanned.length})
           </button>
         </div>
+        {folders && folders.length > 0 && (
+          <div className="bookmarks">
+            <div className="row">
+              <input placeholder="חיפוש תיקייה" value={folderFilter} onChange={(e) => setFolderFilter(e.target.value)} />
+              <label className="small">
+                <input type="checkbox" checked={withSub} onChange={(e) => setWithSub(e.target.checked)} /> כולל תתי־תיקיות
+              </label>
+              <button onClick={() => setFolders(null)}>סגור</button>
+            </div>
+            <ul className="bm-list">
+              {folders
+                .filter((f) => f.path.join(' ').includes(folderFilter.trim()))
+                .map((f) => (
+                  <li key={f.id}>
+                    <span className="muted small">{f.browser} · {f.profile}</span>
+                    <span className="bm-path">{f.path.join(' › ')}</span>
+                    <span className="muted small">{withSub ? f.totalCount : f.directCount} אתרים</span>
+                    <button className="primary" disabled={busy === 'bm-import' || (withSub ? f.totalCount : f.directCount) === 0} onClick={() => void importFolder(f)}>
+                      ייבוא
+                    </button>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
         <h2>
           אתרים <small>{sites.filter((s) => s.ready).length} מוכנים מתוך {sites.length}</small>
         </h2>

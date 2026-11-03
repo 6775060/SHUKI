@@ -46,9 +46,9 @@ npm run dev
 `npm run dev` מתקין קודם רכיב מוכן של `better-sqlite3` עבור Electron (`rebuild:electron`), ו־`npm test` מחזיר את הרכיב של Node. לא צריך Visual Studio, כי שום דבר לא מקומפל.
 
 ### טעינת הפלאגין ל־Figma (פעם אחת)
-1. `npm run build:plugin`
-2. ב־Figma Desktop: Plugins → Development → Import plugin from manifest… → `apps/figma-plugin/manifest.json`
-3. פותחים את קובץ התבניות ומריצים את **FontShok Mockup Studio Bridge**.
+1. `npm run build` (בונה גם את הפלאגין לתיקייה `apps/figma-plugin/dist`).
+2. רק ב־**Figma Desktop**, לא בדפדפן: פותחים את קובץ התבניות, לוחצים קליק ימני על משטח העבודה ← Plugins ← Development ← Import plugin from manifest… ובוחרים את `apps/figma-plugin/manifest.json`.
+3. מריצים: קליק ימני על משטח העבודה ← Plugins ← Development ← **FontShok Mockup Studio Bridge**. (או `Ctrl+K`, ומקלידים FontShok.)
 4. מזינים את קוד החיבור שמוצג באפליקציה (מסך "הגדרות"). מהפעם השנייה החיבור אוטומטי.
 
 ### בניית קובץ התקנה
@@ -56,6 +56,9 @@ npm run dev
 npm run dist:win
 ```
 הפקודה יוצרת קובץ התקנה (NSIS) בתיקייה `apps/desktop/release`. הסריקה משתמשת ב־Microsoft Edge המותקן, כך שאין צורך להוריד דפדפן.
+
+## ייבוא אתרים מסימניות
+במסך "אתרים" הכפתור **ייבוא מכרום** מציג את כל תיקיות הסימניות של Chrome ו־Edge, בכל הפרופילים, עם מספר האתרים בכל תיקייה. לוחצים "ייבוא" ליד תיקייה, והאתרים נוספים ונסרקים. אתרים שכבר קיימים מדולגים. קובץ הסימניות רק נקרא ואף פעם לא משתנה.
 
 ## תבניות ב־Figma
 
