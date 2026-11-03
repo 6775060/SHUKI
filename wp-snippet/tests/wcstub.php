@@ -71,6 +71,7 @@ function wc_get_order( $id ) { return $GLOBALS['orders'][ $id ] ?? null; }
 $GLOBALS['page'] = array();
 function is_order_received_page() { return isset( $GLOBALS['page']['received'] ); } function get_query_var( $v ) { return $GLOBALS['page']['received'] ?? 0; }
 function is_page( $id ) { return ! empty( $GLOBALS['page']['pricing'] ) && 13376 === $id; } function is_product() { return isset( $GLOBALS['page']['product'] ); }
+function wp_doing_ajax() { return ! empty( $GLOBALS['wp_ajax'] ); } function is_feed() { return false; }
 function get_queried_object_id() { return $GLOBALS['page']['product'] ?? 0; } function is_admin() { return false; }
 function fsa_stub_snippet( $buy_for = 'admins' ) {
 	$src = file_get_contents( __DIR__ . '/../fsa-v2-snippet.php' );

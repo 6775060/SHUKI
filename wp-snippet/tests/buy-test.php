@@ -41,13 +41,39 @@ $GLOBALS['prods'][602]->price = '300';
 
 // font pages: the hand-written "before VAT" price line shows the store's prices, VAT included (build 114)
 $line = '<span class="r-desktop-price" style="font-size:16px"><span style="font-weight:800;">מחירון דסקטופ: </span>משקל בודד 300, משפחה מלאה 2400 (המחירים לפני מע"מ)</span>' . "\n\n" . '<span class="r-webstop-price" style="font-size:16px"><span style="font-weight:800;">מחירון וובפונט: </span>משקל בודד 300, משפחה מלאה 2400 (מחירים לפני מע"מ)</span>';
-$t( $line === fsa_v2_price_line( $line, 0 ), 'price line: untouched without a product' );
-$o = fsa_v2_price_line( $line, 500 );
+$GLOBALS['page'] = array(); fsa_v2_page_prep();
+$t( array() === $GLOBALS['fsa_v2_page_prices'] && $line === fsa_v2_price_line( $line, $GLOBALS['fsa_v2_page_prices'] ), 'price line: untouched on a page that is not a font' );
+$GLOBALS['page'] = array( 'product' => 500 ); $GLOBALS['post'] = (object) array( 'ID' => 777 ); // a related-fonts loop has moved the global post
+fsa_v2_page_prep(); $tx = $GLOBALS['fsa_v2_page_prices'];
+$t( isset( $tx['webstop'], $tx['desktop'] ) && false !== strpos( $tx['webstop'], '₪2,400' ), 'price line: the texts come from the page\'s own font, not from the loop\'s post' );
+$o = fsa_v2_price_line( $line, $tx );
 $t( false !== strpos( $o, 'מחירון וובפונט: </span>משקל בודד ₪300, משפחה מלאה <del style="opacity:.55">₪2,832</del> ₪2,400 (כולל מע"מ)</span>' ), 'price line: webfont from the store, family with its pre-sale price struck, VAT included' );
 $t( false !== strpos( $o, 'מחירון דסקטופ: </span>משקל בודד ₪250 (כולל מע"מ)</span>' ) && false === strpos( $o, 'לפני מע' ), 'price line: desktop shows only what is for sale; no "before VAT" left' );
-$t( 'x' === fsa_v2_price_line( 'x', 500 ), 'price line: the rest of the page untouched' );
-$t( false === strpos( file_get_contents( __DIR__ . '/../fsa-v2-snippet.php' ), "'elementor/widget/render_content'" ), 'price line: no per-widget filter (Elementor caches widget output across pages)' );
-unset( $GLOBALS['page']['product'] );
+$t( 'x' === fsa_v2_price_line( 'x', $tx ), 'price line: the rest of the page untouched' );
+$x = str_replace( 'class="r-webstop-price"', "data-id=\"9\" class='big r-webstop-price elementor-x'", $line );
+$t( false !== strpos( fsa_v2_price_line( $x, $tx ), 'משקל בודד ₪300' ), 'price line: found also with more classes, other quotes or attributes' );
+// the finished page, through the one page buffer
+$pg = "<html><body>\xC3( broken text\n" . $line . '<script>var a=1;</script></body></html>';
+$r = fsa_v2_page_out( $pg, PHP_OUTPUT_HANDLER_START | PHP_OUTPUT_HANDLER_FINAL );
+$t( false !== strpos( $r, '₪2,832' ) && false !== strpos( $r, "\xC3( broken" ), 'page: a broken character elsewhere neither blanks the page nor stops the price line' );
+$cut = strpos( $pg, 'משקל בודד 300, משפחה מלאה 2400 (מחירים' );
+$p1 = fsa_v2_page_out( substr( $pg, 0, $cut ), PHP_OUTPUT_HANDLER_START | PHP_OUTPUT_HANDLER_FLUSH );
+$p2 = fsa_v2_page_out( substr( $pg, $cut ), PHP_OUTPUT_HANDLER_FINAL );
+$t( '' === $p1 && $r === $p2, 'page: flushed early in the middle of the price line, it still comes out whole and fixed' );
+fsa_v2_page_out( 'junk', PHP_OUTPUT_HANDLER_START | PHP_OUTPUT_HANDLER_CLEAN );
+$t( 'ok' === fsa_v2_page_out( 'ok', PHP_OUTPUT_HANDLER_FINAL ), 'page: what was cleaned is not sent' );
+$GLOBALS['fsa_v2_page_prices'] = array(); $t( $pg === fsa_v2_page_out( $pg, PHP_OUTPUT_HANDLER_FINAL ), 'page: other pages pass through unchanged' );
+$GLOBALS['wp_ajax'] = false; $_SERVER['REQUEST_METHOD'] = 'GET';
+$t( fsa_v2_page_wanted(), 'page buffer: on for a normal page' );
+$_SERVER['REQUEST_METHOD'] = 'POST'; $t( ! fsa_v2_page_wanted(), 'page buffer: off for a form post (add to cart)' ); $_SERVER['REQUEST_METHOD'] = 'GET';
+$_GET['download_file'] = 1; $t( ! fsa_v2_page_wanted(), 'page buffer: off for a file download' ); unset( $_GET['download_file'] );
+$GLOBALS['wp_ajax'] = true; $t( ! fsa_v2_page_wanted(), 'page buffer: off for AJAX' ); $GLOBALS['wp_ajax'] = false;
+// a price or sale change shows at once: WooCommerce's product version is part of the cache key
+class WC_Cache_Helper { static $v = '1'; static function get_transient_version( $g ) { return self::$v; } }
+$GLOBALS['prods'][602]->price = '310'; WC_Cache_Helper::$v = '2';
+$t( 310.0 === fsa_v2_buy_font( wc_get_product( 500 ) )['lics'][0]['items'][1]['price'], 'a variation price change shows at once (product version changed)' );
+$GLOBALS['prods'][602]->price = '300'; WC_Cache_Helper::$v = '3';
+unset( $GLOBALS['page']['product'], $GLOBALS['post'] );
 exec( 'php ' . escapeshellarg( __FILE__ ) . ' public', $o2, $rc2 ); $t( 0 === $rc2, 'separate purchase snippet installed: ' . trim( (string) end( $o2 ) ) );
 
 // choose weights: the cart holds exactly the chosen ones; choosing again replaces, never doubles

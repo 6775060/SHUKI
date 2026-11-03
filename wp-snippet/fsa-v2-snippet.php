@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '116' );
+define( 'FSA_V2_BUILD', '117' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -760,7 +760,9 @@ const FSA_V2_PLAN_NAME = array( 'web' => 'וובסטופ', 'extra' => 'אקסט�
 function fsa_v2_buy_font( $p ) {
 	if ( ! $p || ! $p->is_type( 'variable' ) ) return null;
 	$pid = $p->get_id();
-	$key = 'fsa_v2_buy_' . $pid . '_' . get_post_modified_time( 'U', true, $pid ) . '_' . FSA_V2_BUILD;
+	// WooCommerce bumps its product version on every product or variation save, scheduled sales included, so a price change shows at once
+	$ver = class_exists( 'WC_Cache_Helper' ) ? WC_Cache_Helper::get_transient_version( 'product' ) : '';
+	$key = 'fsa_v2_buy_' . $pid . '_' . get_post_modified_time( 'U', true, $pid ) . '_' . $ver . '_' . FSA_V2_BUILD;
 	$out = get_transient( $key );
 	if ( false !== $out ) return $out ?: null;
 	$lics = array();
@@ -788,34 +790,36 @@ function fsa_v2_buy_font( $p ) {
 	return $out ?: null;
 }
 // font pages: the hand-written price line ("משקל בודד 300, משפחה מלאה 2400 (המחירים לפני מע"מ)" in an Elementor HTML widget,
-// spans .r-desktop-price / .r-webstop-price) is filled from the store's own prices, VAT included, so it always matches the cart and checkout
-// Done on the finished page (not per widget): Elementor caches widget output across pages, so a widget filter showed one font's prices on all.
-function fsa_v2_price_line( $html, $pid ) {
-	if ( ! $pid || false === strpos( $html, '-price"' ) ) return $html;
-	$f = fsa_v2_buy_font( wc_get_product( $pid ) );
-	if ( ! $f ) return $html;
-	$by = array();
-	foreach ( $f['lics'] as $l ) $by[ $l['k'] ] = $l['items'];
+// spans .r-desktop-price / .r-webstop-price) is filled from the store's own prices, VAT included, so it always matches the cart and checkout.
+// The texts are worked out before the page is built (fsa_v2_page_prep) and put in on the finished page (fsa_v2_page_out):
+// Elementor caches widget output across pages, so a widget filter showed one font's prices on all (builds 114-115).
+function fsa_v2_price_texts( $pid ) {
+	$f = $pid ? fsa_v2_buy_font( wc_get_product( $pid ) ) : null;
+	if ( ! $f ) return array();
 	$n = function ( $v ) { return '₪' . number_format( (float) $v, (float) $v === floor( (float) $v ) ? 0 : 2 ); };
-	return preg_replace_callback( '~(<span class="r-(desktop|webstop)-price"[^>]*>\s*<span[^>]*>[^<]*</span>)[^<]*(</span>)~u', function ( $m ) use ( $by, $n ) {
-		$items = $by[ 'desktop' === $m[2] ? 'desk' : 'web' ] ?? null;
-		if ( ! $items ) return $m[0];
+	$out = array();
+	foreach ( $f['lics'] as $l ) {
 		$one = null; $fam = null;
-		foreach ( $items as $i ) {
+		foreach ( $l['items'] as $i ) {
 			if ( $i['fam'] ) $fam = $fam ?: $i;
 			elseif ( null === $one || $i['price'] < $one['price'] ) $one = $i;
 		}
 		$t = array();
 		if ( $one ) $t[] = 'משקל בודד ' . $n( $one['price'] );
 		if ( $fam ) $t[] = 'משפחה מלאה ' . ( $fam['was'] ? '<del style="opacity:.55">' . $n( $fam['was'] ) . '</del> ' : '' ) . $n( $fam['price'] );
-		return $t ? $m[1] . implode( ', ', $t ) . ' (כולל מע"מ)' . $m[3] : $m[0];
-	}, $html );
+		if ( $t ) $out[ 'desk' === $l['k'] ? 'desktop' : 'webstop' ] = implode( ', ', $t ) . ' (כולל מע"מ)';
+	}
+	return $out;
 }
-add_action( 'template_redirect', function () {
-	if ( is_admin() || ! function_exists( 'is_product' ) || ! is_product() ) return;
-	$pid = (int) get_queried_object_id(); // the page's own product, read before any loop on the page runs
-	if ( $pid ) ob_start( function ( $html ) use ( $pid ) { return fsa_v2_price_line( (string) $html, $pid ); } );
-}, 1 );
+// put the texts in place of the hand-written prices; the span may carry more classes or attributes.
+// Byte-wise (no /u): text in another encoding elsewhere on the page cannot make it fail; if it fails anyway, the page is left as it is.
+function fsa_v2_price_line( $html, $texts ) {
+	if ( ! $texts || ! is_string( $html ) || ( false === strpos( $html, 'r-desktop-price' ) && false === strpos( $html, 'r-webstop-price' ) ) ) return $html;
+	$out = preg_replace_callback( '~(<span\b[^>]*\bclass=(["\'])(?:[^"\'>]*\s)?r-(desktop|webstop)-price(?:\s[^"\'>]*)?\2[^>]*>\s*<span\b[^>]*>[^<]*</span>)[^<]*(</span>)~', function ( $m ) use ( $texts ) {
+		return isset( $texts[ $m[3] ] ) ? $m[1] . $texts[ $m[3] ] . $m[4] : $m[0];
+	}, $html );
+	return is_string( $out ) ? $out : $html;
+}
 // the plans for sale (price, renewal), from the plan products
 function fsa_v2_buy_plans() {
 	$out = array();
@@ -1324,12 +1328,44 @@ function fsa_v2_deal_save( $uid ) {
 // 2i. site-wide script guards. Three inline scripts of the theme run on every page and throw where their element is missing
 // (purchase window outside font pages, the header greeting, the feedback button). The page HTML is patched on the way out,
 // only where the exact original text is found; anything else is left as it is. Switch: FSA_V2_FIX_SITE_JS.
+// One output buffer for the whole page does both jobs: these guards, and the font-page price line (2m). Pages only:
+// no admin, AJAX, REST, feeds, form posts or file downloads.
+function fsa_v2_page_wanted() {
+	if ( is_admin() || wp_doing_ajax() || is_feed() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) return false;
+	if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'GET' !== $_SERVER['REQUEST_METHOD'] ) return false;
+	return ! ( isset( $_GET['fsa_wdl'] ) || isset( $_GET['fsa_wall'] ) || isset( $_GET['download_file'] ) ); // file downloads are not pages
+}
+// before the page is built: the price texts of this page's own product (read before any loop on the page runs)
+function fsa_v2_page_prep() {
+	$GLOBALS['fsa_v2_page_prices'] = array();
+	if ( ! function_exists( 'is_product' ) || ! is_product() ) return;
+	try {
+		$GLOBALS['fsa_v2_page_prices'] = fsa_v2_price_texts( (int) get_queried_object_id() );
+	} catch ( \Throwable $e ) {
+		$GLOBALS['fsa_v2_page_prices'] = array(); // the hand-written line stays; the page itself is never lost
+	}
+}
 add_action( 'template_redirect', function () {
-	if ( ! FSA_V2_FIX_SITE_JS || is_admin() || wp_doing_ajax() || is_feed() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) return;
-	if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'GET' !== $_SERVER['REQUEST_METHOD'] ) return;
-	if ( isset( $_GET['fsa_wdl'] ) || isset( $_GET['fsa_wall'] ) || isset( $_GET['download_file'] ) ) return; // file downloads are not pages
-	ob_start( 'fsa_v2_fix_site_js' );
+	if ( ! fsa_v2_page_wanted() ) return;
+	fsa_v2_page_prep();
+	if ( FSA_V2_FIX_SITE_JS || $GLOBALS['fsa_v2_page_prices'] ) ob_start( 'fsa_v2_page_out' );
 }, 0 );
+// the buffer's handler. If something flushes early, the pieces are kept and the page is worked on once, whole, at the end
+// (so a price line split between two pieces is still found); a page that is cleaned starts over. Any failure: the page as it was.
+function fsa_v2_page_out( $chunk, $phase = PHP_OUTPUT_HANDLER_FINAL ) {
+	static $acc = '';
+	if ( $phase & PHP_OUTPUT_HANDLER_CLEAN ) { $acc = ''; return ''; }
+	$acc .= (string) $chunk;
+	if ( ! ( $phase & PHP_OUTPUT_HANDLER_FINAL ) ) return '';
+	$html = $acc; $acc = '';
+	try {
+		$out = FSA_V2_FIX_SITE_JS ? fsa_v2_fix_site_js( $html ) : $html;
+		$out = fsa_v2_price_line( is_string( $out ) ? $out : $html, $GLOBALS['fsa_v2_page_prices'] ?? array() );
+		return is_string( $out ) && '' !== $out ? $out : $html;
+	} catch ( \Throwable $e ) {
+		return $html;
+	}
+}
 function fsa_v2_fix_site_js( $html ) {
 	if ( ! is_string( $html ) || false === stripos( $html, '<script' ) ) return $html;
 	// 1. purchase window: the whole script only where the window exists (as fix-1-purchase.js)
