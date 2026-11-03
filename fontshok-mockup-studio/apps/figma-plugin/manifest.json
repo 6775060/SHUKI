@@ -9,7 +9,7 @@
   "enablePrivatePluginApi": true,
   "networkAccess": {
     "allowedDomains": ["none"],
-    "devAllowedDomains": ["ws://127.0.0.1:47821", "ws://localhost:47821"],
+    "devAllowedDomains": ["ws://localhost:47821"],
     "reasoning": "Connects only to the FontShok Mockup Studio desktop app running on this computer."
   }
 }

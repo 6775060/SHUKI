@@ -1,7 +1,7 @@
 /**
  * Local WebSocket server for the Figma plugin (see shared/protocol.ts).
  * Security:
- *  - binds to 127.0.0.1 only
+ *  - binds to the loopback interface only (127.0.0.1 and ::1)
  *  - only accepts the Figma plugin iframe origin ("null") – random web pages cannot connect
  *  - the plugin must present the pairing token in `hello`
  *  - one plugin connection at a time
@@ -67,26 +67,38 @@ export class FigmaBridge extends EventEmitter {
     };
   }
 
+  /** IPv6 loopback listener: on Windows "localhost" may resolve to ::1 first. */
+  private wss6: WebSocketServer | null = null;
+
   start(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const allowed = new Set(['null', ...(this.opts.allowedOrigins ?? [])]);
-      this.wss = new WebSocketServer({
-        host: this.opts.host ?? '127.0.0.1',
-        port: this.opts.port,
-        maxPayload: 64 * 1024 * 1024,
-        verifyClient: (info: { origin: string }) => allowed.has(info.origin ?? 'null'),
+    const allowed = new Set(['null', ...(this.opts.allowedOrigins ?? [])]);
+    const listen = (host: string) =>
+      new Promise<WebSocketServer>((resolve, reject) => {
+        const wss = new WebSocketServer({
+          host,
+          port: this.opts.port,
+          maxPayload: 64 * 1024 * 1024,
+          verifyClient: (info: { origin: string }) => allowed.has(info.origin ?? 'null'),
+        });
+        wss.once('listening', () => resolve(wss));
+        wss.once('error', reject);
+        wss.on('connection', (ws) => this.onConnection(ws));
       });
-      this.wss.once('listening', () => resolve());
-      this.wss.once('error', reject);
-      this.wss.on('connection', (ws) => this.onConnection(ws));
-    });
+    return (async () => {
+      this.wss = await listen(this.opts.host ?? '127.0.0.1');
+      if (!this.opts.host) {
+        // best effort: IPv6 may be disabled on this computer
+        this.wss6 = await listen('::1').catch(() => null);
+      }
+    })();
   }
 
   async stop(): Promise<void> {
     this.failAll(new AppError('FIGMA_DISCONNECTED', 'bridge stopped'));
     this.socket?.close();
-    await new Promise<void>((r) => (this.wss ? this.wss.close(() => r()) : r()));
+    for (const w of [this.wss, this.wss6]) await new Promise<void>((r) => (w ? w.close(() => r()) : r()));
     this.wss = null;
+    this.wss6 = null;
   }
 
   private onConnection(ws: WebSocket) {

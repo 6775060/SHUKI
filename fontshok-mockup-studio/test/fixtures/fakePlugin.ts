@@ -38,11 +38,11 @@ export class FakePlugin {
   private nextNode = 100;
   log: string[] = [];
 
-  constructor(private readonly port: number, private readonly token: string, private readonly origin = 'null') {}
+  constructor(private readonly port: number, private readonly token: string, private readonly origin = 'null', private readonly host = '127.0.0.1') {}
 
   connect(): Promise<{ accepted: boolean; reason?: string }> {
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(`ws://127.0.0.1:${this.port}`, { origin: this.origin });
+      this.ws = new WebSocket(`ws://${this.host}:${this.port}`, { origin: this.origin });
       this.ws.on('error', reject);
       this.ws.on('unexpected-response', (_req, res) => resolve({ accepted: false, reason: `HTTP ${res.statusCode}` }));
       this.ws.on('open', () => {

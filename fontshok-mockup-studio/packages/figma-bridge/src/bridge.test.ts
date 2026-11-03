@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { FigmaBridge } from './index.js';
 import { FakePlugin } from '../../../test/fixtures/fakePlugin.js';
 
@@ -30,6 +32,29 @@ describe('FigmaBridge', () => {
     await b.request('inventory', {}, { blobs: [{ id, data: new Uint8Array([7, 8, 9]) }] });
     expect([...plugin.received.get(id)!]).toEqual([7, 8, 9]);
     plugin.close();
+  });
+
+  it('is reachable through "localhost" over IPv4 and IPv6 loopback', async () => {
+    const b = await start(47905);
+    const ipv6 = await new Promise<boolean>((r) => {
+      const s = createServer().once('error', () => r(false)).listen(0, '::1', () => s.close(() => r(true)));
+    });
+    for (const host of ['localhost', '127.0.0.1', ...(ipv6 ? ['[::1]'] : [])]) {
+      const plugin = new FakePlugin(47905, '123456', 'null', host);
+      expect((await plugin.connect()).accepted, host).toBe(true);
+      plugin.close();
+      await new Promise((r) => setTimeout(r, 30));
+    }
+    expect(b.status().listening).toBe(true);
+  });
+
+  it('plugin manifest only lists host names Figma accepts (no IP addresses)', () => {
+    const manifest = JSON.parse(readFileSync(new URL('../../../apps/figma-plugin/manifest.json', import.meta.url), 'utf8'));
+    for (const d of manifest.networkAccess.devAllowedDomains as string[]) {
+      const u = new URL(d);
+      expect(u.hostname).toBe('localhost');
+      expect(u.port).toBe('47821');
+    }
   });
 
   it('rejects a wrong pairing token', async () => {

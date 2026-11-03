@@ -29,7 +29,8 @@ const setState = (text: string, on: boolean) => {
 const toMain = (m: unknown) => parent.postMessage({ pluginMessage: m }, '*');
 
 function hosts(port: string) {
-  return [`ws://127.0.0.1:${port}`, `ws://localhost:${port}`];
+  // Figma's manifest only accepts host names in devAllowedDomains, so only localhost is allowed.
+  return [`ws://localhost:${port}`];
 }
 
 function connect(hostIndex = 0) {
