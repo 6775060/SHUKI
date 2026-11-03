@@ -1,0 +1,30 @@
+{
+  "name": "fontshok-mockup-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FontShok Mockup Studio – local Windows app that produces website typography mockups through Figma",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/figma-plugin/tsconfig.json --noEmit && tsc -p apps/desktop/src/renderer/tsconfig.json --noEmit",
+    "test": "npm run rebuild:node && vitest run",
+    "build:plugin": "npm run build -w @fontshok/figma-plugin",
+    "build:desktop": "npm run build -w @fontshok/desktop",
+    "build": "npm run build:plugin && npm run build:desktop",
+    "dev": "npm run rebuild:electron && npm run dev -w @fontshok/desktop",
+    "dist:win": "npm run build && npm run dist:win -w @fontshok/desktop",
+    "rebuild:electron": "electron-rebuild -v 33.2.1 -m . -o better-sqlite3",
+    "rebuild:node": "npm rebuild better-sqlite3"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "esbuild": "0.24.2",
+    "typescript": "5.7.2",
+    "vitest": "2.1.8"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

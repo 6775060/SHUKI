@@ -1,0 +1,55 @@
+{
+  "name": "@fontshok/desktop",
+  "productName": "FontShok Mockup Studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FontShok Mockup Studio",
+  "author": "FontShok",
+  "main": "dist/main/index.cjs",
+  "scripts": {
+    "build:main": "node build.mjs",
+    "build:renderer": "vite build --config src/renderer/vite.config.ts",
+    "build": "npm run build:main && npm run build:renderer",
+    "dev": "npm run build:main && concurrently -k \"vite --config src/renderer/vite.config.ts\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "@fontshok/db": "0.1.0",
+    "@fontshok/exporter": "0.1.0",
+    "@fontshok/figma-bridge": "0.1.0",
+    "@fontshok/fonts": "0.1.0",
+    "@fontshok/grouping": "0.1.0",
+    "@fontshok/imaging": "0.1.0",
+    "@fontshok/scanner": "0.1.0",
+    "@fontshok/shared": "0.1.0",
+    "better-sqlite3": "11.7.0",
+    "playwright": "1.63.0",
+    "sharp": "0.33.5",
+    "ws": "8.18.0",
+    "zod": "3.24.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@vitejs/plugin-react": "4.3.4",
+    "concurrently": "9.1.0",
+    "cross-env": "7.0.3",
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "vite": "6.0.3",
+    "wait-on": "8.0.1"
+  },
+  "build": {
+    "appId": "com.fontshok.mockupstudio",
+    "productName": "FontShok Mockup Studio",
+    "directories": { "output": "release", "buildResources": "build" },
+    "files": ["dist/**/*", "package.json"],
+    "asarUnpack": ["**/node_modules/sharp/**", "**/node_modules/@img/**", "**/node_modules/better-sqlite3/**"],
+    "win": { "target": ["nsis"] },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false, "shortcutName": "FontShok Mockup Studio" },
+    "npmRebuild": true
+  }
+}
