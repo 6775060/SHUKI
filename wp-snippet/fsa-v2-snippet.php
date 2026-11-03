@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '118' );
+define( 'FSA_V2_BUILD', '119' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -742,14 +742,19 @@ function fsa_v2_money( $p ) {
 	$in = function_exists( 'wc_get_price_including_tax' ) ? (float) wc_get_price_including_tax( $p ) : (float) $p->get_price();
 	$ex = function_exists( 'wc_get_price_excluding_tax' ) ? (float) wc_get_price_excluding_tax( $p ) : $in;
 	$vat = $in - $ex > 0.004 ? $in - $ex : $in - $in / 1.18;
-	return array( round( $in, 2 ), round( $vat, 2 ) );
+	return array( fsa_v2_round( $in ), round( $vat, 2 ) );
+}
+// prices as the store charges them: rounded to the store's decimals (fontshok: whole shekels, so 1911.60 is 1,912 as at checkout)
+function fsa_v2_round( $v ) {
+	return round( (float) $v, function_exists( 'wc_get_price_decimals' ) ? max( 0, (int) wc_get_price_decimals() ) : 2 );
 }
 // the price before a sale (VAT included), or 0 when there is no sale; shown struck through, as the store shows it
 function fsa_v2_was( $p ) {
 	$reg = method_exists( $p, 'get_regular_price' ) ? (float) $p->get_regular_price() : 0;
 	if ( $reg <= 0 ) return 0;
 	$was = function_exists( 'wc_get_price_including_tax' ) ? (float) wc_get_price_including_tax( $p, array( 'price' => $reg ) ) : $reg;
-	return $was - fsa_v2_money( $p )[0] > 0.004 ? round( $was, 2 ) : 0;
+	$was = fsa_v2_round( $was );
+	return $was - fsa_v2_money( $p )[0] > 0.004 ? $was : 0;
 }
 function fsa_v2_lic_kind( $slug_or_name ) {
 	return ( false !== stripos( $slug_or_name, 'desk' ) || false !== strpos( $slug_or_name, 'דסקטופ' ) ) ? 'desk' : 'web';
@@ -794,9 +799,20 @@ function fsa_v2_buy_font( $p ) {
 // The texts are worked out before the page is built (fsa_v2_page_prep) and put in on the finished page (fsa_v2_page_out):
 // Elementor caches widget output across pages, so a widget filter showed one font's prices on all (builds 114-115).
 function fsa_v2_price_texts( $pid ) {
-	$f = $pid ? fsa_v2_buy_font( wc_get_product( $pid ) ) : null;
-	if ( ! $f ) return array();
+	$p = $pid ? wc_get_product( $pid ) : null;
+	$f = $p ? fsa_v2_buy_font( $p ) : null;
 	$n = function ( $v ) { return '₪' . number_format( (float) $v, (float) $v === floor( (float) $v ) ? 0 : 2 ); };
+	if ( ! $f ) { // not weights and a family (the student bundle): the range of its options, on both lines
+		if ( ! $p || ! $p->is_type( 'variable' ) ) return array();
+		$all = array();
+		foreach ( $p->get_children() as $vid ) {
+			$v = wc_get_product( $vid );
+			if ( $v && $v->is_purchasable() && $v->is_in_stock() && ( $x = fsa_v2_money( $v )[0] ) > 0 ) $all[] = $x;
+		}
+		if ( ! $all ) return array();
+		$t = ( min( $all ) === max( $all ) ? $n( min( $all ) ) : $n( min( $all ) ) . ' עד ' . $n( max( $all ) ) ) . ' (כולל מע"מ)';
+		return array( 'desktop' => $t, 'webstop' => $t );
+	}
 	$out = array();
 	foreach ( $f['lics'] as $l ) {
 		$one = null; $fam = null;

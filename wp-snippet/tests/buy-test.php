@@ -56,6 +56,22 @@ $stale = '<span class="r-webstop-price" style="font-size:16px"><span style="font
 $so = fsa_v2_price_line( $stale, $tx );
 $t( false !== strpos( $so, '₪2,400' ) && false === strpos( $so, '₪2,265' ) && 1 === substr_count( $so, '<del' ), 'price line: another font\'s line left in Elementor\'s cache by an earlier build is replaced' );
 $t( fsa_v2_price_line( $o, $tx ) === $o, 'price line: running twice changes nothing more' );
+// the student bundle (not weights and a family): its range, on both lines
+$bd = new Prod( 900, 'variable', 'חבילה', '' );
+foreach ( array( 901 => '750', 902 => '1800', 903 => '2160' ) as $i => $pr ) { $bv = new Prod( $i, 'variation', 'חבילה', $pr ); $bv->parent = 900; $bv->att = array( 'pa_pack' => $i ); $bd->children[] = $i; }
+$bt = fsa_v2_price_texts( 900 );
+$t( '₪750 עד ₪2,160 (כולל מע"מ)' === ( $bt['webstop'] ?? '' ) && $bt['webstop'] === $bt['desktop'], 'price line: the student bundle shows its range, 750 to 2,160' );
+$bl = '<span class="r-desktop-price"><span style="font-weight:800;">מחירון דסקטופ: </span>משקל בודד , משפחה מלאה </span>';
+$t( false !== strpos( fsa_v2_price_line( $bl, $bt ), '</span>₪750 עד ₪2,160 (כולל מע"מ)</span>' ), 'price line: the bundle\'s empty line is filled' );
+// whole shekels, as the store charges (store decimals 0): 1911.60 shows 1,912, 2124 struck
+function wc_get_price_decimals() { return $GLOBALS['decimals'] ?? 2; }
+$hg = new Prod( 950, 'variable', 'האנגר', '' );
+foreach ( array( 951 => array( 'family', '1911.6' ), 952 => array( '400', '354' ) ) as $i => $x ) { $hv = new Prod( $i, 'variation', 'האנגר', $x[1] ); $hv->parent = 950; $hv->att = array( 'pa_weight' => $x[0], 'pa_license' => 'webfont' ); $hg->children[] = $i; }
+$GLOBALS['prods'][951]->regular = '2124'; $GLOBALS['decimals'] = 0;
+$ht = fsa_v2_price_texts( 950 );
+$t( 'משקל בודד ₪354, משפחה מלאה <del style="opacity:.55">₪2,124</del> ₪1,912 (כולל מע"מ)' === ( $ht['webstop'] ?? '' ), 'prices rounded to the store\'s whole shekels: 1911.60 shows 1,912' );
+$t( 1912.0 === fsa_v2_money( wc_get_product( 951 ) )[0], 'the purchase area uses the same rounded price' );
+$GLOBALS['decimals'] = 2;
 // the finished page, through the one page buffer
 $pg = "<html><body>\xC3( broken text\n" . $line . '<script>var a=1;</script></body></html>';
 $r = fsa_v2_page_out( $pg, PHP_OUTPUT_HANDLER_START | PHP_OUTPUT_HANDLER_FINAL );
