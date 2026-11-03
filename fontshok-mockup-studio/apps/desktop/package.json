@@ -23,7 +23,7 @@
     "@fontshok/imaging": "0.1.0",
     "@fontshok/scanner": "0.1.0",
     "@fontshok/shared": "0.1.0",
-    "better-sqlite3": "11.7.0",
+    "better-sqlite3": "12.11.1",
     "playwright": "1.63.0",
     "sharp": "0.33.5",
     "ws": "8.18.0",
@@ -50,6 +50,6 @@
     "asarUnpack": ["**/node_modules/sharp/**", "**/node_modules/@img/**", "**/node_modules/better-sqlite3/**"],
     "win": { "target": ["nsis"] },
     "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false, "shortcutName": "FontShok Mockup Studio" },
-    "npmRebuild": true
+    "npmRebuild": false
   }
 }

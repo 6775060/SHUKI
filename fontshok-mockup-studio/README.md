@@ -36,14 +36,14 @@ URLs → סריקה (Playwright) → ממצאים + ראיות → אישור י
 
 ## הרצה בפיתוח (Windows)
 
-דרישות: Node.js 20 ומעלה, Figma Desktop, והפונט `Sprinter_FS` מותקן במחשב.
+דרישות: Node.js 22 או 24 (גרסת LTS), Figma Desktop, והפונט `Sprinter_FS` מותקן במחשב.
 
 ```bash
 npm install
 npm run build
 npm run dev
 ```
-`npm run dev` מקמפל קודם את `better-sqlite3` עבור Electron (`rebuild:electron`). `npm test` מקמפל אותו חזרה עבור Node, כך שאחרי הרצת בדיקות `dev` מקמפל שוב.
+`npm run dev` מתקין קודם רכיב מוכן של `better-sqlite3` עבור Electron (`rebuild:electron`), ו־`npm test` מחזיר את הרכיב של Node. לא צריך Visual Studio, כי שום דבר לא מקומפל.
 
 ### טעינת הפלאגין ל־Figma (פעם אחת)
 1. `npm run build:plugin`
