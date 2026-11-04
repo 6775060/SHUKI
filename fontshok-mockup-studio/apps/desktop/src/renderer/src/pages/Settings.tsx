@@ -30,6 +30,7 @@ export function SettingsPage({ figma, toast }: { figma: BridgeStatus | null; toa
         </p>
         <div className="row">
           <input dir="ltr" value={manifest ?? ''} readOnly onFocus={(e) => e.target.select()} />
+          <button onClick={() => void navigator.clipboard.writeText(manifest ?? '').then(() => toast('ok', 'הנתיב הועתק. בחלון הבחירה של Figma מדביקים אותו בשורת שם הקובץ'))}>העתק נתיב</button>
           <button onClick={() => void window.studio.revealPlugin()}>פתח את התיקייה</button>
         </div>
         <p>

@@ -2,7 +2,7 @@
  * Electron main process: window, IPC whitelist, services wiring.
  */
 import { app, BrowserWindow, dialog, ipcMain, net, shell, type IpcMainInvokeEvent } from 'electron';
-import { mkdirSync } from 'node:fs';
+import { cpSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Db } from '@fontshok/db';
@@ -72,8 +72,20 @@ async function main() {
     return r.canceled ? null : (r.filePaths[0] ?? null);
   });
 
-  // The Figma plugin ships next to the app (installer) or lives in apps/figma-plugin (development).
-  const pluginManifest = app.isPackaged ? join(process.resourcesPath, 'figma-plugin', 'manifest.json') : join(app.getAppPath(), '..', 'figma-plugin', 'manifest.json');
+  // The Figma plugin ships inside the installation (a hidden AppData folder that Figma's file picker
+  // does not show). On every start it is copied to "Documents\FontShok Figma Plugin", so the path is
+  // easy to pick and stays the same across updates (Figma keeps pointing at it).
+  let pluginManifest = join(app.getAppPath(), '..', 'figma-plugin', 'manifest.json');
+  if (app.isPackaged) {
+    const bundled = join(process.resourcesPath, 'figma-plugin');
+    const visible = join(app.getPath('documents'), 'FontShok Figma Plugin');
+    try {
+      cpSync(bundled, visible, { recursive: true, force: true });
+      pluginManifest = join(visible, 'manifest.json');
+    } catch {
+      pluginManifest = join(bundled, 'manifest.json');
+    }
+  }
   ipcMain.handle('studio:pluginManifest', (e) => (trusted(e) ? pluginManifest : null));
   ipcMain.handle('studio:revealPlugin', (e) => {
     if (!trusted(e)) return false;
