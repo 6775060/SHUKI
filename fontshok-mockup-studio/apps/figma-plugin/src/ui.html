@@ -1,0 +1,35 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { --bg: var(--figma-color-bg, #fff); --fg: var(--figma-color-text, #111); --muted: var(--figma-color-text-secondary, #666); --border: var(--figma-color-border, #ddd); --accent: #7b3fe4; --ok: #14a37f; --bad: #d64545; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 14px; font: 12px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--fg); }
+  h1 { font-size: 14px; margin: 0 0 10px; }
+  label { display: block; margin: 8px 0 3px; color: var(--muted); }
+  input { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--fg); font: inherit; direction: ltr; text-align: left; }
+  .row { display: flex; gap: 8px; margin-top: 12px; }
+  button { flex: 1; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--fg); cursor: pointer; font: inherit; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .status { margin-top: 12px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bad); flex: none; }
+  .dot.on { background: var(--ok); }
+  #log { margin-top: 10px; height: 170px; overflow: auto; font: 11px/1.4 ui-monospace, Consolas, monospace; color: var(--muted); direction: ltr; text-align: left; white-space: pre-wrap; border-top: 1px solid var(--border); padding-top: 6px; }
+</style>
+</head>
+<body>
+  <h1>FontShok Mockup Studio</h1>
+  <label for="token">קוד חיבור (מוצג באפליקציה)</label>
+  <input id="token" inputmode="numeric" autocomplete="off" placeholder="123456" />
+  <label for="port">פורט</label>
+  <input id="port" inputmode="numeric" value="47821" />
+  <div class="row">
+    <button id="connect" class="primary">התחבר</button>
+    <button id="disconnect">נתק</button>
+  </div>
+  <div class="status"><span id="dot" class="dot"></span><span id="state">לא מחובר</span></div>
+  <div id="log"></div>
+  <!--SCRIPT-->
+</body>
+</html>
