@@ -134,6 +134,8 @@ function CoachSetup({ onDone }: { onDone: (s: CoachState) => void }) {
       setBusy(false);
     }
   };
+  const looksLikeKey = /^sk-ant-[A-Za-z0-9_-]{20,}$/.test(key.trim());
+  const canPaste = typeof navigator !== 'undefined' && !!navigator.clipboard?.readText;
   return (
     <div className="stack">
       <h2 className="title">🌱 מאמן שפע</h2>
@@ -145,25 +147,67 @@ function CoachSetup({ onDone }: { onDone: (s: CoachState) => void }) {
           <li>בוחר כל יום מיקוד אחד למסך הבית: דבר אחד לשים לב אליו וצעד קטן אחד.</li>
           <li>עוזר לזהות מחשבות של חסר ("אין לי", "אף פעם לא מספיק") ולראות את התמונה המלאה.</li>
         </ul>
-        <h3>החיבור</h3>
+        <h3>החיבור: מפתח API</h3>
+        <p className="sub">
+          מפתח API הוא לא קישור ולא סיסמה. זה קוד ארוך שמתחיל ב-<b dir="ltr">sk-ant-</b>, ומקבלים אותו באתר של Anthropic בדפדפן. מנוי רגיל ל-Claude (באפליקציה או ב-claude.ai) לא כולל מפתח. זה חשבון נפרד, והתשלום לפי שימוש: בדרך כלל כמה שקלים בחודש.
+        </p>
         <ol className="howto">
           <li>
-            נכנסים ל-<b dir="ltr">console.anthropic.com</b>, נרשמים, ומוסיפים אמצעי תשלום. התשלום לפי שימוש, ושיחה רגילה עולה בדרך כלל אגורות בודדות.
+            <a className="ghost small btn-link" href="https://console.anthropic.com/" target="_blank" rel="noreferrer">
+              1. פתיחת האתר של Anthropic ↗
+            </a>
+            <div className="muted small">נרשמים או נכנסים עם המייל. אם האתר עובר לבד לכתובת platform.claude.com, זה בסדר.</div>
           </li>
           <li>
-            ב-<b>API Keys</b> יוצרים מפתח חדש ומעתיקים אותו.
+            <a className="ghost small btn-link" href="https://console.anthropic.com/settings/billing" target="_blank" rel="noreferrer">
+              2. הוספת אמצעי תשלום ↗
+            </a>
+            <div className="muted small">ב-Billing מוסיפים כרטיס ומטעינים סכום קטן, למשל 5 דולר. בלי יתרה המפתח לא יעבוד.</div>
           </li>
-          <li>מדביקים כאן. המפתח נשמר מוצפן בסיסמת-העל, רק במחשב הזה.</li>
+          <li>
+            <a className="ghost small btn-link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
+              3. יצירת מפתח ↗
+            </a>
+            <div className="muted small">
+              לוחצים <b dir="ltr">Create Key</b>, נותנים שם (למשל "שפע") ומעתיקים את הקוד מיד. האתר מראה אותו פעם אחת בלבד.
+            </div>
+            <div className="muted small">
+              לא צריך למלא שום טופס אחר. אם נפתח חלון כמו <b dir="ltr">Register issuer</b>, <b dir="ltr">Workload identity</b> או <b dir="ltr">OIDC</b>, זה לא המקום: סוגרים אותו ב-X וחוזרים ל-<b dir="ltr">API Keys</b>.
+            </div>
+          </li>
+          <li>מדביקים את הקוד כאן ולוחצים "חיבור המאמן". המפתח נשמר מוצפן בסיסמת-העל, רק במחשב הזה.</li>
         </ol>
         <div className="privacy-note">
           <b>מה יוצא מהמחשב:</b> סיכום של המספרים (סכומים לפי חודש וקטגוריה, חיובים קבועים ושמות בתי עסק) ושאלות שלך, והם נשלחים ל-Anthropic כדי שהמאמן יוכל לענות. פרטי הכניסה לבנקים, מספרי החשבונות וסיסמת-העל לא נשלחים לעולם.
         </div>
         <form className="row wrap" onSubmit={save}>
           <input type="password" dir="ltr" placeholder="sk-ant-…" value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" aria-label="מפתח API" />
-          <button className="primary" disabled={busy || key.trim().length < 20}>
+          {canPaste && (
+            <button
+              type="button"
+              className="ghost small"
+              onClick={async () => {
+                try {
+                  setKey((await navigator.clipboard.readText()).trim());
+                } catch {
+                  setError('לא הצלחתי לקרוא מההעתקה. אפשר ללחוץ בשדה ו-Ctrl+V.');
+                }
+              }}
+            >
+              📋 הדבקה
+            </button>
+          )}
+          <button className="primary" disabled={busy || !looksLikeKey}>
             {busy ? 'בודק…' : 'חיבור המאמן'}
           </button>
         </form>
+        {key.trim() && !looksLikeKey && (
+          <div className="warm small">
+            {/^https?:/i.test(key.trim())
+              ? 'הודבק קישור, לא מפתח. צריך את הקוד שמתחיל ב-sk-ant-, מהמסך API Keys (שלב 3).'
+              : 'מפתח תקין מתחיל ב-sk-ant- והוא ארוך. כדאי להעתיק אותו שוב משלב 3.'}
+          </div>
+        )}
         {error && <div className="error small">{error}</div>}
       </section>
     </div>
