@@ -31,6 +31,7 @@ $P = array( 20335 => new Prod( 20335, 'variable' ), 22311 => new Prod( 22311, 'v
 foreach ( array( 20335, 22311 ) as $pp ) foreach ( array( 'family', '400', '100', '300' ) as $w ) foreach ( array( 'desktop', 'webfont' ) as $l ) { $P[ ++$vid ] = new Prod( $vid, 'variation', $pp, array( 'pa_weight' => $w, 'pa_license' => $l ) ); $P[ $pp ]->kids[] = $vid; }
 $GLOBALS['P'] = $P;
 function wc_get_product( $id ) { return $GLOBALS['P'][ $id ] ?? null; }
+function status_header( $c ) { $GLOBALS['status'] = $c; }
 class WC_Download_Handler { static function download( $f, $pid ) { $GLOBALS['served'] = array( $f, $pid ); throw new Exception( 'served' ); } }
 function wc_get_customer_available_downloads( $u ) { return array( array( 'product_id' => 30004, 'product_name' => 'נוסטלה - רגיל, וובפונט', 'order_id' => 0, 'download_url' => 'https://x/dl', 'download_name' => 'Nostela_Regular_Web' ) ); }
 function wc_get_order( $id ) { return null; } function wc_get_orders( $a ) { return array(); } function get_user_meta() { return ''; } function wc_get_page_permalink() { return '/'; } function wc_logout_url() { return '/'; } function get_permalink() { return '/'; }
@@ -50,8 +51,11 @@ $t( fsa_v2_weights( 'לא קיים', true ) === array(), 'unknown font: no weigh
 // download rules
 $dl = function ( $q ) { $GLOBALS['died'] = null; $GLOBALS['served'] = null; $_GET = $q; try { fsa_v2_weight_download(); } catch ( Exception $e ) {} };
 parse_str( parse_url( $w[0]['desk'], PHP_URL_QUERY ), $q ); $q['k'] = rawurldecode( $q['k'] );
+$GLOBALS['wp_query'] = (object) array( 'is_404' => true ); $GLOBALS['status'] = 404;
 $dl( $q ); $t( $GLOBALS['served'] && ! $GLOBALS['died'], 'subscriber downloads a weight of a subscription font' );
-$dl( array_merge( $q, array( '_wpnonce' => 'bad' ) ) ); $t( $GLOBALS['died'] && ! $GLOBALS['served'], 'bad nonce is refused' );
+$t( 200 === $GLOBALS['status'] && false === $GLOBALS['wp_query']->is_404, 'the file is sent with 200, not the private page\'s 404 (Chrome refuses a file sent with 404)' );
+$GLOBALS['status'] = 404;
+$dl( array_merge( $q, array( '_wpnonce' => 'bad' ) ) ); $t( $GLOBALS['died'] && ! $GLOBALS['served'] && 404 === $GLOBALS['status'], 'bad nonce is refused (and no 200 is sent)' );
 $other = array_search( true, array_map( function ( $p ) { return $p->type === 'variation' && $p->parent === 22311; }, $GLOBALS['P'] ) );
 $dl( array( 'fsa_wdl' => $other, 'k' => 'dl-' . $other, '_wpnonce' => 'N' ) ); $t( $GLOBALS['died'] && ! $GLOBALS['served'], 'font outside the subscription list is refused' );
 $dl( array_merge( $q, array( 'k' => 'nope' ) ) ); $t( $GLOBALS['died'] && ! $GLOBALS['served'], 'unknown file key is refused' );

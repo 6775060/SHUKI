@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FSA_V2_SLUG', 'my-account-new' );
 // build number, shown to admins next to "למעבר לאזור האישי הקודם" so it is easy to see which file is live (= last item in docs/HANDOFF-snippet.md)
-define( 'FSA_V2_BUILD', '119' );
+define( 'FSA_V2_BUILD', '120' );
 // a plain customer account (not an admin) that may also open the preview, for testing. Delete the user to remove the access.
 define( 'FSA_V2_TESTER', 'claude-test' );
 
@@ -211,6 +211,13 @@ function fsa_v2_weights( $name, $allow_web ) {
 	return $out;
 }
 
+// a file is being sent: the download links live on the private preview page, which WordPress answers with 404 for
+// customers (admins may read it). Chrome refuses a file that comes with 404 (ERR_INVALID_RESPONSE), so say 200.
+function fsa_v2_file_ok() {
+	global $wp_query;
+	if ( $wp_query && isset( $wp_query->is_404 ) ) $wp_query->is_404 = false;
+	if ( function_exists( 'status_header' ) ) status_header( 200 );
+}
 // 2c. per-weight download: only for viewers of the preview, only fonts in the subscription list, only formats the plan includes
 add_action( 'template_redirect', 'fsa_v2_weight_download', 5 );
 function fsa_v2_weight_download() {
@@ -235,6 +242,7 @@ function fsa_v2_weight_download() {
 		wp_die( 'אין גישה לקובץ הזה.', '', array( 'response' => 403 ) );
 	}
 	if ( ! $is_desk ) fsa_v2_note_webdl( get_current_user_id(), $parent->post_title );
+	fsa_v2_file_ok();
 	WC_Download_Handler::download( $dls[ $k ]->get_file(), $v->get_id() );
 	exit;
 }
@@ -267,6 +275,7 @@ function fsa_v2_all_download() {
 	$kind = 'web' === $_GET['fsa_wall'] ? 'web' : 'desk';
 	$zip  = fsa_v2_all_zip( $kind );
 	if ( 'web' === $kind ) fsa_v2_note_webdl( get_current_user_id() );
+	fsa_v2_file_ok();
 	nocache_headers();
 	header( 'Content-Type: application/zip' );
 	header( 'Content-Disposition: attachment; filename="' . ( 'web' === $kind ? 'FontShok-Webfonts.zip' : 'FontShok-Desktop.zip' ) . '"' );
