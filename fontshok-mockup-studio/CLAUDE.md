@@ -5,5 +5,7 @@
 - קוד, פקודות, שמות קבצים ומונחים טכניים נשארים כמו שהם, בתוך משפט בעברית.
 
 ## מאגר הקוד
-- הקוד נשמר בריפו `6775060/shuki`, בענף `claude/fontshok-mockup-studio`, בתיקייה `fontshok-mockup-studio/`. לא לערבב עם PR מספר 1 (פרויקט אחר).
+- הקוד נשמר בריפו `6775060/shuki`, בתיקייה `fontshok-mockup-studio/` בלבד, בשני מקומות:
+  - הענף של PR מספר 1 (`claude/financial-behavior-system-8k29fx`), לפי בקשת המשתמש. שאר הקבצים ב־PR שייכים לפרויקט אחר (מערכת פיננסית) ואסור לגעת בהם.
+  - הענף `claude/fontshok-mockup-studio`.
 - על מחשב המשתמש (Windows) הפרויקט נמצא ב־`C:\fontshok\fontshok-mockup-studio\fontshok-mockup-studio`.
