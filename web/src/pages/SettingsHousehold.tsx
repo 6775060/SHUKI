@@ -1,0 +1,217 @@
+import { useEffect, useState } from 'react';
+import { api, ApiError, coachErrorText, type IncomeProfile, type SecurityState } from '../api';
+
+// How the household earns, so insights and business tips talk about the right things.
+export function IncomeProfileCard() {
+  const [p, setP] = useState<IncomeProfile | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [employer, setEmployer] = useState('');
+  const [moved, setMoved] = useState<number | null>(null);
+  useEffect(() => {
+    api<IncomeProfile>('/profile').then(setP);
+  }, []);
+  if (!p) return null;
+  const addEmployer = async () => {
+    const r = await api<IncomeProfile & { changed: number }>('/profile/employer', { method: 'POST', json: { name: employer.trim() } });
+    setP(r);
+    setMoved(r.changed);
+    setEmployer('');
+  };
+  const save = async (next: IncomeProfile | null) => {
+    setP(await api<IncomeProfile>('/profile', { method: 'PUT', json: { profile: next && { business: next.business, salary: next.salary } } }));
+    setSaved(true);
+  };
+  return (
+    <section className="card form">
+      <h3>🏠 מאיפה נכנס הכסף לבית</h3>
+      <p className="sub">לפי זה המערכת מנסחת את התובנות ואת הטיפים לעסק.{p.auto ? ' כרגע זה זוהה אוטומטית מהתנועות.' : ''}</p>
+      <fieldset className="income-choice">
+        <legend>ההכנסה מהעסק</legend>
+        {(
+          [
+            ['clearing', 'מסליקת אשראי', 'הקונים משלמים בכרטיס, והכסף נכנס מחברות הסליקה. אין לקוחות קבועים או חשבוניות לכל לקוח.'],
+            ['clients', 'מלקוחות', 'עבודה מול לקוחות, עם חשבוניות והעברות.'],
+            ['none', 'אין עסק', ''],
+          ] as const
+        ).map(([value, label, hint]) => (
+          <label key={value} className="radio">
+            <input type="radio" name="biz" checked={p.business === value} onChange={() => save({ ...p, business: value })} />
+            <span>
+              <b>{label}</b>
+              {hint && <span className="muted small"> · {hint}</span>}
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      <label className="radio">
+        <input type="checkbox" checked={p.salary} onChange={(e) => save({ ...p, salary: e.target.checked })} />
+        <span>
+          <b>יש בבית גם משכורת קבועה</b>
+          <span className="muted small"> · המערכת מזהה אותה בבנק (משכורת / שכר) ומציגה אותה כבסיס היציב של הבית.</span>
+        </span>
+      </label>
+      {p.salary && (
+        <div className="employer">
+          <b>המשכורת נכנסת בשם של המעסיק?</b>
+          <span className="muted small"> כתוב את השם כמו שהוא מופיע בדף הבנק, וכל זיכוי ממנו ייחשב משכורת.</span>
+          {p.employers.length > 0 && (
+            <ul className="employer-list">
+              {p.employers.map((e) => (
+                <li key={e.id}>
+                  {e.name}
+                  <button className="link small" onClick={async () => setP(await api<IncomeProfile>(`/profile/employer/${e.id}`, { method: 'DELETE' }))}>
+                    הסרה
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form
+            className="row wrap"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (employer.trim().length >= 2) addEmployer();
+            }}
+          >
+            <input value={employer} onChange={(e) => setEmployer(e.target.value)} placeholder="למשל: שם החברה" maxLength={60} aria-label="שם המעסיק" />
+            <button className="ghost small" disabled={employer.trim().length < 2}>
+              הוספה
+            </button>
+          </form>
+          {moved !== null && <span className="success small">{moved ? `${moved} תנועות עודכנו למשכורת.` : 'נשמר. תנועות חדשות ממנו ייחשבו משכורת.'}</span>}
+        </div>
+      )}
+      <div className="row wrap">
+        {!p.auto && (
+          <button className="link small" onClick={() => save(null)}>
+            חזרה לזיהוי אוטומטי
+          </button>
+        )}
+        {saved && <span className="success small">נשמר. התובנות מתעדכנות.</span>}
+      </div>
+    </section>
+  );
+}
+
+const LOCK_OPTIONS = [
+  [0, 'לא לנעול (מסך הנעילה של Windows שומר)'],
+  [15, '15 דקות'],
+  [30, '30 דקות'],
+  [60, 'שעה'],
+  [240, '4 שעות'],
+] as const;
+
+const PHONE_LOCK_OPTIONS = [
+  [10, '10 דקות'],
+  [30, '30 דקות'],
+  [60, 'שעה'],
+  [240, '4 שעות'],
+] as const;
+
+export function SecurityCard() {
+  const [st, setSt] = useState<SecurityState | null>(null);
+  const [msg, setMsg] = useState('');
+  const [error, setError] = useState('');
+  const load = () => api<SecurityState>('/security').then(setSt);
+  useEffect(() => {
+    load();
+  }, []);
+  if (!st) return null;
+
+  const setLock = async (change: { autoLockMinutes?: number; phoneLockMinutes?: number }) => {
+    try {
+      await api('/security', { method: 'PUT', json: change });
+      setMsg('נשמר.');
+      setError('');
+      load();
+    } catch (err) {
+      setError(coachErrorText(err instanceof ApiError ? err.code : ''));
+    }
+  };
+  const signOutAll = async () => {
+    if (!confirm('לנתק את כל המכשירים, כולל את זה? אחר כך נכנסים שוב עם סיסמת-העל.')) return;
+    await api('/security/sign-out-all', { method: 'POST' });
+    location.reload();
+  };
+  const backupAge = st.lastBackupAt ? Math.floor((Date.now() - Date.parse(st.lastBackupAt)) / 86_400_000) : null;
+  const failed = st.logins.filter((l) => !l.ok && Date.now() - Date.parse(l.at) < 7 * 86_400_000).length;
+
+  const checks: { ok: boolean; text: string }[] = [
+    { ok: true, text: 'פרטי הכניסה לבנקים, מפתחות ה-API, השיחות עם המאמן ומה שהוא למד מוצפנים בסיסמת-העל (AES-256).' },
+    { ok: true, text: 'המערכת לא פתוחה לרשת הביתית. רק המחשב עצמו, ומהטלפון רק דרך Tailscale.' },
+    { ok: true, text: 'מהטלפון אי אפשר ליצור גיבוי, לשחזר, לאפס, לשנות חיבורי בנקים או מפתחות. זה אפשרי רק מהמחשב.' },
+    { ok: true, text: `בטלפון המערכת ננעלת אחרי ${st.phoneLockMinutes} דקות בלי שימוש${st.autoLockMinutes > 0 ? `, ובמחשב אחרי ${st.autoLockMinutes}` : '. במחשב היא נשארת פתוחה, ומסך הנעילה של Windows (Win+L) שומר עליה'}.` },
+    { ok: true, text: 'פרטי הכניסה לבנקים נשמרים. כשאתר לא עונה, המערכת מנסה שוב לבד, בלי לבקש אותם מחדש.' },
+    { ok: backupAge !== null && backupAge <= 45, text: backupAge === null ? 'עוד לא נוצר קובץ גיבוי. כדאי ליצור ולשמור על דיסק-און-קי, מחוץ למחשב.' : `הגיבוי האחרון לפני ${backupAge} ימים${backupAge > 45 ? '. כדאי ליצור חדש.' : '.'}` },
+    { ok: failed === 0, text: failed ? `${failed} ניסיונות כניסה עם סיסמה שגויה בשבוע האחרון. אם זה לא אתה, כדאי לנתק את כל המכשירים ולהחליף סיסמה ב-Windows.` : 'אין ניסיונות כניסה שגויים בשבוע האחרון.' },
+  ];
+
+  return (
+    <section className="card form">
+      <h3>🛡️ אבטחה</h3>
+      <ul className="sec-checks">
+        {checks.map((c) => (
+          <li key={c.text} className={c.ok ? 'ok' : 'todo'}>
+            <span aria-hidden>{c.ok ? '✓' : '!'}</span> {c.text}
+          </li>
+        ))}
+      </ul>
+
+      <div className="row wrap">
+        <label>
+          נעילה במחשב אחרי חוסר שימוש
+          <select value={st.autoLockMinutes} onChange={(e) => setLock({ autoLockMinutes: Number(e.target.value) })} disabled={st.onPhone}>
+            {LOCK_OPTIONS.map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          נעילה בטלפון אחרי חוסר שימוש
+          <select value={st.phoneLockMinutes} onChange={(e) => setLock({ phoneLockMinutes: Number(e.target.value) })} disabled={st.onPhone}>
+            {PHONE_LOCK_OPTIONS.map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {msg && <span className="success small">{msg}</span>}
+      {error && <div className="error small">{error}</div>}
+
+      <h4>כדי שזה יהיה ממש מוגן, שלושה דברים ב-Windows ובחשבונות</h4>
+      <ol className="howto">
+        <li>
+          <b>הצפנת הכונן (BitLocker):</b> הגדרות Windows ← פרטיות ואבטחה ← הצפנת מכשיר (או "ניהול BitLocker"). כך גם מי שלוקח את המחשב לא יכול לקרוא את הנתונים.
+        </li>
+        <li>
+          <b>סיסמה או PIN לכניסה ל-Windows</b>, ונעילת מסך אוטומטית (Win+L כשקמים מהמחשב).
+        </li>
+        <li>
+          <b>אימות דו-שלבי</b> לחשבון שאיתו נכנסים ל-Tailscale (Google או Microsoft), וגם לחשבון ב-Anthropic אם המאמן מחובר.
+        </li>
+      </ol>
+
+      {st.logins.length > 0 && (
+        <details>
+          <summary>כניסות אחרונות</summary>
+          <ul className="login-log">
+            {st.logins.slice(0, 12).map((l) => (
+              <li key={l.at} className={l.ok ? '' : 'bad'}>
+                {new Date(l.at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })} · {l.phone ? '📱 טלפון' : '💻 מחשב'} · {l.ok ? 'כניסה' : 'סיסמה שגויה'}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <div className="row wrap">
+        <button className="ghost small" onClick={signOutAll}>
+          ניתוק כל המכשירים
+        </button>
+      </div>
+    </section>
+  );
+}
