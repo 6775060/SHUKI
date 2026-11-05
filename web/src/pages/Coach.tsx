@@ -154,19 +154,19 @@ function CoachSetup({ onDone }: { onDone: (s: CoachState) => void }) {
         <ol className="howto">
           <li>
             <a className="ghost small btn-link" href="https://console.anthropic.com/" target="_blank" rel="noreferrer">
-              1. פתיחת האתר של Anthropic ↗
+              פתיחת האתר של Anthropic ↗
             </a>
             <div className="muted small">נרשמים או נכנסים עם המייל. אם האתר עובר לבד לכתובת platform.claude.com, זה בסדר.</div>
           </li>
           <li>
             <a className="ghost small btn-link" href="https://console.anthropic.com/settings/billing" target="_blank" rel="noreferrer">
-              2. הוספת אמצעי תשלום ↗
+              הוספת אמצעי תשלום ↗
             </a>
             <div className="muted small">ב-Billing מוסיפים כרטיס ומטעינים סכום קטן, למשל 5 דולר. בלי יתרה המפתח לא יעבוד.</div>
           </li>
           <li>
             <a className="ghost small btn-link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
-              3. יצירת מפתח ↗
+              יצירת מפתח ↗
             </a>
             <div className="muted small">
               לוחצים <b dir="ltr">Create Key</b>, נותנים שם (למשל "שפע") ומעתיקים את הקוד מיד. האתר מראה אותו פעם אחת בלבד.
@@ -204,8 +204,8 @@ function CoachSetup({ onDone }: { onDone: (s: CoachState) => void }) {
         {key.trim() && !looksLikeKey && (
           <div className="warm small">
             {/^https?:/i.test(key.trim())
-              ? 'הודבק קישור, לא מפתח. צריך את הקוד שמתחיל ב-sk-ant-, מהמסך API Keys (שלב 3).'
-              : 'מפתח תקין מתחיל ב-sk-ant- והוא ארוך. כדאי להעתיק אותו שוב משלב 3.'}
+              ? <>הודבק קישור, לא מפתח. צריך את הקוד שמתחיל ב-<bdi dir="ltr">sk-ant-</bdi>, מהמסך <bdi dir="ltr">API Keys</bdi> (שלב 3).</>
+              : <>מפתח תקין מתחיל ב-<bdi dir="ltr">sk-ant-</bdi> והוא ארוך. כדאי להעתיק אותו שוב משלב 3.</>}
           </div>
         )}
         {error && <div className="error small">{error}</div>}
