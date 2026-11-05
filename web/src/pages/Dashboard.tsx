@@ -8,15 +8,17 @@ import type { Nav } from '../App';
 import { VisualDashboard } from './DashboardVisual';
 import { CoachFocusCard } from './Coach';
 import { SimpleDashboard } from './DashboardSimple';
+import { FocusDashboard } from './DashboardFocus';
 
-type View = 'simple' | 'visual' | 'detail';
+type View = 'focus' | 'simple' | 'visual' | 'detail';
+const VIEWS: View[] = ['focus', 'simple', 'visual', 'detail'];
 
 function savedView(): View {
   try {
-    const v = localStorage.getItem('shefa-view2');
-    return v === 'detail' || v === 'visual' ? v : 'simple';
+    const v = localStorage.getItem('shefa-view3') as View | null;
+    return v && VIEWS.includes(v) ? v : 'focus';
   } catch {
-    return 'simple';
+    return 'focus';
   }
 }
 
@@ -34,8 +36,9 @@ export function Dashboard({ nav }: { nav: Nav }) {
   const [view, setViewState] = useState<View>((nav.params.view as View) ?? savedView());
   const setView = (v: View) => {
     setViewState(v);
+    if (v === 'focus') setMonth(currentMonth());
     try {
-      localStorage.setItem('shefa-view2', v);
+      localStorage.setItem('shefa-view3', v);
     } catch {
       /* private mode */
     }
@@ -43,7 +46,7 @@ export function Dashboard({ nav }: { nav: Nav }) {
   };
 
   useEffect(() => {
-    if (nav.params.view === 'detail' || nav.params.view === 'visual' || nav.params.view === 'simple') setViewState(nav.params.view);
+    if (VIEWS.includes(nav.params.view as View)) setViewState(nav.params.view as View);
   }, [nav.params.view]);
 
   useEffect(() => {
@@ -95,8 +98,11 @@ export function Dashboard({ nav }: { nav: Nav }) {
         ))}
       </select>
       <div className="seg-toggle" role="group" aria-label="סוג תצוגה">
+        <button className={view === 'focus' ? 'on' : ''} aria-pressed={view === 'focus'} onClick={() => setView('focus')}>
+          ✦ תכל'ס
+        </button>
         <button className={view === 'simple' ? 'on' : ''} aria-pressed={view === 'simple'} onClick={() => setView('simple')}>
-          ◎ פשוט
+          ◎ סיכום
         </button>
         <button className={view === 'visual' ? 'on' : ''} aria-pressed={view === 'visual'} onClick={() => setView('visual')}>
           ◔ ויזואלי
@@ -120,7 +126,30 @@ export function Dashboard({ nav }: { nav: Nav }) {
     </div>
   );
 
-  if (view === 'simple') {
+  if (view === 'focus' && data.isCurrent && data.cycle) {
+    const chips = (data.uncategorized > 0 || data.reviews?.n > 0) && (
+      <div className="row wrap">
+        {data.uncategorized > 0 && (
+          <button className="chip" onClick={() => nav.go('transactions', { month, uncategorized: '1' })}>
+            {data.uncategorized} לסיווג
+          </button>
+        )}
+        {data.reviews?.n > 0 && (
+          <button className="chip warm-chip" onClick={() => nav.go('reviews')}>
+            ❓ {data.reviews.n} לבירור
+          </button>
+        )}
+      </div>
+    );
+    return (
+      <div className={`stack dash ${loading ? 'refetch' : ''}`}>
+        {chips}
+        <FocusDashboard d={data} nav={nav} onMore={setView} />
+      </div>
+    );
+  }
+
+  if (view === 'simple' || view === 'focus') {
     return (
       <div className={`stack dash ${loading ? 'refetch' : ''}`}>
         {filters}

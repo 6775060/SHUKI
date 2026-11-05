@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { api, ApiError, apiText, coachErrorText, type CoachFocus, type CoachState } from '../api';
 import type { Nav } from '../App';
 
@@ -274,7 +274,9 @@ function CoachPrivacy({ onChange }: { onChange: (s: CoachState) => void }) {
 }
 
 // Today's focus on the home screen, chosen by the coach once a day.
-export function CoachFocusCard({ nav }: { nav: Nav }) {
+// The coach's one thing for today. Until it answers, or when the coach isn't
+// connected, the fallback (if any) stands in its place.
+export function CoachFocusCard({ nav, fallback = null }: { nav: Nav; fallback?: ReactNode }) {
   const [focus, setFocus] = useState<CoachFocus | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -282,7 +284,7 @@ export function CoachFocusCard({ nav }: { nav: Nav }) {
       .then((r) => setFocus(r.focus))
       .catch(() => {});
   }, []);
-  if (!focus) return null;
+  if (!focus) return <>{fallback}</>;
   const again = async () => {
     setBusy(true);
     try {

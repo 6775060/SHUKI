@@ -3284,3 +3284,23 @@ textarea {
   text-decoration: none;
   margin-bottom: 4px;
 }
+
+/* ---------- תכל'ס: the three-answer home ---------- */
+.focus-home { max-width: 640px; margin-inline: auto; width: 100%; }
+.focus-alert { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.focus-answer { font-size: 1.15rem; line-height: 1.4; margin: 4px 0 12px; }
+.focus-answer b { display: block; font-size: 2.4rem; line-height: 1.1; letter-spacing: -0.5px; margin-top: 2px; }
+.focus-bar { display: flex; height: 14px; border-radius: 8px; overflow: hidden; background: var(--surface-2); }
+.focus-bar span { display: block; height: 100%; }
+.fb-fixed { background: var(--ramp-5); }
+.fb-var { background: var(--ramp-3); }
+.fb-free { background: var(--good-line); }
+.focus-eq { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 0.92rem; color: var(--text-2); }
+.focus-eq b { color: var(--text); }
+.focus-month.minus .focus-bar { outline: 2px solid var(--crit-line); outline-offset: 1px; }
+.focus-meter { height: 10px; border-radius: 6px; background: var(--surface-2); overflow: hidden; margin-bottom: 8px; }
+.focus-meter span { display: block; height: 100%; background: var(--accent); border-radius: 6px; }
+.focus-meter span.over { background: var(--warm); }
+.focus-step h3 { margin: 4px 0 6px; }
+.focus-step p { margin: 0 0 6px; }
+.focus-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: center; padding: 4px 0 12px; }
