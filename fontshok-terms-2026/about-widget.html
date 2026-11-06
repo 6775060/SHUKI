@@ -1,0 +1,208 @@
+<style>
+.fs-about{--ink:#333;--muted:#8D8D8D;--blue:#382CFF;--pink:#CC3366;--rule:#958A8A;--hdr:110px;color:var(--ink);direction:rtl}
+.fs-about *{box-sizing:border-box}
+.fs-about .grid{display:grid;grid-template-columns:260px minmax(0,1fr);gap:80px;margin-top:60px}
+.fs-about .grid>.side{order:-1}
+.fs-about .main{max-width:760px}
+.fs-about .intro{font-size:20px;font-weight:300;line-height:1.6;margin:0 0 110px}
+.fs-about h2{font-size:36px;font-weight:700;color:var(--muted);margin:0;padding-bottom:40px;border-bottom:1px solid var(--rule);line-height:1.2}
+.fs-about h2.next{margin-top:120px}
+.fs-about .lic{padding:50px 0 54px;border-bottom:1px solid var(--rule)}
+.fs-about h3{font-size:30px;font-weight:400;color:var(--blue);margin:0 0 18px;line-height:1.25}
+.fs-about h3 .soon{font-size:16px;font-weight:600;color:var(--pink);margin-inline-start:8px;vertical-align:middle}
+.fs-about p,.fs-about li{font-size:20px;font-weight:300;line-height:30px;margin:0;color:var(--ink)}
+.fs-about .lic p+p{margin-top:16px}
+.fs-about .lic ul{margin:14px 0 0;padding-inline-start:22px}
+.fs-about .lic li{margin:0 0 2px}
+.fs-about b.k{font-weight:400}
+.fs-about .fmt{color:var(--pink)}
+.fs-about .hi{font-weight:500}
+.fs-about a.lnk{color:var(--blue)}
+.fs-about .btn{display:inline-block;margin-top:30px;border:1px solid #000;border-radius:30px;padding:12px 24px;font-size:21px;font-weight:300;color:#000;text-decoration:none;transition:background-color .2s}
+.fs-about .btn:hover{background:#F6F5FF;color:#000}
+.fs-about .help{padding:50px 0;border-bottom:1px solid var(--rule)}
+.fs-about .help p{font-size:22px}
+.fs-about .steps{list-style:none;padding:0;margin:40px 0 0;display:grid;gap:14px}
+.fs-about .steps li{display:flex;gap:14px;align-items:baseline}
+.fs-about .steps .num{flex:none;width:34px;height:34px;border-radius:50%;background:#F3E3F8;display:grid;place-items:center;font-size:16px;font-weight:600}
+.fs-about .facts{list-style:none;padding:0;margin:40px 0 0;display:grid;gap:18px}
+.fs-about .facts li{padding-inline-start:22px;position:relative}
+.fs-about .facts li:before{content:"";position:absolute;inset-inline-start:0;top:12px;width:8px;height:8px;border-radius:50%;background:var(--blue)}
+.fs-about .lic,.fs-about h2{scroll-margin-top:calc(var(--hdr) + 20px)}
+/* menu: quiet group labels, items on a thin rail, active item like the personal area */
+.fs-about .side{position:sticky;top:calc(var(--hdr) + 20px);align-self:start}
+.fs-about .pill{font-size:14px;font-weight:600;letter-spacing:.02em;color:var(--muted);padding:0 18px 12px;border-bottom:1px solid #E8E8E8}
+.fs-about .side ul{list-style:none;padding:0;margin:0 0 48px;display:grid;gap:0;border-inline-end:1px solid #E8E8E8}
+.fs-about .side li{margin:0}
+.fs-about .side a{display:block;position:relative;padding:12px 18px;font-size:18px;font-weight:300;color:#000;text-decoration:none;transition:color .2s,background-color .2s}
+.fs-about .side a:hover{color:#9B4DFF}
+.fs-about .side a.on{background:#F8F7FB;color:#9B4DFF;font-weight:700}
+.fs-about .side a.on::after{content:"";position:absolute;inset-inline-end:-1px;top:0;bottom:0;width:3px;background:#5B3FFF}
+@media (max-width:900px){
+  .fs-about .grid{grid-template-columns:1fr;gap:0;margin-top:0}
+  .fs-about .side{top:var(--hdr);z-index:5;background:#fff;border-bottom:1px solid #E8E8E8;display:flex;overflow-x:auto;scrollbar-width:none;margin:0 -16px 40px;padding:0 8px}
+  .fs-about .side::-webkit-scrollbar{display:none}
+  .fs-about .side .pill{display:none}
+  .fs-about .side ul{display:flex;margin:0;border:0}
+  .fs-about .side a{white-space:nowrap;padding:14px 12px;font-size:16px}
+  .fs-about .side a.on{background:none}
+  .fs-about .side a.on::after{inset-inline:0;top:auto;bottom:0;width:auto;height:3px}
+  .fs-about .lic,.fs-about h2{scroll-margin-top:calc(var(--hdr) + 64px)}
+  .fs-about .intro{margin-bottom:70px}
+  .fs-about h2{font-size:28px;padding-bottom:28px}
+  .fs-about h2.next{margin-top:80px}
+  .fs-about h3{font-size:24px}
+  .fs-about p,.fs-about li{font-size:18px;line-height:28px}
+}
+</style>
+<div class="fs-about">
+<div class="grid">
+<div class="main">
+<p class="intro">כל פונט נוצר בקפידה, כדי שיהיו לכם פונטים עבריים מושלמים.<br>רכישת רישיון מאפשרת לנו להמשיך לפתח ולעצב פונטים עבריים ולטיניים איכותיים ומרעננים, לעיצובים שמרגשים.</p>
+
+<h2 id="lic">רישיונות השימוש בקצרה</h2>
+
+<section class="lic" id="desk">
+<h3>רישיון דסקטופ ← Desktop</h3>
+<p>קונים פעם אחת, משתמשים לתמיד. שימוש מסחרי ללא הגבלת פרויקטים, בתוכנות עיצוב, וידאו ועיצוב ממשק כמו אדובי, אופיס ופיגמה, על <span class="hi">עד 5 מחשבים</span> במקום עבודה אחד.</p>
+<p><b class="k">הקבצים שאתם מקבלים:</b></p>
+<p>פורמטים <span class="fmt">Otf, Ttf</span> להתקנה במחשבי מק (Mac) ופיסי (Pc).</p>
+<p><b class="k">ניתן להפיק ולעצב במסגרת הרישיון:</b></p>
+<ul>
+<li>תוצרי תדפיס: פוסטרים, שלטים, אריזות..</li>
+<li>תוצרי פלט: מצגות, פוסטים, עיצובים לרשת..</li>
+<li>תוצרי תנועה: סרטונים, לוגו חי, אנימציות</li>
+<li>לוגו, שאפשר גם לרשום כסימן מסחר</li>
+</ul>
+</section>
+
+<section class="lic" id="web">
+<h3>רישיון אתרים ← Web</h3>
+<p>הפונט כטקסט חי באתר, ב־<span class="hi">3 דומיינים</span> וסאב־דומיינים, <span class="hi">ללא הגבלת צפיות ועמודים</span>. בונים אתר ללקוח? אפשר לרשום גם את הדומיין שלו, וצריכים עוד אתר? מוסיפים דומיין מהאזור האישי.</p>
+<p><b class="k">הקבצים שאתם מקבלים:</b></p>
+<p>פורמטים <span class="fmt">Woff, Woff2</span> להטמעה באתר, ו־<span class="fmt">Otf, Ttf</span> לעיצוב הממשק בפיגמה.</p>
+<p><b class="k">ניתן להפיק ולעצב במסגרת הרישיון:</b></p>
+<ul>
+<li>תוצרי אינטרנט: אתרים, דפי נחיתה, בלוגים וחנויות</li>
+<li>תוצרי UI/UX: עיצוב ממשק האתר בפיגמה (Figma)</li>
+</ul>
+</section>
+
+<section class="lic" id="app">
+<h3>רישיון אפליקציה ← App <span class="soon">בקרוב</span></h3>
+<p>הפונט בתוך האפליקציה שלכם: אפליקציה אחת, בכל הפלטפורמות (iOS ואנדרואיד), עד 30,000 הורדות.</p>
+<p><b class="k">הקבצים שאתם מקבלים:</b></p>
+<p>פורמטים <span class="fmt">Otf, Ttf</span> להטמעה באפליקציה.</p>
+</section>
+
+<div class="help">
+<p>משקל, שלישייה או משפחה מלאה? מי שמשדרג למשפחה משלם רק את ההפרש.</p>
+<p style="margin-top:14px">מתלבטים בבחירת הפונט או הרישיון? <a class="lnk" href="/contact/">כתבו לנו</a>, אנחנו חוזרים תיק־תק!</p>
+<a class="btn" href="/shop/">למעבר לקטלוג הפונטים</a>
+</div>
+
+<h2 class="next" id="subs">תוכניות המינוי בקצרה</h2>
+
+<section class="lic" id="webstop">
+<h3>מינוי וובסטופ ← Desk + Web + UI/UX</h3>
+<p>המינוי של בוני האתרים והמעצבים: <span class="hi">כל הפונטים בספרייה</span>, לכל מטרה, ו־<span class="hi">3 אתרים חדשים בכל חודש</span>. כל פונט חדש נכנס למינוי בלי תוספת, והמחיר שלכם נעול כל עוד אתם איתנו.</p>
+<p>מקבלים 4 פורמטים: <span class="fmt">Otf, Ttf</span> לדסקטופ, <span class="fmt">Woff, Woff2</span> לאתרים.</p>
+<p><b class="k">מה שניתן לעצב במסגרת המינוי:</b></p>
+<ul>
+<li>עיצוב תוצרי דסקטופ: אדובי, אופיס, פיגמה, על עד 3 מחשבים</li>
+<li>עיצוב תוצרי פלט וסושיאל: מצגות, פוסטים, עיצובים לדיגיטל</li>
+<li>עיצוב תוצרי תנועה: סרטונים, אנימציות, לוגו חי</li>
+<li>עיצוב תוצרי אינטרנט: אתרים, דפי נחיתה ואתרי לקוחות, ללא הגבלת צפיות</li>
+<li>תעודת רישיון לכל דומיין, והאתרים נשארים שלכם לתמיד אחרי השלמת ההתחייבות</li>
+</ul>
+<a class="btn" href="/font/webstop-membership/">לרכישת מינוי וובסטופ</a>
+</section>
+
+<section class="lic" id="extra">
+<h3>מינוי אקסטרה ← הכול, ללא הגבלה</h3>
+<p>למשרדי מיתוג ופרסום שלא רוצים לחשוב על רישיונות בכלל: כל הספרייה, לכל מטרה, <span class="hi">ללא הגבלה</span>.</p>
+<p><b class="k">מה שניתן לעצב במסגרת המינוי:</b></p>
+<ul>
+<li>כל מה שבוובסטופ, על עד 10 מחשבים</li>
+<li>עיצוב תוצרי אינטרנט: אתרים ללא הגבלת דומיינים</li>
+<li>עיצוב תוצרי אפליקציה: ללא הגבלת אפליקציות והורדות</li>
+<li>עיצוב תוצרי תשדיר: סרטים, כתוביות ושידור טלוויזיה</li>
+</ul>
+<a class="btn" href="/font/extra-membership/">לרכישת מינוי אקסטרה</a>
+</section>
+
+<section class="lic" id="desksub">
+<h3>מינוי דסקטופ ← Desk + UI/UX</h3>
+<p>לעבודה בתוכנות העיצוב: <span class="hi">כל הפונטים בספרייה</span> לדפוס, לסושיאל ולתנועה, בלי לקנות פונט־פונט.</p>
+<p>מקבלים 2 פורמטים: <span class="fmt">Otf, Ttf</span> להתקנה במחשבי מק ופיסי.</p>
+<p><b class="k">מה שניתן לעצב במסגרת המינוי:</b></p>
+<ul>
+<li>עיצוב תוצרי דסקטופ: אדובי, אופיס, פיגמה, על עד 3 מחשבים</li>
+<li>עיצוב תוצרי פלט וסושיאל: מצגות, פוסטים, עיצובים לדיגיטל</li>
+<li>עיצוב תוצרי תנועה: סרטונים, אנימציות, לוגו חי</li>
+<li>לא כולל אתרים ואפליקציות. רוצים גם אתרים? משדרגים לוובסטופ</li>
+</ul>
+<a class="btn" href="/font/desktop-membership/">לרכישת מינוי דסקטופ</a>
+</section>
+
+<section class="lic" id="acad">
+<h3>מינוי אקדמיק ← לסטודנטים</h3>
+<p>כל הספרייה לשנת לימודים, בתשלום חודשי במחיר של סטודנט.</p>
+<ul>
+<li>דסקטופ חופשי, כולל עבודות מסחריות</li>
+<li>3 אתרים בשנה</li>
+<li>לא כולל אפליקציות</li>
+<li>בסוף השנה: הטבה למעבר לוובסטופ או לדסקטופ. בלי מעבר, המינוי ממשיך ב־₪129 לחודש עד לביטול</li>
+</ul>
+<a class="btn" href="/academic-form/">להגשת בקשה למינוי אקדמיק</a>
+</section>
+
+<h2 class="next">מצטרפים בצ'יק</h2>
+<ol class="steps">
+<li><span class="num">1</span><p><b class="k">בחרו:</b> את המינוי שמתאים לכם והוסיפו לסל.</p></li>
+<li><span class="num">2</span><p><b class="k">הזמינו:</b> בכרטיס אשראי, בעמוד תשלום מאובטח.</p></li>
+<li><span class="num">3</span><p><b class="k">תתחדשו:</b> כל הפונטים מחכים לכם באזור האישי.</p></li>
+<li><span class="num">4</span><p><b class="k">צרו!</b> ותנו לפרויקטים שלכם להשפיע.</p></li>
+<li><span class="num">5</span><p><b class="k">תתעדכנו:</b> כל פונט חדש נכנס אוטומטית למינוי.</p></li>
+</ol>
+
+<h2 class="next" id="facts">עוד כמה פרטים חשובים</h2>
+<ul class="facts">
+<li><p><b class="k">התחייבות:</b> 24 חודשים, או התקופה שהוצגה בהצטרפות. אחר כך המינוי ממשיך חודש בחודש.</p></li>
+<li><p><b class="k">האתרים נשארים שלכם:</b> אחרי השלמת ההתחייבות, כל האתרים שרשמתם ממשיכים עם הפונטים לתמיד.</p></li>
+<li><p><b class="k">מה שעיצבתם נשאר שלכם:</b> תוצרים שפורסמו מותרים גם אחרי סיום המינוי. את קובצי הפונט מסירים מהמחשב.</p></li>
+<li><p><b class="k">שדרוג:</b> למסלול רחב יותר בכל עת, ומה ששילמתם מקוזז.</p></li>
+<li><p><b class="k">ביטול:</b> בלחיצה מהאזור האישי. לפני סוף ההתחייבות: דמי יציאה של חודש אחד, והרישיון לאתרים מסתיים.</p></li>
+<li><p><b class="k">חזרה:</b> מי שביטל וחוזר מצטרף כמנוי חדש, במחיר העדכני.</p></li>
+<li><p>רכישות קודמות לא מקוזזות מהמינוי, והן נשארות שלכם לתמיד.</p></li>
+<li><p>שיתוף קבצים מותר רק למתכנת או לסטודיו שעובדים בשבילכם. אסור לאמן בינה מלאכותית על הפונטים.</p></li>
+</ul>
+<p style="margin-top:36px">כל הפרטים ב<a class="lnk" href="/font-license-agreement/">הסכם לרישיון שימוש</a>, שהוא המסמך המחייב.</p>
+<a class="btn" href="/contact/">אנחנו כאן לכל שאלה</a>
+</div>
+
+<aside class="side">
+<div class="pill">רישיונות</div>
+<ul><li><a href="#desk">רישיון דסקטופ</a></li><li><a href="#web">רישיון אתרים</a></li><li><a href="#app">רישיון אפליקציה</a></li></ul>
+<div class="pill">מינויים</div>
+<ul><li><a href="#webstop">מינוי וובסטופ</a></li><li><a href="#extra">מינוי אקסטרה</a></li><li><a href="#desksub">מינוי דסקטופ</a></li><li><a href="#acad">מינוי אקדמיק</a></li></ul>
+<div class="pill">חשוב לדעת</div>
+<ul><li><a href="#facts">פרטים חשובים</a></li><li><a href="/font-license-agreement/">ההסכם המלא</a></li></ul>
+</aside>
+</div>
+</div>
+<script>
+(function(){
+  var root=document.querySelector('.fs-about');if(!root)return;
+  function hdr(){var h=0;document.querySelectorAll('.elementor-sticky--active').forEach(function(e){var r=e.getBoundingClientRect();if(r.top<=1&&r.bottom>h)h=r.bottom;});if(!h){var hd=document.querySelector('[data-elementor-type=header]');h=hd?Math.min(hd.getBoundingClientRect().height,120):90;}root.style.setProperty('--hdr',Math.round(h)+'px');}
+  var links=[].slice.call(root.querySelectorAll('.side a')).filter(function(a){return (a.getAttribute('href')||'').charAt(0)==='#';});var map={};
+  links.forEach(function(a){var s=document.getElementById(a.getAttribute('href').slice(1));if(s)map[s.id]=a;});
+  var secs=Object.keys(map).map(function(id){return document.getElementById(id);});
+  function setOn(id){links.forEach(function(a){a.classList.toggle('on',a===map[id]);});var a=map[id];
+    if(a&&getComputedStyle(a.parentNode.parentNode).display==='flex'){var bar=root.querySelector('.side'),br=bar.getBoundingClientRect(),ar=a.getBoundingClientRect();bar.scrollLeft+=(ar.left+ar.width/2)-(br.left+br.width/2);}}
+  links.forEach(function(a){a.addEventListener('click',function(e){var s=document.getElementById(a.getAttribute('href').slice(1));if(!s)return;e.preventDefault();hdr();s.scrollIntoView({behavior:'smooth',block:'start'});setOn(s.id);if(history.replaceState)history.replaceState(null,'','#'+s.id);});});
+  function spy(){var y=window.innerHeight*0.3,cur=null;secs.forEach(function(s){if(s.getBoundingClientRect().top<=y)cur=s.id;});setOn(cur||secs[0].id);}
+  window.addEventListener('scroll',function(){spy();},{passive:true});window.addEventListener('resize',hdr);
+  hdr();spy();
+})();
+</script>
